@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { AuthModalProvider } from "@/components/auth-modal";
 import { CompareTray } from "@/components/compare-tray";
 import { CookieBanner } from "@/components/cookie-banner";
 import { SiteFooter } from "@/components/site-footer";
@@ -15,12 +16,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
+    <AuthModalProvider>
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CompareTray />
       <CookieBanner />
-    </>
+    </AuthModalProvider>
   );
 }

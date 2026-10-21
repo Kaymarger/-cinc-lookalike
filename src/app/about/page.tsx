@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { AgentProfile } from "@/components/agent-profile";
+import { SITE } from "@/lib/site";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Archibald Real Estate Group: Casey Archibald. 604-555-0100. Find your Vancouver home today.",
+    `${SITE.company}: ${SITE.agent}. ${SITE.phoneDisplay}. Find your Vancouver home today.`,
 };
 
 export default function AboutPage() {

@@ -59,5 +59,12 @@ export interface SearchFilters {
   openHouse?: boolean;
   newListings?: boolean;
   virtualTour?: boolean;
-  sort?: "price-asc" | "price-desc" | "newest" | "sqft-desc";
+  sort?:
+    | "price-asc"
+    | "price-desc"
+    | "newest"
+    | "sqft-desc"
+    | "beds-desc"
+    | "baths-desc"
+    | "year-desc";
 }

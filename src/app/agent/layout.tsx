@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AgentShell } from "@/components/agent-shell";
 import { AgentTasksProvider } from "@/lib/agent-tasks";
+import { AgentWorkspaceProvider } from "@/lib/agent-workspace";
 
 export const metadata: Metadata = {
   title: {
@@ -18,7 +19,9 @@ export default function AgentLayout({
 }) {
   return (
     <AgentTasksProvider>
-      <AgentShell>{children}</AgentShell>
+      <AgentWorkspaceProvider>
+        <AgentShell>{children}</AgentShell>
+      </AgentWorkspaceProvider>
     </AgentTasksProvider>
   );
 }

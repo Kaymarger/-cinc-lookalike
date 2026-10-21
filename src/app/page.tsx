@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { HeroSearch } from "@/components/hero-search";
 import { getFeaturedProperties } from "@/lib/search";
@@ -37,10 +36,10 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="relative isolate min-h-[85svh] overflow-hidden sm:min-h-[88vh]">
+      <section className="relative isolate min-h-[78vh] overflow-hidden">
         <Image
           src="/brand/hero.jpg"
-          alt="Greater Vancouver skyline and waterfront"
+          alt="Greater Vancouver skyline"
           fill
           priority
           className="object-cover object-center"
@@ -48,73 +47,48 @@ export default function HomePage() {
         />
         <div
           aria-hidden
-          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,66,125,0.25)_0%,rgba(0,0,0,0.4)_45%,rgba(0,0,0,0.62)_100%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.1)_0%,rgba(31,41,48,0.6)_100%)]"
         />
-
-        <div className="relative z-10 mx-auto flex min-h-[85svh] max-w-[1200px] flex-col items-center justify-center px-4 pb-16 pt-20 text-center sm:min-h-[88vh] sm:px-6 lg:px-8">
-          <p className="text-sm font-medium tracking-[0.16em] text-white/90 uppercase">
+        <div className="relative z-10 mx-auto flex min-h-[78vh] max-w-[1170px] flex-col items-center justify-center px-4 py-[18vh] text-center">
+          <p className="text-base font-bold tracking-wide text-white uppercase [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
             Archibald Real Estate Group
           </p>
-          <h1 className="mt-3 max-w-3xl font-[family-name:var(--font-accent)] text-[2.4rem] font-normal leading-[1.12] text-white sm:text-5xl md:text-6xl">
-            Find your next home in Greater Vancouver
+          <h1 className="mt-2 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-normal leading-tight text-white [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)] sm:text-5xl md:text-[64px] md:leading-[1.3]">
+            Greater Vancouver Area Home Search
           </h1>
-          <p className="mt-4 max-w-xl text-base text-white/85 sm:text-lg">
-            Search listings, save favourites, and get alerts — built for buyers
-            and sellers on the go.
-          </p>
-          <div className="mt-8 flex w-full justify-center sm:mt-10">
-            <HeroSearch />
-          </div>
+          <HeroSearch />
         </div>
-
-        <a
-          href="#featured"
-          className="absolute bottom-5 left-1/2 z-10 flex size-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 text-white transition hover:bg-white/10"
-          aria-label="Scroll to featured listings"
-        >
-          <ChevronDown className="size-5" />
-        </a>
       </section>
 
-      <section id="featured" className="bg-white py-12 sm:py-16">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-3xl text-[#222] sm:text-4xl">
-                Featured homes
-              </h2>
-              <p className="mt-2 text-[15px] text-[#666]">
-                Hand-picked listings across Metro Vancouver.
-              </p>
-            </div>
-            <Link
-              href="/featured"
-              className="inline-flex h-11 items-center rounded-full bg-[var(--cedar)] px-6 text-sm font-semibold text-white hover:brightness-95"
-            >
-              View more
-            </Link>
-          </div>
+      <section id="featured" className="bg-white py-12">
+        <div className="mx-auto max-w-[1170px] px-4 sm:px-6">
+          <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-normal text-[#1f2930]">
+            Featured Listings
+          </h2>
           <div className="mt-8">
             <FeaturedCarousel properties={featured} />
           </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/featured"
+              aria-label="View More Featured Properties"
+              className="inline-flex h-10 items-center bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:bg-[#145ca4]"
+            >
+              View More
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-[#eef2f5] bg-[#f7fafc] py-12 sm:py-14">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222] sm:text-3xl">
-            Quick searches
+      <section className="bg-white pb-14">
+        <div className="mx-auto max-w-[1170px] px-4 sm:px-6">
+          <h2 className="border-b border-[#dbe3e8] pb-2 font-[family-name:var(--font-display)] text-2xl text-[#1f2930]">
+            Quick Searches
           </h2>
-          <p className="mt-2 text-[15px] text-[#666]">
-            Jump into popular neighbourhoods and home types.
-          </p>
-          <ul className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 columns-1 gap-x-8 text-sm sm:columns-2 lg:columns-3">
             {HOME_QUICK.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={quickSearchHref(item)}
-                  className="flex min-h-12 items-center rounded-xl border border-[#e5eef5] bg-white px-4 text-[15px] text-[var(--cedar-deep)] transition hover:border-[var(--cedar)] hover:bg-[#edf5fd]"
-                >
+              <li key={item.id} className="mb-2 break-inside-avoid">
+                <Link href={quickSearchHref(item)} className="hover:underline">
                   {item.label}
                 </Link>
               </li>

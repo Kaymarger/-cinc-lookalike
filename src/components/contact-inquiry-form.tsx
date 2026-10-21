@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { useLeads, type LeadSource } from "@/lib/leads";
+import { SITE } from "@/lib/site";
 
 export function ContactInquiryForm({
   source = "general",
@@ -65,13 +66,13 @@ export function ContactInquiryForm({
           {heading}
         </h2>
         <p className="mt-2 text-[13px] text-[#666]">
-          Archibald Real Estate Group
+          {SITE.company}
           <br />
-          100 Demo Street
+          {SITE.addressLine}
           <br />
-          Vancouver, BC V6H 3X5
+          {SITE.cityLine}
           <br />
-          604-555-0100
+          {SITE.phoneDisplay}
         </p>
       </div>
       <form onSubmit={onSubmit} className="space-y-3 p-5">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageAssist } from "@/components/page-assist";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "FAQ" };
 
@@ -11,7 +12,7 @@ const faqs = [
   },
   {
     q: "Where is Archibald Real Estate Group located?",
-    a: "100 Demo Street, Vancouver, BC V6B 1A1. Phone: 604-555-0100. Email: agent@example.com.",
+    a: `${SITE.addressLine}, ${SITE.cityLine}. Phone: ${SITE.phoneDisplay}. Email: ${SITE.email}.`,
   },
   {
     q: "How do I search for homes?",

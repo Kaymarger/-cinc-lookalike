@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageAssist } from "@/components/page-assist";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Terms of Use",
@@ -42,7 +43,7 @@ export default function TermsPage() {
             <Link href="/contact" className="text-[var(--cedar)] hover:underline">
               Contact us
             </Link>{" "}
-            or call 604-555-0100.
+            or call {SITE.phoneDisplay}.
           </p>
         </div>
       </div>

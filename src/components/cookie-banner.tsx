@@ -19,18 +19,25 @@ export function CookieBanner() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[80] sm:inset-x-auto sm:right-4 sm:bottom-4 sm:max-w-md">
-      <div className="rounded-2xl border border-[#e5eef5] bg-white p-4 shadow-xl shadow-black/10">
-        <p className="text-[13px] leading-snug text-[#444]">
-          We use cookies to keep your saved homes and search experience working.
-          Read the{" "}
-          <Link href="/privacy" className="font-medium text-[var(--cedar)] underline">
-            Privacy Policy
+    <div
+      id="cookie-banner"
+      className="fixed inset-x-0 bottom-0 z-[80] bg-black/90 px-4 py-4 text-[12px] leading-snug text-white"
+    >
+      <div className="mx-auto flex max-w-[1170px] flex-col items-center gap-4 sm:flex-row sm:justify-between">
+        <p className="max-w-4xl">
+          Welcome to greatervancouverhomesearch.com!
+          <br />
+          We use cookies that recognize your device to provide you access to our service and to
+          improve our website. You can disable cookies through your browser but some features of
+          the site will no longer be available. To read our Privacy Policy,{" "}
+          <Link href="/privacy" className="!text-white underline">
+            click here
           </Link>
           .
         </p>
         <button
           type="button"
+          id="accept-cookie-notification"
           onClick={() => {
             try {
               localStorage.setItem(KEY, "1");
@@ -39,9 +46,9 @@ export function CookieBanner() {
             }
             setShow(false);
           }}
-          className="mt-3 h-10 w-full rounded-full bg-[var(--cedar)] text-sm font-semibold text-white hover:brightness-95"
+          className="h-10 shrink-0 bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] text-white uppercase hover:bg-[#145ca4]"
         >
-          Got it
+          Accept
         </button>
       </div>
     </div>

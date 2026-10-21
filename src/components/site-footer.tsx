@@ -1,211 +1,155 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { SITE } from "@/lib/site";
 
-function SocialIcon({
-  href,
-  label,
-  children,
-}: {
-  href: string;
-  label: string;
-  children: React.ReactNode;
-}) {
+const MENU = [
+  { href: "/", label: "Home" },
+  { href: "/search", label: "Search Homes" },
+  { href: "/featured", label: "Featured" },
+  { href: "/about", label: "About" },
+  { href: "/contact#inquiry", label: "Contact" },
+  { href: "/seller/homeestimate", label: "Home Estimate" },
+];
+
+const LEGAL = [
+  { href: "/terms", label: "Terms of Use" },
+  { href: "/privacy", label: "Privacy Notice" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/disclaimer", label: "Disclaimer" },
+];
+
+function Social({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
       aria-label={label}
-      className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition hover:border-white/30 hover:bg-white/10"
+      className="mr-3 inline-flex text-[22px] text-[#7b97aa] hover:text-[#1976d2]"
     >
       {children}
     </a>
   );
 }
 
-const explore = [
-  { href: "/search", label: "Search homes" },
-  { href: "/featured", label: "Featured listings" },
-  { href: "/neighborhoods", label: "Neighbourhoods" },
-  { href: "/open-houses", label: "Open houses" },
-  { href: "/seller/homeestimate/homevaluation", label: "Home estimate" },
-];
-
-const company = [
-  { href: "/about", label: "About Casey" },
-  { href: "/buying", label: "Buying" },
-  { href: "/selling", label: "Selling" },
-  { href: "/mortgage", label: "Mortgage calculator" },
-  { href: "/contact", label: "Contact" },
-];
-
-const legal = [
-  { href: "/terms", label: "Terms" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/disclaimer", label: "Disclaimer" },
-];
-
 export function SiteFooter() {
   return (
-    <footer id="footer" className="mt-auto bg-[#0b1f33] text-white">
-      {/* Main */}
-      <div className="mx-auto max-w-[1200px] px-4 pt-14 pb-10 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1.35fr_1fr_1fr]">
-          {/* Brand + contact */}
-          <div>
-            <Link href="/" className="inline-block">
-              <Image
-                src="/brand/archibald-logo.png"
-                alt="Archibald Real Estate Group"
-                width={220}
-                height={51}
-                className="h-11 w-auto brightness-0 invert"
-              />
-            </Link>
-            <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/70">
-              Local expertise for buyers and sellers across Greater Vancouver —
-              Archibald Real Estate Group with RE/MAX Crest Realty.
-            </p>
-
-            <div className="mt-6 space-y-2 text-sm text-white/80">
-              <p className="font-medium text-white">Casey Archibald</p>
-              <p>100 Demo Street</p>
-              <p>Vancouver, BC V6H 3X5</p>
-              <a
-                href="tel:6045550100"
-                className="inline-flex items-center gap-2 pt-1 font-semibold !text-white hover:!text-[#7ec8f0]"
-              >
-                <Phone className="size-4 text-[#7ec8f0]" />
-                604-555-0100
-              </a>
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center gap-5">
-              <Image
-                src="/brand/remax-logo.png"
-                alt="RE/MAX"
-                width={160}
-                height={29}
-                unoptimized
-                className="h-8 w-auto bg-transparent"
-              />
-              <div className="flex items-center gap-2">
-                <SocialIcon
-                  href="#"
-                  label="Facebook"
-                >
-                  <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-                    <path d="M14 8h2V5.5A4.5 4.5 0 0 0 11.6 1H9v3h2c.6 0 1 .4 1 1v3H9v3h3v9h3v-9h2.2L18 8h-4z" />
-                  </svg>
-                </SocialIcon>
-                <SocialIcon
-                  href="#"
-                  label="Instagram"
-                >
-                  <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-                    <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm11 1.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" />
-                  </svg>
-                </SocialIcon>
-              </div>
-            </div>
-          </div>
-
-          {/* Explore */}
-          <div>
-            <h4 className="text-xs font-semibold tracking-[0.16em] text-[#7ec8f0] uppercase">
-              Explore
-            </h4>
-            <ul className="mt-4 space-y-3">
-              {explore.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-[15px] !text-white/80 transition hover:!text-white"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h4 className="text-xs font-semibold tracking-[0.16em] text-[#7ec8f0] uppercase">
-              Company
-            </h4>
-            <ul className="mt-4 space-y-3">
-              {company.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-[15px] !text-white/80 transition hover:!text-white"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/account/register"
-              className="mt-8 inline-flex h-11 items-center rounded-full bg-[var(--cedar)] px-5 text-sm font-semibold !text-white hover:brightness-110"
-            >
-              Create free account
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Legal strip */}
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/55">
-            {legal.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="!text-white/55 transition hover:!text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href="/agent"
-              className="!text-white/40 transition hover:!text-white/70"
-            >
-              Agent workspace
-            </Link>
-          </div>
-          <p className="text-xs text-white/40">
-            © {new Date().getFullYear()} Archibald Real Estate Group
+    <footer id="footer" className="mt-auto border-t-4 border-[#1976d2] bg-[#ebeff2] text-[#1f2930]">
+      <div className="mx-auto grid max-w-[1170px] gap-8 px-4 py-10 sm:px-6 md:grid-cols-3">
+        <div>
+          <Link href="/" className="inline-block">
+            <Image
+              src="/brand/site-logo.png"
+              alt="Greater Vancouver Area Home Search"
+              width={200}
+              height={46}
+              className="h-11 w-auto"
+            />
+          </Link>
+          <p className="mt-4 text-sm leading-6">
+            {SITE.company}
+            <br />
+            {SITE.agent}
+            <br />
+            {SITE.addressLine}
+            <br />
+            {SITE.cityLine}
+            <br />
+            <a href={`tel:${SITE.phoneTel}`} className="hover:underline">
+              {SITE.phoneDisplay}
+            </a>
           </p>
+          <Image
+            src="/brand/remax-logo.png"
+            alt="RE/MAX"
+            width={200}
+            height={35}
+            className="mt-4 h-8 w-auto"
+          />
+          <div className="mt-4">
+            <Social href={SITE.facebook} label="Go to Facebook">
+              <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+                <path d="M14 9h3V6h-3c-1.7 0-3 1.3-3 3v2H8v3h3v7h3v-7h3l1-3h-4V9c0-.6.4-1 1-1z" />
+              </svg>
+            </Social>
+            <Social href={SITE.linkedin} label="Go to LinkedIn">
+              <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+                <path d="M6.5 9H4V20h2.5V9zM5.2 4C4.3 4 3.6 4.7 3.6 5.6S4.3 7.2 5.2 7.2 6.8 6.5 6.8 5.6 6.1 4 5.2 4zM20 20h-2.5v-5.6c0-1.6-.6-2.6-2-2.6-1 0-1.6.7-1.9 1.4-.1.2-.1.6-.1.9V20H11V9h2.4v1.5c.4-.7 1.3-1.8 3.2-1.8 2.3 0 4 1.5 4 4.8V20z" />
+              </svg>
+            </Social>
+            <Social href={SITE.instagram} label="Go to Instagram">
+              <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+                <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm11 1.4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+              </svg>
+            </Social>
+            <Social href={SITE.youtube} label="Go to Youtube">
+              <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+                <path d="M23 12.2s0-3.2-.4-4.6c-.2-.9-.9-1.6-1.8-1.8C19.2 5.4 12 5.4 12 5.4s-7.2 0-8.8.4c-.9.2-1.6.9-1.8 1.8C1 9 1 12.2 1 12.2s0 3.2.4 4.6c.2.9.9 1.6 1.8 1.8 1.6.4 8.8.4 8.8.4s7.2 0 8.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.4.4-4.6.4-4.6zM9.8 15.5v-6.6l6.2 3.3-6.2 3.3z" />
+              </svg>
+            </Social>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-base font-bold text-[#1f2930]">Menu</h4>
+          <ul className="mt-3 columns-2 text-sm">
+            {MENU.map((item) => (
+              <li key={item.href} className="mb-2 break-inside-avoid">
+                <Link href={item.href} className="uppercase hover:underline">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div />
+      </div>
+
+      <div className="mx-auto flex max-w-[1170px] flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <Image
+          src="/brand/fair-housing.png"
+          alt="Fair Housing/Equal Opportunity"
+          title="Archibald Real Estate Group is an Equal Opportunity Employer and supports the Fair Housing Act"
+          width={48}
+          height={32}
+          className="h-8 w-auto"
+        />
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-bold tracking-[1px] uppercase">
+          {LEGAL.map((item) => (
+            <Link key={item.href} href={item.href}>
+              {item.label}
+            </Link>
+          ))}
+          <Link href="/agent">Agent workspace</Link>
         </div>
       </div>
 
-      {/* Compliance — quieter, collapsible visually */}
-      <div className="border-t border-white/10 bg-[#081828]">
-        <div className="mx-auto flex max-w-[1200px] gap-4 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="bg-white px-4 py-4 text-[12px] leading-relaxed text-[#7b97aa] sm:px-6">
+        <div className="mx-auto max-w-[1170px] space-y-3">
           <Image
-            src="/brand/fair-housing.png"
-            alt="Fair Housing / Equal Opportunity"
-            width={40}
+            src="/brand/mls-vancouver.gif"
+            alt="MIMLS"
+            width={80}
             height={28}
-            className="mt-0.5 h-7 w-auto shrink-0 opacity-80"
+            unoptimized
+            className="h-7 w-auto"
           />
-          <div className="space-y-2 text-[11px] leading-relaxed text-white/40">
-            <p>
-              Listing data comes in part from the MLS® reciprocity program of
-              the Real Estate Board of Greater Vancouver, which assumes no
-              responsibility for its accuracy. Sample inventory on this demo is
-              not a live MLS® feed.
-            </p>
-            <p>
-              Powered by CINC technology. Real estate services are provided
-              exclusively by Archibald Real Estate Group | RE/MAX Crest Realty.
-            </p>
-          </div>
+          <p>
+            The data relating to real estate on this website comes in part from the MLS reciprocity
+            program of the Real Estate Board of Greater Vancouver. This representation is based in
+            whole or part on data generated by the Real Estate Board of Greater Vancouver which
+            assumes no responsibility for its accuracy. Sample inventory on this demo is not a live
+            MLS feed.
+          </p>
+          <p>This site is powered by CINC: www.cincpro.com</p>
+          <p>
+            Listing data on this site is sample data provided for demonstration. Greater Vancouver
+            REALTORS® is a data provider only and has no affiliation with {SITE.company}.
+            <br />
+            Technology &amp; Service Disclosure: This website is a real estate search platform
+            styled after CINC. All real estate related services referenced on this site are provided
+            exclusively by {SITE.company}.
+          </p>
         </div>
       </div>
     </footer>

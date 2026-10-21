@@ -26,9 +26,7 @@ export function PropertyCard({
   return (
     <div
       className={cn(
-        "card--property2 group relative overflow-hidden rounded-2xl bg-white",
-        layout === "list" && "border border-[#e8e8e8] shadow-sm",
-        layout === "grid" && "shadow-sm ring-1 ring-[#e8eef3]",
+        "card--property2 group relative overflow-hidden rounded-[3px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.1)]",
         className
       )}
       data-pdid={property.id}
@@ -41,9 +39,7 @@ export function PropertyCard({
       <div className="property-content">
         <div
           className={cn(
-            "property-image-wrapper relative aspect-[4/3] overflow-hidden bg-[#eee]",
-            layout === "list" && "aspect-[16/10] rounded-t-2xl",
-            layout === "grid" && "rounded-t-2xl"
+            "property-image-wrapper relative mx-2 mt-2 h-[200px] overflow-hidden bg-[#7b97aa]"
           )}
         >
           <Image
@@ -73,7 +69,7 @@ export function PropertyCard({
           )}
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="property-price whitespace-nowrap font-[family-name:var(--font-display)] text-[22px] font-medium leading-none text-[var(--cedar)]">
+            <p className="property-price whitespace-nowrap text-[21px] leading-[1.7] text-[#1976d2]">
               {formatPrice(property.price)}
             </p>
             <div className="property-interactions relative z-[2]">

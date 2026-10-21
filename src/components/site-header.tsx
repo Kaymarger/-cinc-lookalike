@@ -3,154 +3,226 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Heart, Menu, X } from "lucide-react";
+import { useAuthModal } from "@/components/auth-modal";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { href: "/search", label: "Search" },
+const NAV = [
+  { href: "/search", label: "Search Homes" },
   { href: "/featured", label: "Featured" },
-  { href: "/seller/homeestimate/homevaluation", label: "Home value" },
   { href: "/about", label: "About" },
+  { href: "/contact#inquiry", label: "Contact" },
+  { href: "/seller/homeestimate", label: "Home Estimate" },
 ];
 
-const moreLinks = [
-  { href: "/buying", label: "Buying guide" },
-  { href: "/selling", label: "Selling guide" },
-  { href: "/neighborhoods", label: "Neighbourhoods" },
-  { href: "/open-houses", label: "Open houses" },
-  { href: "/mortgage", label: "Mortgage calculator" },
-  { href: "/alerts", label: "Saved searches" },
-  { href: "/compare", label: "Compare" },
-  { href: "/recently-viewed", label: "Recently viewed" },
-  { href: "/contact", label: "Contact" },
-  { href: "/faq", label: "FAQ" },
+const ACCOUNT = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/seller/homepulse", label: "HomePulse" },
+  { href: "/notebook", label: "My Notebook" },
+  { href: "/account/settings", label: "Settings" },
 ];
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { ready, user } = useDemoAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const { ready, user, signOut } = useDemoAuth();
+  const { openSignup } = useAuthModal();
+
+  function close() {
+    setMenuOpen(false);
+    setMoreOpen(false);
+    setAccountOpen(false);
+  }
 
   return (
-    <header
-      id="header"
-      className="sticky top-0 z-50 border-b border-[#e8eef3] bg-white/95 backdrop-blur-md"
-    >
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-3 px-4 sm:h-[72px] sm:px-6 lg:px-8">
-        <Link href="/" className="shrink-0" onClick={() => setMenuOpen(false)}>
+    <header id="header" className="sticky top-0 z-50 border-t-4 border-[#1976d2] bg-white">
+      <div className="mx-auto flex min-h-[64px] max-w-[1170px] items-center gap-2 px-3 sm:px-4">
+        <button
+          type="button"
+          id="header-icon"
+          className="inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 lg:hidden"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <span className="block h-0.5 w-5 bg-[#1f2930]" />
+          <span className="block h-0.5 w-5 bg-[#1f2930]" />
+          <span className="block h-0.5 w-5 bg-[#1f2930]" />
+        </button>
+
+        <Link href="/" className="shrink-0" onClick={close}>
           <Image
-            src="/brand/archibald-logo.png"
-            alt="Archibald Real Estate Group"
+            src="/brand/site-logo.png"
+            alt="Greater Vancouver Area Home Search"
             width={200}
             height={46}
-            className="h-9 w-auto sm:h-10"
+            className="h-9 w-auto sm:h-11"
             priority
           />
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
-          {nav.map((item) => (
+        <nav className="ml-auto hidden items-center lg:flex">
+          {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-[#1f2930] hover:bg-[#edf5fd] hover:text-[var(--cedar-deep)]"
+              className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#1976d2]"
             >
               {item.label}
             </Link>
           ))}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              onBlur={() => window.setTimeout(() => setMoreOpen(false), 150)}
-              className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-[#1f2930] hover:bg-[#edf5fd] hover:text-[var(--cedar-deep)]"
-            >
-              More
-              <ChevronDown className="size-3.5" />
-            </button>
-            {moreOpen && (
-              <div className="absolute top-full left-0 z-50 mt-1 min-w-[220px] rounded-xl border border-[#e5e5e5] bg-white py-2 shadow-lg">
-                {moreLinks.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="block px-4 py-2.5 text-sm text-[#333] hover:bg-[#edf5fd] hover:text-[var(--cedar)]"
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    {item.label}
+          {ready && user && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="A dropdown tab for more site navigation options"
+                onClick={() => {
+                  setMoreOpen((v) => !v);
+                  setAccountOpen(false);
+                }}
+                className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase"
+              >
+                More
+              </button>
+              {moreOpen && (
+                <div className="absolute top-full left-0 z-50 min-w-[200px] border border-[#dbe3e8] bg-white py-1 shadow-lg">
+                  <Link href="/savedhomes" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
+                    Saved Homes
                   </Link>
-                ))}
-              </div>
-            )}
-          </div>
+                  <Link href="/alerts" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
+                    Saved Searches
+                  </Link>
+                  <Link href="/compare" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
+                    Compare
+                  </Link>
+                  <Link href="/mortgage" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
+                    Mortgage
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link
-            href="/saved"
-            aria-label="Saved homes"
-            className="inline-flex size-10 items-center justify-center rounded-full text-[var(--cedar)] hover:bg-[#edf5fd]"
-          >
-            <Heart className="size-5" strokeWidth={1.75} />
-          </Link>
-
+        <div className="ml-2 hidden items-center lg:flex">
           {ready && user ? (
-            <Link
-              href="/account"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[#1f2930] hover:bg-[#edf5fd] sm:inline-flex"
-            >
-              Hi, {user.name.split(" ")[0]}
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/account/login"
-                className="hidden rounded-full px-3 py-2 text-sm font-medium text-[#1f2930] hover:bg-[#edf5fd] sm:inline-flex"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountOpen((v) => !v);
+                  setMoreOpen(false);
+                }}
+                className="max-w-[200px] truncate px-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase"
               >
-                Log in
-              </Link>
-              <Link
-                href="/account/register"
-                className="inline-flex h-9 items-center rounded-full bg-[var(--cedar)] px-3.5 text-sm font-semibold !text-white shadow-sm hover:brightness-95 hover:!text-white sm:h-10 sm:px-4"
+                {user.name}
+              </button>
+              {accountOpen && (
+                <div className="absolute top-full right-0 z-50 min-w-[200px] border border-[#dbe3e8] bg-white py-1 shadow-lg">
+                  {ACCOUNT.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={close}
+                      className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2 text-left text-sm text-[#1f2930] hover:bg-[#ebeff2]"
+                    onClick={() => {
+                      signOut();
+                      close();
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={openSignup}
+                className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#1976d2]"
+              >
+                Log In
+              </button>
+              <button
+                type="button"
+                onClick={openSignup}
+                className="border-2 border-[#1976d2] px-3 py-1.5 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:border-[#145ca4]"
               >
                 Sign up
-              </Link>
-            </>
+              </button>
+            </div>
           )}
-
-          <button
-            type="button"
-            className="inline-flex size-10 items-center justify-center rounded-full text-[#333] hover:bg-[#f3f6f8] lg:hidden"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
         </div>
       </div>
 
       {menuOpen && (
-        <div className="border-t border-[#eef2f5] bg-white px-4 py-4 lg:hidden">
-          <nav className="flex flex-col gap-1">
-            {[...nav, ...moreLinks].map((item) => (
+        <div className="bg-[#1976d2] px-4 py-4 text-white lg:hidden">
+          <nav className="flex flex-col">
+            {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-3 text-base font-medium text-[#222] hover:bg-[#edf5fd]"
+                onClick={close}
+                className="border-b border-white/15 py-3 text-[12px] font-bold tracking-[1px] !text-white uppercase"
               >
                 {item.label}
               </Link>
             ))}
-            <Link
-              href={user ? "/account" : "/account/login"}
-              onClick={() => setMenuOpen(false)}
-              className="mt-2 rounded-lg bg-[#edf5fd] px-3 py-3 text-base font-semibold text-[var(--cedar-deep)]"
-            >
-              {user ? "My account" : "Log in"}
-            </Link>
+            {user &&
+              ACCOUNT.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={close}
+                  className="border-b border-white/15 py-3 text-[12px] font-bold tracking-[1px] !text-white uppercase"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            {user ? (
+              <button
+                type="button"
+                className="py-3 text-left text-[12px] font-bold tracking-[1px] uppercase"
+                onClick={() => {
+                  signOut();
+                  close();
+                }}
+              >
+                Logout
+              </button>
+            ) : (
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    openSignup();
+                  }}
+                  className={cn("border border-white px-3 py-2 text-[12px] font-bold tracking-[1px] uppercase")}
+                >
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    openSignup();
+                  }}
+                  className="border border-white px-3 py-2 text-[12px] font-bold tracking-[1px] uppercase"
+                >
+                  Sign up
+                </button>
+              </div>
+            )}
           </nav>
         </div>
       )}

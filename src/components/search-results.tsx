@@ -156,9 +156,12 @@ export function SearchResults({
         <div
           id="listing-results"
           className={cn(
-            "max-h-[calc(100vh-13rem)] space-y-5 overflow-y-auto pr-1",
+            "max-h-[calc(100vh-13rem)] overflow-y-auto pr-1",
+            showMap
+              ? "grid grid-cols-1 content-start gap-3 sm:grid-cols-2"
+              : "grid grid-cols-1 content-start gap-4 sm:grid-cols-2 xl:grid-cols-3",
             showMap && mobileView === "map" ? "hidden lg:block" : "block",
-            !showMap && "mx-auto max-w-[900px] w-full"
+            !showMap && "mx-auto w-full"
           )}
         >
           {properties.map((property, i) => (

@@ -78,7 +78,10 @@ export function parseFilters(
     sort === "price-asc" ||
     sort === "price-desc" ||
     sort === "newest" ||
-    sort === "sqft-desc"
+    sort === "sqft-desc" ||
+    sort === "beds-desc" ||
+    sort === "baths-desc" ||
+    sort === "year-desc"
       ? sort
       : undefined;
 
@@ -182,6 +185,15 @@ export function searchProperties(filters: SearchFilters): Property[] {
       break;
     case "sqft-desc":
       results.sort((a, b) => b.sqft - a.sqft);
+      break;
+    case "beds-desc":
+      results.sort((a, b) => b.beds - a.beds);
+      break;
+    case "baths-desc":
+      results.sort((a, b) => b.baths - a.baths);
+      break;
+    case "year-desc":
+      results.sort((a, b) => b.yearBuilt - a.yearBuilt);
       break;
     case "newest":
     default:

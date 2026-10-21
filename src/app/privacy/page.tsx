@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageAssist } from "@/components/page-assist";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -40,10 +41,10 @@ export default function PrivacyPage() {
             </a>{" "}
             or{" "}
             <a
-              href="tel:6045550100"
+              href={`tel:${SITE.phoneTel}`}
               className="text-[var(--cedar)] hover:underline"
             >
-              604-555-0100
+              {SITE.phoneDisplay}
             </a>{" "}
             with privacy questions, or use our{" "}
             <Link href="/contact" className="text-[var(--cedar)] hover:underline">

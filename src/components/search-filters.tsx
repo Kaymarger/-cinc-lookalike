@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
 import { SaveSearchButton } from "@/components/save-search-button";
 import { CITIES, PROPERTY_TYPES } from "@/lib/properties";
+import { SITE } from "@/lib/site";
 import type { SearchFilters } from "@/lib/types";
 import { filtersToQuery } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -355,7 +356,7 @@ export function SearchFiltersBar({
     heading ??
     (filters.city
       ? `${filters.city}, BC homes for sale`
-      : "Greater Vancouver homes for sale");
+      : `${resultCount}${resultCount >= 40 ? "+" : ""} Listings`);
 
   return (
     <div className="border-b border-[#e8eef3] bg-white">
@@ -373,10 +374,10 @@ export function SearchFiltersBar({
             </p>
           </div>
           <a
-            href="tel:6045550100"
+            href={`tel:${SITE.phoneTel}`}
             className="hidden text-sm text-[#666] hover:text-[var(--cedar)] md:inline"
           >
-            Need help? 604-555-0100
+            Need help? {SITE.phoneDisplay}
           </a>
         </div>
 
@@ -406,19 +407,33 @@ export function SearchFiltersBar({
 
           <div className="hidden flex-wrap items-center gap-2 lg:flex">
             {onToggleMap && (
-              <button
-                type="button"
-                onClick={onToggleMap}
-                className={cn(
-                  "inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium",
-                  showMap
-                    ? "border-[var(--cedar)] bg-[var(--cedar)] text-white"
-                    : "border-[#d7e0e8] bg-white text-[#333]"
-                )}
-              >
-                <MapIcon className="size-4" />
-                Map
-              </button>
+              <div className="inline-flex h-10 overflow-hidden border border-[#d7e0e8]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showMap) onToggleMap();
+                  }}
+                  className={cn(
+                    "px-3 text-sm font-semibold",
+                    !showMap ? "bg-[#1976d2] text-white" : "bg-white text-[#333]"
+                  )}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showMap) onToggleMap();
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 text-sm font-semibold",
+                    showMap ? "bg-[#1976d2] text-white" : "bg-white text-[#333]"
+                  )}
+                >
+                  <MapIcon className="size-4" />
+                  Map
+                </button>
+              </div>
             )}
 
             <FilterMenu
@@ -570,9 +585,12 @@ export function SearchFiltersBar({
               }
               aria-label="Sort listings"
             >
-              <option value="newest">Newest</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
+              <option value="price-desc">Price (High to Low)</option>
+              <option value="price-asc">Price (Low to High)</option>
+              <option value="newest">Latest Listings</option>
+              <option value="baths-desc">Baths</option>
+              <option value="beds-desc">Beds</option>
+              <option value="year-desc">Year Built</option>
               <option value="sqft-desc">Largest first</option>
             </select>
           </div>

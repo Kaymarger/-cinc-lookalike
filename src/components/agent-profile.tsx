@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ContactInquiryForm } from "@/components/contact-inquiry-form";
+import { SITE } from "@/lib/site";
 
 const BIO = `Casey Archibald | Top Vancouver Realtor
 
@@ -23,7 +24,7 @@ export function AgentProfile({
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
       <h2 className="relative mb-8 w-fit pb-3 font-[family-name:var(--font-display)] text-2xl text-[#222] sm:text-3xl">
-        Featured Agents
+        About
         <span
           aria-hidden
           className="absolute bottom-0 left-0 h-[3px] w-16 bg-[var(--cedar)]"
@@ -49,10 +50,10 @@ export function AgentProfile({
               </p>
               <p className="mt-3 text-sm text-[#555]">
                 <a
-                  href="tel:6045550100"
+                  href={`tel:${SITE.phoneTel}`}
                   className="text-[var(--cedar)] hover:underline"
                 >
-                  604-555-0100
+                  {SITE.phoneDisplay}
                 </a>
                 <br />
                 <a
@@ -74,12 +75,12 @@ export function AgentProfile({
             <br />
             Archibald Real Estate Group | RE/MAX Crest Realty
             <br />
-            100 Demo Street, Vancouver, British Columbia
+            {SITE.addressLine}, Vancouver, British Columbia
           </p>
         </article>
 
         {showInquiry && (
-          <div>
+          <div id="inquiry">
             <ContactInquiryForm source="general" heading="Contact Us" />
           </div>
         )}

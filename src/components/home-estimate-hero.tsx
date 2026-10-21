@@ -91,57 +91,27 @@ export function HomeEstimateHero({
                 Please enter your home address to continue
               </p>
               <form onSubmit={onSubmit} className="mt-4 space-y-3" id="estimate">
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     name="Unit"
                     placeholder="Unit # (opt.)"
                     aria-label="Enter a Unit Number"
-                    className="h-11 w-28 shrink-0 border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
+                    className="h-12 w-full shrink-0 border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)] sm:w-32"
                   />
                   <input
                     name="Address"
                     required
                     placeholder="Street address"
                     aria-label="Home Address"
-                    className="h-11 min-w-0 flex-1 border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
+                    className="h-12 min-w-0 flex-1 border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
                   />
+                  <button
+                    type="submit"
+                    className="h-12 shrink-0 bg-[var(--cedar)] px-8 text-sm font-bold text-white hover:brightness-95"
+                  >
+                    {ctaLabel}
+                  </button>
                 </div>
-                <input
-                  name="FullName"
-                  required
-                  placeholder="Full Name"
-                  aria-label="Full Name"
-                  className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-                />
-                <input
-                  name="Email"
-                  type="email"
-                  required
-                  placeholder="Email"
-                  aria-label="Email"
-                  className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-                />
-                <input
-                  name="Phone"
-                  type="tel"
-                  required
-                  placeholder="Phone"
-                  aria-label="Phone"
-                  className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-                />
-                <textarea
-                  name="Message"
-                  rows={3}
-                  placeholder="Anything else we should know?"
-                  aria-label="Message"
-                  className="w-full border border-[#ddd] px-3 py-2 text-sm outline-none focus:border-[var(--cedar)]"
-                />
-                <button
-                  type="submit"
-                  className="h-12 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95"
-                >
-                  {ctaLabel}
-                </button>
               </form>
             </>
           )}

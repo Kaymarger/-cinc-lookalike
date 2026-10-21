@@ -84,9 +84,13 @@ const NAV: NavItem[] = [
     label: "Automations",
     icon: AutoIcon,
     children: [
-      { href: "/agent/automations", label: "Auto Tracks" },
-      { href: "/agent/automations?tab=behavioral", label: "Behavioral Messaging" },
-      { href: "/agent/automations?tab=ai", label: "CINC AI" },
+      { href: "/agent/automations", label: "Action plans" },
+      { href: "/agent/automations/templates", label: "Templates" },
+      { href: "/agent/automations/lists", label: "Smart lists" },
+      { href: "/agent/automations/alerts", label: "Listing alerts" },
+      { href: "/agent/automations/assign", label: "Auto-assign" },
+      { href: "/agent/automations/behavioral", label: "Behavioral Messaging" },
+      { href: "/agent/automations/ai", label: "CINC AI" },
     ],
     match: (p) => p.startsWith("/agent/automations"),
   },
@@ -108,6 +112,21 @@ const NAV: NavItem[] = [
     label: "Website",
     icon: Laptop,
     match: (p) => p.startsWith("/agent/website"),
+  },
+  {
+    href: "/agent/settings",
+    label: "Settings",
+    icon: HelpCircle,
+    children: [
+      { href: "/agent/settings", label: "Profile" },
+      { href: "/agent/settings/team", label: "Team" },
+      { href: "/agent/settings/routing", label: "Routing" },
+      { href: "/agent/settings/notifications", label: "Notifications" },
+      { href: "/agent/settings/phone", label: "Phone" },
+      { href: "/agent/settings/email", label: "Email" },
+      { href: "/agent/settings/billing", label: "Billing" },
+    ],
+    match: (p) => p.startsWith("/agent/settings"),
   },
 ];
 
@@ -214,6 +233,7 @@ const PAGE_TITLES: { test: (p: string) => boolean; title: string }[] = [
   { test: (p) => p.startsWith("/agent/automations"), title: "Automations" },
   { test: (p) => p.startsWith("/agent/properties"), title: "Properties" },
   { test: (p) => p.startsWith("/agent/website"), title: "Website" },
+  { test: (p) => p.startsWith("/agent/settings"), title: "Settings" },
   { test: (p) => p.startsWith("/agent/listings"), title: "Properties" },
   { test: (p) => p.startsWith("/agent/activity"), title: "Communication" },
   { test: (p) => p.startsWith("/agent/showings"), title: "Deals Dashboard" },
@@ -285,37 +305,37 @@ export function AgentShell({ children }: { children: React.ReactNode }) {
               {title}
             </h1>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#4aa3d9]/80" />
-            <button
-              type="button"
+            <Link
+              href="/agent/leads"
               className="ml-1 rounded p-1 text-[#8a9bab] hover:bg-[#eef3f7]"
-              aria-label="Search"
+              aria-label="Search leads"
             >
               <Search className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
-            <button
-              type="button"
+            <Link
+              href="/faq"
               className="hidden text-[12px] font-semibold tracking-wide text-[#00aeb6] sm:inline"
             >
               HELP
-            </button>
-            <button
-              type="button"
+            </Link>
+            <Link
+              href="/agent/settings"
               className="flex items-center gap-1.5 text-[13px] text-[#5a6f82]"
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dce4ec] text-[11px] font-semibold text-[#3d5164]">
                 {CRM_AGENT.initials}
               </span>
               <ChevronDown className="hidden h-3.5 w-3.5 sm:block" />
-            </button>
-            <button
-              type="button"
+            </Link>
+            <Link
+              href="/agent/settings/website"
               className="hidden text-[#8a9bab] hover:text-[#5a6f82] sm:block"
-              aria-label="Language"
+              aria-label="Website settings"
             >
               <Globe className="h-4 w-4" />
-            </button>
+            </Link>
             <HelpCircle className="hidden h-4 w-4 text-[#8a9bab] xl:block" />
           </div>
         </header>

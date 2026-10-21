@@ -180,7 +180,7 @@ export function LeadDialog({
                     type="tel"
                     required={resolvedSource !== "photo_gate"}
                     autoComplete="tel"
-                    placeholder="604-555-0100"
+                    placeholder="(604) 363-7858"
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />
                 </div>
