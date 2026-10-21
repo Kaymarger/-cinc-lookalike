@@ -43,6 +43,8 @@ export interface Property {
   featured?: boolean;
   openHouse?: string;
   virtualTour?: boolean;
+  /** IDX-style tags such as Waterfront or Renovated */
+  tags?: string[];
 }
 
 export interface SearchFilters {
@@ -56,6 +58,10 @@ export interface SearchFilters {
   minSqft?: number;
   maxSqft?: number;
   minYear?: number;
+  maxYear?: number;
+  /** Days on site, inclusive */
+  maxDays?: number;
+  tag?: string;
   openHouse?: boolean;
   newListings?: boolean;
   virtualTour?: boolean;

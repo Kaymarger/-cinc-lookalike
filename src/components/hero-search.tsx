@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PlaceSuggest } from "@/components/place-suggest";
+import type { Place } from "@/lib/places";
 
 export function HeroSearch() {
   const router = useRouter();
@@ -34,20 +36,22 @@ export function HeroSearch() {
         </li>
       </ul>
       <form id="search-bar-form" onSubmit={onSubmit} className="flex">
-        <label className="min-w-0 flex-[2]">
-          <input
-            id="search-bar-input"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              if (e.target.value.trim()) setError(false);
-            }}
-            placeholder="City or postal code"
-            aria-label="Search Bar"
-            autoComplete="off"
-            className="h-10 w-full border-0 bg-white px-3 text-sm text-[#1f2930] outline-none placeholder:text-[#7b97aa]"
-          />
-        </label>
+        <PlaceSuggest
+          id="search-bar-input"
+          value={q}
+          onChange={(value) => {
+            setQ(value);
+            if (value.trim()) setError(false);
+          }}
+          onPick={(place: Place) => {
+            setQ(place.label);
+            setError(false);
+          }}
+          placeholder="City, neighbourhood, or postal code"
+          aria-label="Search Bar"
+          className="min-w-0 flex-[2]"
+          inputClassName="h-10 w-full border-0 bg-white px-3 text-sm text-[#1f2930] outline-none placeholder:text-[#7b97aa]"
+        />
         <button
           id="home-search-button"
           type="submit"

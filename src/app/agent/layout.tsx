@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AgentShell } from "@/components/agent-shell";
 import { AgentTasksProvider } from "@/lib/agent-tasks";
 import { AgentWorkspaceProvider } from "@/lib/agent-workspace";
+import { CrmOverlayProvider } from "@/lib/crm-overlay";
 
 export const metadata: Metadata = {
   title: {
@@ -20,7 +21,9 @@ export default function AgentLayout({
   return (
     <AgentTasksProvider>
       <AgentWorkspaceProvider>
-        <AgentShell>{children}</AgentShell>
+        <CrmOverlayProvider>
+          <AgentShell>{children}</AgentShell>
+        </CrmOverlayProvider>
       </AgentWorkspaceProvider>
     </AgentTasksProvider>
   );

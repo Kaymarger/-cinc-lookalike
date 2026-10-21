@@ -27,6 +27,30 @@ export type LeadSource =
   | "search_alert"
   | "general";
 
+export type LeadActivityKind =
+  | "signup"
+  | "note"
+  | "call"
+  | "text"
+  | "email"
+  | "system"
+  | "task";
+
+export type LeadActivity = {
+  id: string;
+  at: string;
+  kind: LeadActivityKind;
+  title: string;
+  body?: string;
+};
+
+export type LeadTask = {
+  id: string;
+  title: string;
+  due: string;
+  done: boolean;
+};
+
 export type Lead = {
   id: string;
   name: string;
@@ -41,6 +65,12 @@ export type Lead = {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  activity: LeadActivity[];
+  tasks: LeadTask[];
+  score: number;
+  savedSearches: string[];
+  viewedProperties: string[];
+  actionPlan?: string;
 };
 
 type CreateLeadInput = {
@@ -62,6 +92,14 @@ type Ctx = {
   updateStatus: (id: string, status: LeadStatus) => void;
   updateNotes: (id: string, notes: string) => void;
   appendNote: (id: string, line: string) => void;
+  appendActivity: (
+    id: string,
+    item: { kind: LeadActivityKind; title: string; body?: string }
+  ) => void;
+  addTask: (id: string, title: string, due: string) => void;
+  toggleTask: (id: string, taskId: string) => void;
+  setScore: (id: string, score: number) => void;
+  setActionPlan: (id: string, plan: string) => void;
   markContacted: (id: string) => void;
   remove: (id: string) => void;
   getById: (id: string) => Lead | undefined;
@@ -70,7 +108,7 @@ type Ctx = {
 
 const LeadsContext = createContext<Ctx | null>(null);
 
-const SEED: Lead[] = [
+const SEED = [
   {
     id: "lead-seed-1",
     name: "Jordan Lee",
@@ -128,12 +166,60 @@ const SEED: Lead[] = [
   },
 ];
 
+function stamp() {
+  return new Date().toLocaleString("en-CA", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function normalizeLead(raw: Partial<Lead> & Pick<Lead, "id" | "name" | "email" | "source" | "status" | "createdAt">): Lead {
+  const notes = raw.notes ?? "";
+  const activity =
+    Array.isArray(raw.activity) && raw.activity.length > 0
+      ? raw.activity
+      : [
+          {
+            id: `${raw.id}-created`,
+            at: raw.createdAt,
+            kind: "signup" as const,
+            title: raw.source === "registration" ? "Free Access signup" : "Lead captured",
+            body: notes || undefined,
+          },
+        ];
+  return {
+    id: raw.id,
+    name: raw.name,
+    email: raw.email,
+    phone: raw.phone ?? "",
+    smsOptIn: Boolean(raw.smsOptIn),
+    source: raw.source,
+    status: raw.status,
+    propertyAddress: raw.propertyAddress,
+    propertyId: raw.propertyId,
+    searchLabel: raw.searchLabel,
+    notes,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt ?? raw.createdAt,
+    activity,
+    tasks: raw.tasks ?? [],
+    score: raw.score ?? 62,
+    savedSearches: raw.savedSearches ?? (raw.searchLabel ? [raw.searchLabel] : []),
+    viewedProperties:
+      raw.viewedProperties ?? (raw.propertyAddress ? [raw.propertyAddress] : []),
+    actionPlan: raw.actionPlan,
+  };
+}
+
 function readLeads(): Lead[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as Lead[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => normalizeLead(item as Lead));
   } catch {
     return [];
   }
@@ -175,8 +261,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const existing = readLeads();
     if (existing.length === 0) {
-      setLeads(SEED);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED));
+      const seeded = SEED.map((item) => normalizeLead(item as Lead));
+      setLeads(seeded);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
     } else {
       setLeads(existing);
     }
@@ -204,6 +291,22 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       notes: input.notes ?? "",
       createdAt: now,
       updatedAt: now,
+      score: input.source === "registration" ? 70 : 58,
+      savedSearches: input.searchLabel ? [input.searchLabel] : [],
+      viewedProperties: input.propertyAddress ? [input.propertyAddress] : [],
+      tasks: [],
+      activity: [
+        {
+          id: `act-${Date.now()}`,
+          at: now,
+          kind: input.source === "registration" ? "signup" : "system",
+          title:
+            input.source === "registration"
+              ? "Free Access signup"
+              : "Lead captured",
+          body: input.notes || LEAD_SOURCE_LABEL[input.source],
+        },
+      ],
     };
     setLeads((prev) => [lead, ...prev]);
     return lead;
@@ -229,16 +332,101 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const appendActivity = useCallback(
+    (
+      id: string,
+      item: { kind: LeadActivityKind; title: string; body?: string }
+    ) => {
+      const entry: LeadActivity = {
+        id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        at: new Date().toISOString(),
+        kind: item.kind,
+        title: item.title,
+        body: item.body,
+      };
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === id
+            ? {
+                ...l,
+                activity: [entry, ...(l.activity ?? [])],
+                updatedAt: new Date().toISOString(),
+              }
+            : l
+        )
+      );
+    },
+    []
+  );
+
   const appendNote = useCallback((id: string, line: string) => {
-    const stamp = new Date().toLocaleString("en-CA");
+    const when = stamp();
+    const entry: LeadActivity = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      at: new Date().toISOString(),
+      kind: "note",
+      title: "Note added",
+      body: line,
+    };
     setLeads((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
-        const notes = l.notes
-          ? `${l.notes}\n[${stamp}] ${line}`
-          : `[${stamp}] ${line}`;
-        return { ...l, notes, updatedAt: new Date().toISOString() };
+        const notes = l.notes ? `${l.notes}\n[${when}] ${line}` : `[${when}] ${line}`;
+        return {
+          ...l,
+          notes,
+          activity: [entry, ...(l.activity ?? [])],
+          updatedAt: new Date().toISOString(),
+        };
       })
+    );
+  }, []);
+
+  const addTask = useCallback((id: string, title: string, due: string) => {
+    const task: LeadTask = {
+      id: `task-${Date.now()}`,
+      title,
+      due,
+      done: false,
+    };
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, tasks: [task, ...(l.tasks ?? [])], updatedAt: new Date().toISOString() }
+          : l
+      )
+    );
+  }, []);
+
+  const toggleTask = useCallback((id: string, taskId: string) => {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? {
+              ...l,
+              tasks: (l.tasks ?? []).map((t) =>
+                t.id === taskId ? { ...t, done: !t.done } : t
+              ),
+            }
+          : l
+      )
+    );
+  }, []);
+
+  const setScore = useCallback((id: string, score: number) => {
+    const next = Math.max(0, Math.min(100, Math.round(score)));
+    setLeads((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, score: next } : l))
+    );
+  }, []);
+
+  const setActionPlan = useCallback((id: string, plan: string) => {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, actionPlan: plan, updatedAt: new Date().toISOString() }
+          : l
+      )
     );
   }, []);
 
@@ -270,7 +458,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   );
 
   const seedIfEmpty = useCallback(() => {
-    setLeads((prev) => (prev.length === 0 ? SEED : prev));
+    setLeads((prev) =>
+      prev.length === 0 ? SEED.map((item) => normalizeLead(item as Lead)) : prev
+    );
   }, []);
 
   const value = useMemo(
@@ -281,6 +471,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       updateStatus,
       updateNotes,
       appendNote,
+      appendActivity,
+      addTask,
+      toggleTask,
+      setScore,
+      setActionPlan,
       markContacted,
       remove,
       getById,
@@ -293,6 +488,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       updateStatus,
       updateNotes,
       appendNote,
+      appendActivity,
+      addTask,
+      toggleTask,
+      setScore,
+      setActionPlan,
       markContacted,
       remove,
       getById,

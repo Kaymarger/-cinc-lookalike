@@ -21,9 +21,9 @@ export default function DashboardPage() {
           : "Sign in from the header to save this dashboard to your device."}
       </p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link href="/savedhomes" className="border border-[#dbe3e8] bg-white p-5 hover:border-[#1976d2]">
+        <Link href="/my-properties" className="border border-[#dbe3e8] bg-white p-5 hover:border-[#1976d2]">
           <p className="text-2xl text-[#1976d2]">{ids.length}</p>
-          <p className="text-sm font-bold tracking-wide uppercase">Saved homes</p>
+          <p className="text-sm font-bold tracking-wide uppercase">My Properties</p>
         </Link>
         <Link href="/alerts" className="border border-[#dbe3e8] bg-white p-5 hover:border-[#1976d2]">
           <p className="text-2xl text-[#1976d2]">{searches.length}</p>

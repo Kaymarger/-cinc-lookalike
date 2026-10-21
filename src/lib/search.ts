@@ -100,6 +100,9 @@ export function parseFilters(
     minSqft: num("minSqft"),
     maxSqft: num("maxSqft"),
     minYear: num("minYear"),
+    maxYear: num("maxYear"),
+    maxDays: num("maxDays"),
+    tag: get("tag") || undefined,
     openHouse:
       openHouse === "1" || openHouse === "true" ? true : undefined,
     newListings:
@@ -123,6 +126,7 @@ export function searchProperties(filters: SearchFilters): Property[] {
         p.mlsNumber,
         p.propertyType,
         p.neighborhood,
+        ...(p.tags ?? []),
         p.description,
         p.brokerage,
         ...p.features,
@@ -165,6 +169,18 @@ export function searchProperties(filters: SearchFilters): Property[] {
   }
   if (filters.minYear != null) {
     results = results.filter((p) => p.yearBuilt >= filters.minYear!);
+  }
+  if (filters.maxYear != null) {
+    results = results.filter((p) => p.yearBuilt <= filters.maxYear!);
+  }
+  if (filters.maxDays != null) {
+    results = results.filter((p) => p.listedDaysAgo <= filters.maxDays!);
+  }
+  if (filters.tag) {
+    const tag = filters.tag.toLowerCase();
+    results = results.filter((p) =>
+      (p.tags ?? p.features).some((t) => t.toLowerCase() === tag)
+    );
   }
   if (filters.openHouse) {
     results = results.filter((p) => Boolean(p.openHouse));

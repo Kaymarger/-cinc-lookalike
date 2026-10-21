@@ -10,7 +10,9 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
+import { PlaceSuggest } from "@/components/place-suggest";
 import { SaveSearchButton } from "@/components/save-search-button";
+import { LISTING_TAGS } from "@/lib/generate-inventory";
 import { CITIES, PROPERTY_TYPES } from "@/lib/properties";
 import { SITE } from "@/lib/site";
 import type { SearchFilters } from "@/lib/types";
@@ -46,11 +48,49 @@ function chipsFrom(filters: SearchFilters): Chip[] {
     });
   if (filters.minSqft != null)
     chips.push({ key: "minSqft", label: `${filters.minSqft}+ sqft` });
+  if (filters.maxSqft != null)
+    chips.push({ key: "maxSqft", label: `Under ${filters.maxSqft} sqft` });
+  if (filters.minYear != null)
+    chips.push({ key: "minYear", label: `Built ${filters.minYear}+` });
+  if (filters.maxYear != null)
+    chips.push({ key: "maxYear", label: `Built through ${filters.maxYear}` });
+  if (filters.maxDays != null)
+    chips.push({ key: "maxDays", label: `${filters.maxDays} days on site` });
+  if (filters.tag) chips.push({ key: "tag", label: filters.tag });
   if (filters.openHouse) chips.push({ key: "openHouse", label: "Open houses" });
   if (filters.newListings) chips.push({ key: "newListings", label: "New" });
   if (filters.virtualTour)
     chips.push({ key: "virtualTour", label: "Virtual tours" });
   return chips;
+}
+
+function IdxSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <label className="flex min-w-[92px] flex-col gap-1 text-[10px] font-semibold tracking-wide text-[#7b97aa] uppercase">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 rounded border border-[#d7e0e8] bg-white px-2 text-xs font-medium text-[#1f2930] normal-case"
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={`${label}-${optionValue || "any"}`} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function FilterMenu({
@@ -279,6 +319,86 @@ function FilterFields({
           Open houses only
         </label>
       </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block space-y-1 text-xs text-[#666]">
+          Min sqft
+          <input
+            type="number"
+            className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+            value={filters.minSqft ?? ""}
+            onChange={(e) =>
+              update("minSqft", e.target.value ? Number(e.target.value) : undefined)
+            }
+          />
+        </label>
+        <label className="block space-y-1 text-xs text-[#666]">
+          Max sqft
+          <input
+            type="number"
+            className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+            value={filters.maxSqft ?? ""}
+            onChange={(e) =>
+              update("maxSqft", e.target.value ? Number(e.target.value) : undefined)
+            }
+          />
+        </label>
+        <label className="block space-y-1 text-xs text-[#666]">
+          Year from
+          <input
+            type="number"
+            className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+            value={filters.minYear ?? ""}
+            onChange={(e) =>
+              update("minYear", e.target.value ? Number(e.target.value) : undefined)
+            }
+          />
+        </label>
+        <label className="block space-y-1 text-xs text-[#666]">
+          Year to
+          <input
+            type="number"
+            className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+            value={filters.maxYear ?? ""}
+            onChange={(e) =>
+              update("maxYear", e.target.value ? Number(e.target.value) : undefined)
+            }
+          />
+        </label>
+      </div>
+      <label className="block space-y-1 text-xs text-[#666]">
+        Days on site
+        <select
+          className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+          value={filters.maxDays != null ? String(filters.maxDays) : ""}
+          onChange={(e) =>
+            update("maxDays", e.target.value ? Number(e.target.value) : undefined)
+          }
+        >
+          <option value="">Any</option>
+          <option value="1">1 day</option>
+          <option value="7">7 days</option>
+          <option value="14">14 days</option>
+          <option value="30">30 days</option>
+          <option value="60">60 days</option>
+          <option value="90">90 days</option>
+        </select>
+      </label>
+      <label className="block space-y-1 text-xs text-[#666]">
+        Tag
+        <select
+          className="h-10 w-full rounded-xl border border-[#ddd] px-2 text-sm"
+          value={filters.tag ?? ""}
+          onChange={(e) => update("tag", e.target.value || undefined)}
+        >
+          <option value="">Any tag</option>
+          {LISTING_TAGS.map((tag) => (
+            <option key={tag} value={tag}>
+              {tag}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -356,7 +476,7 @@ export function SearchFiltersBar({
     heading ??
     (filters.city
       ? `${filters.city}, BC homes for sale`
-      : `${resultCount}${resultCount >= 40 ? "+" : ""} Listings`);
+      : `${resultCount.toLocaleString("en-CA")} Listings`);
 
   return (
     <div className="border-b border-[#e8eef3] bg-white">
@@ -383,12 +503,30 @@ export function SearchFiltersBar({
 
         <div className="mt-4 flex flex-col gap-3">
           <div className="flex gap-2">
-            <input
+            <PlaceSuggest
               id="search-bar-input"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={setKeyword}
+              onPick={(place) => {
+                if (place.kind === "city") {
+                  setKeyword(place.label);
+                  pushFilters({
+                    ...filters,
+                    q: place.label,
+                    city: place.city,
+                  });
+                } else {
+                  setKeyword(place.label);
+                  pushFilters({
+                    ...filters,
+                    q: place.label,
+                    city: place.city,
+                  });
+                }
+              }}
               placeholder="City, neighbourhood, address, or MLS® #"
-              className="h-12 min-w-0 flex-1 rounded-2xl border border-[#d7e0e8] bg-[#f7fafc] px-4 text-[16px] outline-none focus:border-[var(--cedar)] focus:bg-white sm:text-sm"
+              aria-label="Search Bar"
+              inputClassName="h-12 w-full rounded-2xl border border-[#d7e0e8] bg-[#f7fafc] px-4 text-[16px] outline-none focus:border-[var(--cedar)] focus:bg-white sm:text-sm"
             />
             <button
               type="button"
@@ -403,6 +541,140 @@ export function SearchFiltersBar({
                 </span>
               )}
             </button>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <IdxSelect
+              label="Min price"
+              value={filters.minPrice != null ? String(filters.minPrice) : ""}
+              onChange={(value) => update("minPrice", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["500000", "$500k"],
+                ["750000", "$750k"],
+                ["1000000", "$1.0M"],
+                ["1500000", "$1.5M"],
+                ["2000000", "$2.0M"],
+                ["3000000", "$3.0M"],
+              ]}
+            />
+            <IdxSelect
+              label="Max price"
+              value={filters.maxPrice != null ? String(filters.maxPrice) : ""}
+              onChange={(value) => update("maxPrice", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["750000", "$750k"],
+                ["1000000", "$1.0M"],
+                ["1500000", "$1.5M"],
+                ["2000000", "$2.0M"],
+                ["3000000", "$3.0M"],
+                ["5000000", "$5.0M"],
+              ]}
+            />
+            <IdxSelect
+              label="Beds"
+              value={filters.beds != null ? String(filters.beds) : ""}
+              onChange={(value) => update("beds", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["1", "1+"],
+                ["2", "2+"],
+                ["3", "3+"],
+                ["4", "4+"],
+                ["5", "5+"],
+              ]}
+            />
+            <IdxSelect
+              label="Baths"
+              value={filters.baths != null ? String(filters.baths) : ""}
+              onChange={(value) => update("baths", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["1", "1+"],
+                ["2", "2+"],
+                ["3", "3+"],
+                ["4", "4+"],
+              ]}
+            />
+            <IdxSelect
+              label="Min sqft"
+              value={filters.minSqft != null ? String(filters.minSqft) : ""}
+              onChange={(value) => update("minSqft", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["600", "600+"],
+                ["900", "900+"],
+                ["1200", "1,200+"],
+                ["1800", "1,800+"],
+                ["2500", "2,500+"],
+              ]}
+            />
+            <IdxSelect
+              label="Max sqft"
+              value={filters.maxSqft != null ? String(filters.maxSqft) : ""}
+              onChange={(value) => update("maxSqft", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["900", "900"],
+                ["1400", "1,400"],
+                ["2000", "2,000"],
+                ["3000", "3,000"],
+                ["5000", "5,000"],
+              ]}
+            />
+            <IdxSelect
+              label="Year from"
+              value={filters.minYear != null ? String(filters.minYear) : ""}
+              onChange={(value) => update("minYear", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["1950", "1950"],
+                ["1980", "1980"],
+                ["2000", "2000"],
+                ["2010", "2010"],
+                ["2020", "2020"],
+              ]}
+            />
+            <IdxSelect
+              label="Year to"
+              value={filters.maxYear != null ? String(filters.maxYear) : ""}
+              onChange={(value) => update("maxYear", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["1970", "1970"],
+                ["1990", "1990"],
+                ["2005", "2005"],
+                ["2015", "2015"],
+                ["2026", "2026"],
+              ]}
+            />
+            <IdxSelect
+              label="Type"
+              value={filters.propertyType ?? ""}
+              onChange={(value) => update("propertyType", value || undefined)}
+              options={[["", "Any"], ...PROPERTY_TYPES.map((t) => [t, t] as [string, string])]}
+            />
+            <IdxSelect
+              label="Days on site"
+              value={filters.maxDays != null ? String(filters.maxDays) : ""}
+              onChange={(value) => update("maxDays", value ? Number(value) : undefined)}
+              options={[
+                ["", "Any"],
+                ["1", "1 day"],
+                ["7", "7 days"],
+                ["14", "14 days"],
+                ["30", "30 days"],
+                ["60", "60 days"],
+                ["90", "90 days"],
+              ]}
+            />
+            <IdxSelect
+              label="Tag"
+              value={filters.tag ?? ""}
+              onChange={(value) => update("tag", value || undefined)}
+              options={[["", "Any"], ...LISTING_TAGS.map((t) => [t, t] as [string, string])]}
+            />
           </div>
 
           <div className="hidden flex-wrap items-center gap-2 lg:flex">

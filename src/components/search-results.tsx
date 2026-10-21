@@ -37,8 +37,13 @@ export function SearchResults({
   showMap?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [visible, setVisible] = useState(24);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    setVisible(24);
+  }, [properties.length, properties[0]?.id]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -164,7 +169,7 @@ export function SearchResults({
             !showMap && "mx-auto w-full"
           )}
         >
-          {properties.map((property, i) => (
+          {properties.slice(0, visible).map((property, i) => (
             <div
               key={property.id}
               ref={(el) => {
@@ -184,6 +189,15 @@ export function SearchResults({
               />
             </div>
           ))}
+          {visible < properties.length && (
+            <button
+              type="button"
+              onClick={() => setVisible((n) => n + 24)}
+              className="col-span-full h-11 border border-[#1976d2] text-sm font-semibold text-[#1976d2]"
+            >
+              Show more ({properties.length - visible} left)
+            </button>
+          )}
         </div>
 
         {showMap && (

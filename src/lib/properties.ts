@@ -1,4 +1,5 @@
-import type { Property, SearchFilters } from "./types";
+import { buildInventory } from "./generate-inventory";
+import type { Property } from "./types";
 
 const IMG = {
   condo1:
@@ -67,7 +68,7 @@ export const AREA_QUICK_SEARCHES = [
   { label: "Port Moody", city: "Port Moody", href: "/search?city=Port+Moody" },
 ];
 
-export const properties: Property[] = [
+const handListings: Property[] = [
   {
     id: "r2389012",
     mlsNumber: "R2389012",
@@ -889,3 +890,5 @@ export const properties: Property[] = [
     neighborhood: "Fairview",
   },
 ];
+
+export const properties: Property[] = [...handListings, ...buildInventory(360)];

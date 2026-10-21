@@ -7,8 +7,10 @@ import { properties } from "@/lib/properties";
 
 type Params = Promise<{ city: string; id: string; slug: string }>;
 
+export const dynamicParams = true;
+
 export function generateStaticParams() {
-  return properties.map((p) => {
+  return properties.slice(0, 24).map((p) => {
     const href = propertyHref(p);
     // /homedetails/bc/{city}/{id}/{slug}
     const parts = href.split("/");

@@ -16,6 +16,7 @@ const NAV = [
 ];
 
 const ACCOUNT = [
+  { href: "/my-properties", label: "My Properties" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/seller/homepulse", label: "HomePulse" },
   { href: "/notebook", label: "My Notebook" },
@@ -87,8 +88,8 @@ export function SiteHeader() {
               </button>
               {moreOpen && (
                 <div className="absolute top-full left-0 z-50 min-w-[200px] border border-[#dbe3e8] bg-white py-1 shadow-lg">
-                  <Link href="/savedhomes" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
-                    Saved Homes
+                  <Link href="/my-properties" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
+                    My Properties
                   </Link>
                   <Link href="/alerts" className="block px-4 py-2 text-sm text-[#1f2930] hover:bg-[#ebeff2]" onClick={close}>
                     Saved Searches

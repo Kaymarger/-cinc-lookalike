@@ -7,7 +7,9 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDemoAuth } from "@/lib/demo-auth";
+import { useLeads } from "@/lib/leads";
 
 type Mode = "signup" | "login";
 
@@ -64,7 +66,33 @@ function AuthDialog({
   onClose: () => void;
 }) {
   const { signUp, signInWithPassword } = useDemoAuth();
+  const { add, leads, appendActivity } = useLeads();
+  const router = useRouter();
   const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState("");
+
+  function rememberLead(name: string, email: string, phone: string, fresh: boolean) {
+    const existing = leads.find((l) => l.email.toLowerCase() === email.toLowerCase());
+    if (existing && !fresh) {
+      appendActivity(existing.id, {
+        kind: "system",
+        title: "Logged in",
+        body: "Signed in from the public site.",
+      });
+      return existing.name;
+    }
+    add({
+      name,
+      email,
+      phone,
+      smsOptIn: true,
+      source: "registration",
+      notes: fresh
+        ? "Free Access signup from the public site."
+        : "Signed in from the public site.",
+    });
+    return name;
+  }
 
   function onSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -78,7 +106,8 @@ function AuthDialog({
       return;
     }
     signUp(name, email, phone);
-    onClose();
+    rememberLead(name, email, phone, true);
+    setConfirmed(name);
   }
 
   function onLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -92,7 +121,9 @@ function AuthDialog({
       setError(message);
       return;
     }
-    onClose();
+    const known = leads.find((l) => l.email.toLowerCase() === email.toLowerCase());
+    rememberLead(known?.name || email.split("@")[0] || "Lead", email, password, !known);
+    setConfirmed(known?.name || email);
   }
 
   return (
@@ -112,7 +143,42 @@ function AuthDialog({
         >
           ×
         </button>
-        {mode === "signup" ? (
+        {confirmed ? (
+          <div className="py-4 text-center">
+            <p className="text-xs font-bold tracking-[1px] text-[#1976d2] uppercase">
+              You&apos;re in
+            </p>
+            <h2 className="mt-2 font-[family-name:var(--font-display)] text-[28px] font-normal text-[#1f2930]">
+              Welcome, {confirmed}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#354652]">
+              Free access is on, and your lead is on the agent list now —
+              source IDX Registration, with the signup time and activity.
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                className="h-10 bg-[#1976d2] text-sm font-bold tracking-wide text-white uppercase hover:bg-[#145ca4]"
+                onClick={() => {
+                  onClose();
+                  router.push("/search");
+                }}
+              >
+                Browse homes
+              </button>
+              <button
+                type="button"
+                className="h-10 border border-[#1976d2] text-sm font-bold tracking-wide text-[#1976d2] uppercase"
+                onClick={() => {
+                  onClose();
+                  router.push("/dashboard");
+                }}
+              >
+                Go to dashboard
+              </button>
+            </div>
+          </div>
+        ) : mode === "signup" ? (
           <>
             <h2 className="text-center font-[family-name:var(--font-display)] text-[28px] font-normal text-[#1f2930]">
               Free Access

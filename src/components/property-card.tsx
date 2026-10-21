@@ -90,6 +90,13 @@ export function PropertyCard({
             </div>
           </div>
 
+          <p className="mt-2 text-[11px] leading-snug text-[#777]">
+            {property.mlsNumber}
+            {property.neighborhood ? ` · ${property.neighborhood}` : ""} ·{" "}
+            {property.propertyType} · {property.yearBuilt} · {property.listedDaysAgo}{" "}
+            day{property.listedDaysAgo === 1 ? "" : "s"} on site
+          </p>
+
           <div className="property-mls mt-auto flex items-center gap-2 border-t border-[#eee] pt-2.5 text-[11px] text-[#777] mt-3">
             <Image
               src="/brand/mls-vancouver.gif"

@@ -48,7 +48,7 @@ export type CrmLead = {
 export type CrmActivity = {
   id: string;
   at: string;
-  kind: "note" | "assignment" | "inquiry" | "showing" | "system";
+  kind: "note" | "assignment" | "inquiry" | "showing" | "system" | "call" | "text" | "email" | "task";
   title: string;
   body?: string;
   actor?: string;
