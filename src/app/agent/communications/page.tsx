@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,7 +15,7 @@ import {
 import { CRM_MESSAGES } from "@/lib/cinc-crm";
 import { cn } from "@/lib/utils";
 
-type Folder = "inbox" | "sent" | "drafts" | "trashed";
+type Folder = "inbox" | "sent" | "drafts" | "trashed" | "templates";
 
 type Msg = {
   id: string;
@@ -52,9 +52,18 @@ function read(): Msg[] | null {
   }
 }
 
+function folderFromLocation(path: string, query: string | null): Folder {
+  if (path.endsWith("/sent") || query === "sent") return "sent";
+  if (path.endsWith("/drafts") || query === "drafts") return "drafts";
+  if (path.endsWith("/trashed") || query === "trashed") return "trashed";
+  if (path.endsWith("/templates") || query === "templates") return "templates";
+  return "inbox";
+}
+
 function Inbox() {
   const params = useSearchParams();
-  const folder = (params.get("folder") as Folder) || "inbox";
+  const path = usePathname();
+  const folder = folderFromLocation(path, params.get("folder"));
   const [messages, setMessages] = useState<Msg[]>([]);
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -110,6 +119,8 @@ function Inbox() {
     setCompose(null);
     setDraft({ to: "", body: "" });
   }
+
+  if (folder === "templates") return <TemplateManager />;
 
   return (
     <div className="flex h-[calc(100vh-3rem)] min-h-[480px] flex-col">
@@ -298,6 +309,154 @@ function Inbox() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+type TemplateRow = {
+  id: string;
+  name: string;
+  type: "Email" | "Text";
+  group: string;
+  owner: string;
+  edited: string;
+};
+
+const TEMPLATE_KEY = "gvhs-inbox-templates";
+
+const TEMPLATE_SEED: TemplateRow[] = [
+  { id: "t1", name: "New lead intro", type: "Email", group: "ISA", owner: "Casey Archibald", edited: "Oct 2, 2026" },
+  { id: "t2", name: "Showing reminder", type: "Text", group: "ISA", owner: "Casey Archibald", edited: "Oct 8, 2026" },
+  { id: "t3", name: "Just listed", type: "Email", group: "Uncategorized", owner: "Casey Archibald", edited: "Sep 14, 2026" },
+  { id: "t4", name: "Open house invite", type: "Email", group: "Shared", owner: "Team", edited: "Aug 30, 2026" },
+  { id: "t5", name: "CINC buyer drip 1", type: "Email", group: "CINC Templates", owner: "CINC", edited: "Jan 4, 2026" },
+];
+
+function TemplateManager() {
+  const [rows, setRows] = useState<TemplateRow[]>([]);
+  const [group, setGroup] = useState("All");
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [moveTo, setMoveTo] = useState("Shared");
+  const [form, setForm] = useState({ name: "", type: "Email" as "Email" | "Text", group: "Uncategorized" });
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TEMPLATE_KEY);
+      setRows(raw ? (JSON.parse(raw) as TemplateRow[]) : TEMPLATE_SEED);
+    } catch {
+      setRows(TEMPLATE_SEED);
+    }
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(rows));
+  }, [rows, ready]);
+
+  const groups = ["All", "ISA", "Uncategorized", "Shared", "CINC Templates"];
+  const visible = rows.filter((row) => group === "All" || row.group === group);
+
+  return (
+    <div className="p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-[18px] text-[#1a2b3c]">Template Manager</h2>
+        <button
+          type="button"
+          className="ml-auto rounded bg-[#00aeb6] px-3 py-1.5 text-[12px] font-semibold text-white"
+          onClick={() => {
+            const name = window.prompt("New group name");
+            if (!name?.trim()) return;
+            setGroup(name.trim());
+          }}
+        >
+          Add Group
+        </button>
+        <select value={moveTo} onChange={(e) => setMoveTo(e.target.value)} className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]">
+          {groups.filter((item) => item !== "All").map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="rounded border border-[#00aeb6] px-3 py-1.5 text-[12px] text-[#00aeb6]"
+          onClick={() => {
+            const ids = Object.entries(selected).filter(([, on]) => on).map(([id]) => id);
+            setRows((prev) => prev.map((row) => (ids.includes(row.id) ? { ...row, group: moveTo } : row)));
+            setSelected({});
+          }}
+        >
+          Move Selected to Group
+        </button>
+      </div>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {groups.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setGroup(item)}
+            className={cn(
+              "rounded border px-3 py-1 text-[12px]",
+              group === item ? "border-[#00aeb6] text-[#00aeb6]" : "border-[#dbe4eb] text-[#5a6f82]"
+            )}
+          >
+            {item} ({item === "All" ? rows.length : rows.filter((row) => row.group === item).length})
+          </button>
+        ))}
+      </div>
+      <form
+        className="mb-3 flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!form.name.trim()) return;
+          setRows((prev) => [
+            {
+              id: `t-${Date.now()}`,
+              name: form.name.trim(),
+              type: form.type,
+              group: form.group,
+              owner: "Casey Archibald",
+              edited: "Just now",
+            },
+            ...prev,
+          ]);
+          setForm({ name: "", type: "Email", group: "Uncategorized" });
+        }}
+      >
+        <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Template name" className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]" />
+        <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as "Email" | "Text" }))} className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]">
+          <option>Email</option>
+          <option>Text</option>
+        </select>
+        <button type="submit" className="h-8 rounded bg-[#102236] px-3 text-[12px] text-white">Add template</button>
+      </form>
+      <table className="w-full border-collapse bg-white text-left text-[13px]">
+        <thead className="bg-[#e8f1f8] text-[11px] uppercase text-[#5a6f82]">
+          <tr>
+            <th className="px-3 py-2" />
+            <th className="px-3 py-2">Name</th>
+            <th className="px-3 py-2">Type</th>
+            <th className="px-3 py-2">Created By</th>
+            <th className="px-3 py-2">Last Edited</th>
+            <th className="px-3 py-2">Analytics</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((row) => (
+            <tr key={row.id} className="border-t border-[#e8eef3]">
+              <td className="px-3 py-2">
+                <input type="checkbox" checked={Boolean(selected[row.id])} onChange={(e) => setSelected((s) => ({ ...s, [row.id]: e.target.checked }))} />
+              </td>
+              <td className="px-3 py-2 text-[#3498d8]">{row.name}</td>
+              <td className="px-3 py-2">{row.type}</td>
+              <td className="px-3 py-2">{row.owner}</td>
+              <td className="px-3 py-2">{row.edited}</td>
+              <td className="px-3 py-2 text-[12px] text-[#8a9bab]">Sample · not sent</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

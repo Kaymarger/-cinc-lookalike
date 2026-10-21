@@ -469,7 +469,7 @@ export default function LeadsDashboardPage() {
                   />
                 </td>
                 <td className="px-2 py-3 align-top">
-                  <Link href={`/agent/leads/${lead.id}`} className="font-medium text-[#3498d8] hover:underline">
+                  <Link href={`/agent/leads/details/${lead.id}`} className="font-medium text-[#3498d8] hover:underline">
                     {lead.name}
                   </Link>
                   <p className="mt-0.5 text-[#5a6f82]">{lead.phone}</p>

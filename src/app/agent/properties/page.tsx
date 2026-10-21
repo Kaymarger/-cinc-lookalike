@@ -1,35 +1,55 @@
 "use client";
 
+"use client";
+
 import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { CRM_PROPERTIES } from "@/lib/cinc-crm";
 
 export default function PropertiesPage() {
+  const [mode, setMode] = useState<"mls" | "pocket">("mls");
+  const [notice, setNotice] = useState("");
+  const [matches, setMatches] = useState<string | null>(null);
+  const rows = mode === "mls" ? CRM_PROPERTIES : CRM_PROPERTIES.slice(0, 1);
+
   return (
     <div className="flex h-full min-h-[calc(100vh-3rem)] flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-[#dbe4eb] bg-white px-4 py-3">
         <button
           type="button"
+          onClick={() => setMode("mls")}
           className="rounded bg-[#00aeb6] px-3 py-1.5 text-[12px] font-semibold text-white"
         >
           Show MLS Listings
         </button>
         <button
           type="button"
+          onClick={() => setMode("pocket")}
           className="rounded border border-[#00aeb6] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#00aeb6]"
         >
           Show Pocket Listings
         </button>
-        <select className="rounded border border-[#00aeb6] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#00aeb6]">
+        <select
+          className="rounded border border-[#00aeb6] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#00aeb6]"
+          onChange={(e) => setNotice(`Showing ${e.target.value}.`)}
+        >
           <option>My Office/Agents Listings</option>
+          <option>All office listings</option>
         </select>
+        <Link href="/agent/properties/add" className="rounded border border-[#dbe4eb] px-3 py-1.5 text-[12px] text-[#3d5164]">
+          Add Pocket Listing
+        </Link>
         <button
           type="button"
+          onClick={() => setNotice("Advertise Listings queued as a sample campaign.")}
           className="ml-auto rounded bg-[#00aeb6] px-3 py-1.5 text-[12px] font-semibold text-white"
         >
           Advertise Listings
         </button>
       </div>
+      {notice && <p className="border-b border-[#d6efe8] bg-[#eafaf1] px-4 py-2 text-[12px] text-[#1e8449]">{notice}</p>}
 
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         <div className="overflow-hidden rounded-lg border border-[#dbe4eb] bg-white">
@@ -43,7 +63,7 @@ export default function PropertiesPage() {
               </tr>
             </thead>
             <tbody>
-              {CRM_PROPERTIES.map((p) => (
+              {rows.map((p) => (
                 <tr
                   key={p.id}
                   className="border-t border-[#e8eef3] align-top hover:bg-[#f7fbfd]"
@@ -70,12 +90,9 @@ export default function PropertiesPage() {
                         <p className="text-[12px] text-[#5a6f82]">
                           MLS Status: {p.status}
                         </p>
-                        <button
-                          type="button"
-                          className="mt-1 text-[12px] text-[#3498d8] hover:underline"
-                        >
+                        <Link href="/agent/inbox" className="mt-1 inline-block text-[12px] text-[#3498d8] hover:underline">
                           Send Message
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </td>
@@ -95,21 +112,26 @@ export default function PropertiesPage() {
                         type="button"
                         className="rounded p-1 text-[#8a9bab] hover:bg-[#eef3f7]"
                         aria-label="Share"
+                        onClick={() => setNotice(`Share link copied for ${p.address} (sample).`)}
                       >
                         <Share2 className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
+                        onClick={() => setMatches(matches === p.id ? null : p.id)}
                         className="rounded border border-[#3498d8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#3498d8]"
                       >
                         Buyer Matches
                       </button>
-                      <button
-                        type="button"
+                      <Link
+                        href="/agent/properties/textresponder"
                         className="rounded border border-[#3498d8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#3498d8]"
                       >
                         Text Responder
-                      </button>
+                      </Link>
+                      {matches === p.id && (
+                        <p className="max-w-[180px] text-right text-[11px] text-[#5a6f82]">2 sample buyers match this price band.</p>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -352,7 +352,7 @@ function DetailFrame({
           {peers.map((item) => (
             <li key={item.id}>
               <Link
-                href={`/agent/leads/${item.id}`}
+                href={`/agent/leads/details/${item.id}`}
                 className={cn(
                   "block border-b border-[#f0f4f8] px-3 py-2.5 text-[12px]",
                   item.id === activeId ? "bg-[#e3f2fd]" : "hover:bg-[#f7fbfd]"

@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { CRM_DEALS, type CrmDeal } from "@/lib/cinc-crm";
 import { cn } from "@/lib/utils";
 
@@ -27,9 +29,20 @@ function sumPotential(deals: CrmDeal[]) {
   return { shown: fmt, pot: `${fmt} Potential` };
 }
 
+const LISTING_STAGES: { id: CrmDeal["stage"]; label: string }[] = [
+  { id: "showing", label: "PRE-LISTING" },
+  { id: "offer", label: "ACTIVE" },
+  { id: "contract", label: "PENDING" },
+  { id: "closed", label: "CLOSED" },
+];
+
 export default function DealsDashboardPage() {
-  const [tab, setTab] = useState<"purchases" | "listings">("purchases");
-  const [deals, setDeals] = useState(CRM_DEALS);
+  const path = usePathname();
+  const tab = path.includes("/listings") ? "listings" : "purchases";
+  const [deals, setDeals] = useState<CrmDeal[]>([]);
+  const [ready, setReady] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const byStage = useMemo(() => {
     const map: Record<CrmDeal["stage"], CrmDeal[]> = {
@@ -38,9 +51,28 @@ export default function DealsDashboardPage() {
       contract: [],
       closed: [],
     };
-    for (const d of deals) map[d.stage].push(d);
+    for (const d of deals) {
+      const board = (d as CrmDeal & { board?: string }).board;
+      const onListings = board === "listings";
+      if (tab === "listings" ? onListings : !onListings) map[d.stage].push(d);
+    }
     return map;
-  }, [deals]);
+  }, [deals, tab]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("gvhs-agent-deals");
+      setDeals(raw ? (JSON.parse(raw) as CrmDeal[]) : CRM_DEALS);
+    } catch {
+      setDeals(CRM_DEALS);
+    }
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    localStorage.setItem("gvhs-agent-deals", JSON.stringify(deals));
+  }, [deals, ready]);
 
   function moveDeal(id: string, stage: CrmDeal["stage"]) {
     setDeals((prev) => prev.map((d) => (d.id === id ? { ...d, stage } : d)));
@@ -52,43 +84,75 @@ export default function DealsDashboardPage() {
         <div className="flex">
           {(
             [
-              ["purchases", "Purchases"],
-              ["listings", "Listings"],
+              ["/agent/deals/purchases", "Purchases"],
+              ["/agent/deals/listings", "Listings"],
             ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={cn(
-                "relative px-4 py-3 text-[13px]",
-                tab === id
-                  ? "font-semibold text-[#1a2b3c]"
-                  : "text-[#5a6f82] hover:text-[#1a2b3c]"
-              )}
-            >
-              {label}
-              {tab === id && (
-                <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-t bg-[#00aeb6]" />
-              )}
-            </button>
-          ))}
+          ).map(([href, label]) => {
+            const active = href.endsWith(tab);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "relative px-4 py-3 text-[13px]",
+                  active ? "font-semibold text-[#1a2b3c]" : "text-[#5a6f82] hover:text-[#1a2b3c]"
+                )}
+              >
+                {label}
+                {active && <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-t bg-[#00aeb6]" />}
+              </Link>
+            );
+          })}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2 py-2">
           <button
             type="button"
+            onClick={() => setNotice("Advertise Listings saved as a sample campaign on this device.")}
             className="rounded border border-[#00aeb6] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#00aeb6]"
           >
             Advertise Listings
           </button>
           <button
             type="button"
+            onClick={() => setAdding((v) => !v)}
             className="rounded bg-[#00aeb6] px-3 py-1.5 text-[12px] font-semibold text-white"
           >
             + Add Deal
           </button>
         </div>
       </div>
+      {notice && <p className="border-b border-[#d6efe8] bg-[#eafaf1] px-4 py-2 text-[12px] text-[#1e8449]">{notice}</p>}
+      {adding && (
+        <form
+          className="flex flex-wrap gap-2 border-b border-[#dbe4eb] bg-[#f7fbfd] px-4 py-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const data = new FormData(e.currentTarget);
+            const title = String(data.get("title") || "").trim();
+            if (!title) return;
+            setDeals((prev) => [
+              {
+                id: `deal-${Date.now()}`,
+                stage: "showing",
+                board: tab,
+                title,
+                address: String(data.get("address") || "Greater Vancouver"),
+                price: String(data.get("price") || "$0"),
+                client: String(data.get("client") || "Sample lead"),
+                potential: String(data.get("price") || "$0"),
+              },
+              ...prev,
+            ]);
+            setAdding(false);
+          }}
+        >
+          <input name="title" required placeholder="Deal title" className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]" />
+          <input name="address" placeholder="Address" className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]" />
+          <input name="price" placeholder="$900,000" className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]" />
+          <input name="client" placeholder="Client" className="h-8 rounded border border-[#dbe4eb] px-2 text-[12px]" />
+          <button type="submit" className="h-8 rounded bg-[#102236] px-3 text-[12px] text-white">Save</button>
+        </form>
+      )}
 
       <div className="flex flex-wrap gap-3 border-b border-[#dbe4eb] bg-[#f4f7f9] px-4 py-2.5">
         <select className="rounded border border-[#dbe4eb] bg-white px-2 py-1.5 text-[12px]">
@@ -104,18 +168,8 @@ export default function DealsDashboardPage() {
       </div>
 
       <div className="flex-1 overflow-x-auto p-4">
-        {tab === "listings" ? (
-          <div className="mx-auto mt-16 max-w-md rounded-lg border border-[#dbe4eb] bg-white px-6 py-8 text-center shadow-sm">
-            <p className="text-[15px] font-semibold text-[#1a2b3c]">
-              No Listing Deals Found
-            </p>
-            <p className="mt-1 text-[13px] text-[#8a9bab]">
-              Switch to Purchases or add a listing deal to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="grid min-w-[900px] grid-cols-4 gap-3">
-            {STAGES.map((stage) => {
+        <div className="grid min-w-[900px] grid-cols-4 gap-3">
+            {(tab === "listings" ? LISTING_STAGES : STAGES).map((stage) => {
               const items = byStage[stage.id];
               const totals = sumPotential(items);
               return (
@@ -163,7 +217,7 @@ export default function DealsDashboardPage() {
                           {deal.client}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {STAGES.filter((s) => s.id !== deal.stage).map((s) => (
+                          {(tab === "listings" ? LISTING_STAGES : STAGES).filter((s) => s.id !== deal.stage).map((s) => (
                             <button
                               key={s.id}
                               type="button"
@@ -185,8 +239,7 @@ export default function DealsDashboardPage() {
                 </div>
               );
             })}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
