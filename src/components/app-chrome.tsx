@@ -9,7 +9,11 @@ import { SiteHeader } from "@/components/site-header";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAgent = pathname.startsWith("/agent");
+  const isAgent =
+    pathname.startsWith("/agent") ||
+    pathname.startsWith("/dashboard/spa") ||
+    pathname.startsWith("/dashboard/sellersuite") ||
+    pathname.startsWith("/dashboard/landing");
 
   if (isAgent) {
     return <div className="flex min-h-full flex-1 flex-col">{children}</div>;

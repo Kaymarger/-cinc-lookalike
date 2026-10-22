@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { AgentShell } from "@/components/agent-shell";
-import { AgentTasksProvider } from "@/lib/agent-tasks";
-import { AgentWorkspaceProvider } from "@/lib/agent-workspace";
-import { CrmOverlayProvider } from "@/lib/crm-overlay";
+import { AgentAlias } from "@/components/cinc/agent-alias";
 
 export const metadata: Metadata = {
   title: {
@@ -10,21 +7,9 @@ export const metadata: Metadata = {
     template: "%s · CINC Agent",
   },
   description:
-    "CINC-style agent back office demo — Launchpad, Leads, Deals, Communications, Automations, and Properties.",
+    "CINC agent CRM demo. The /agent paths open the same screens as /dashboard/spa.",
 };
 
-export default function AgentLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <AgentTasksProvider>
-      <AgentWorkspaceProvider>
-        <CrmOverlayProvider>
-          <AgentShell>{children}</AgentShell>
-        </CrmOverlayProvider>
-      </AgentWorkspaceProvider>
-    </AgentTasksProvider>
-  );
+export default function AgentLayout({ children }: { children: React.ReactNode }) {
+  return <AgentAlias>{children}</AgentAlias>;
 }
