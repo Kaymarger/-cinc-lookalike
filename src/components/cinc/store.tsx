@@ -89,7 +89,7 @@ export type LandingPage = {
 export type Note = { id: string; body: string; at: string };
 export type Reminder = { id: string; leadId: string; title: string; due: string; done: boolean; day: string };
 export type Appt = { id: string; leadId: string; title: string; when: string; request?: boolean };
-export type CallLog = { id: string; leadId: string; name: string; at: string; kind: "call" | "text" | "voicemail" };
+export type CallLog = { id: string; leadId: string; name: string; at: string; kind: "call" | "text" | "voicemail" | "email"; body?: string };
 export type Assign = { agent: string; partner: string; listing: string };
 
 export type Profile = {
@@ -166,6 +166,8 @@ export type SpaState = {
   info: Record<string, Record<string, string>>;
   buyerMatches: Record<string, boolean>;
   customFilters: string[];
+  leadTracks: Record<string, { id: string; name: string; cancelled?: boolean }[]>;
+  verify: Record<string, "verified" | "unlocked" | "locked">;
   dataVersion: number;
 };
 
@@ -379,6 +381,8 @@ const DEFAULT: SpaState = {
   info: {},
   buyerMatches: {},
   customFilters: [],
+  leadTracks: {},
+  verify: {},
   dataVersion: DATA_VERSION,
 };
 
@@ -401,6 +405,8 @@ function load(raw: string | null): SpaState {
       campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
       notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
+      leadTracks: parsed.leadTracks ?? {},
+      verify: parsed.verify ?? {},
       dataVersion: DATA_VERSION,
     };
   } catch {

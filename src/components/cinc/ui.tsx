@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useChrome } from "./chrome-context";
+import { useCinc } from "./store";
 
 export function Caret({ className = "text-current" }: { className?: string }) {
   return (
@@ -200,9 +201,12 @@ export function EmailComposer({
   onSend: (value: { to: string; subject: string; body: string }) => void;
   onDraft: (value: { to: string; subject: string; body: string }) => void;
 }) {
+  const { state } = useCinc();
   const [form, setForm] = useState({ from: "Kayla Gerak <agent@example.com>", to, cc: "", bcc: "", subject: "", body: "" });
   const [sign, setSign] = useState(true);
+  const [templateId, setTemplateId] = useState("");
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const emailTemplates = state.templates.filter((item) => item.type === "Email");
   const payload = () => ({
     to: form.to,
     subject: form.subject || "(no subject)",
@@ -228,10 +232,21 @@ export function EmailComposer({
         <input className={inputCls} value={form.subject} onChange={(event) => set("subject", event.target.value)} />
       </Field>
       <Field label="Template">
-        <select className={inputCls} defaultValue="" onChange={() => undefined}>
+        <select
+          className={inputCls}
+          value={templateId}
+          onChange={(event) => {
+            const id = event.target.value;
+            setTemplateId(id);
+            const chosen = emailTemplates.find((item) => item.id === id);
+            if (!chosen) return;
+            setForm((current) => ({ ...current, subject: chosen.name, body: chosen.body }));
+          }}
+        >
           <option value="">Choose a template</option>
-          <option>ISA Welcome Email</option>
-          <option>Team introduction</option>
+          {emailTemplates.map((item) => (
+            <option key={item.id} value={item.id}>{item.name}</option>
+          ))}
         </select>
       </Field>
       <textarea

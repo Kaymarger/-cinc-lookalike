@@ -233,6 +233,18 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
   }
 }
 
+export function go(url: string) {
+  const mark = url.indexOf("#");
+  const path = mark >= 0 ? url.slice(0, mark) : url;
+  const hash = mark >= 0 ? url.slice(mark) : "";
+  if (window.location.pathname === path) {
+    if (window.location.hash !== hash) window.location.hash = hash;
+    else window.dispatchEvent(new HashChangeEvent("hashchange"));
+    return;
+  }
+  window.location.href = url;
+}
+
 export function agentPathToCinc(pathname: string): string {
   const p = pathname.replace(/\/$/, "") || "/agent";
   const details = p.match(/^\/agent\/leads\/details\/([^/]+)/);
