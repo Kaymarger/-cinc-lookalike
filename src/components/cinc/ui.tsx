@@ -100,12 +100,16 @@ export function Menu({
   label,
   items,
   header,
+  footer,
+  onFooter,
   disabled,
   className = "",
 }: {
   label: ReactNode;
   items: { label: string; onClick?: () => void; href?: string; danger?: boolean; disabled?: boolean }[];
   header?: string;
+  footer?: string;
+  onFooter?: () => void;
   disabled?: boolean;
   className?: string;
 }) {
@@ -116,8 +120,15 @@ export function Menu({
     const close = (event: MouseEvent) => {
       if (!ref.current?.contains(event.target as Node)) setOpen(false);
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (
@@ -131,33 +142,47 @@ export function Menu({
         {label}
       </button>
       {open ? (
-        <div className="absolute left-0 z-40 mt-1 max-h-[175px] min-w-[210px] overflow-auto border border-[#d5d5d5] bg-white py-1 text-left shadow-md">
-          {header ? <p className="px-3 py-1 text-[10px] font-bold tracking-wide text-[#888] uppercase">{header}</p> : null}
-          {items.map((item) =>
-            item.href ? (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`block px-3 py-[5px] text-[13px] hover:bg-[#e8f6fb] ${item.danger ? "text-[#d9363e]" : "text-[#333]"}`}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-              </a>
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                disabled={item.disabled}
-                className={`block w-full px-3 py-[5px] text-left text-[13px] hover:bg-[#e8f6fb] disabled:text-[#aaa] ${item.danger ? "text-[#d9363e]" : "text-[#333]"}`}
-                onClick={() => {
-                  setOpen(false);
-                  item.onClick?.();
-                }}
-              >
-                {item.label}
-              </button>
-            ),
-          )}
+        <div className="absolute left-0 z-40 mt-1 flex max-h-[260px] min-w-[220px] flex-col border border-[#d5d5d5] bg-white text-left shadow-md">
+          <div className="min-h-0 flex-1 overflow-auto py-1">
+            {header ? <p className="px-3 py-1 text-[11px] font-bold tracking-wide text-[#888] uppercase">{header}</p> : null}
+            {items.map((item) =>
+              item.href ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className={`block px-3 py-[6px] text-[13px] hover:bg-[#e8f6fb] ${item.danger ? "text-[#d9363e]" : "text-[#333]"}`}
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  key={item.label}
+                  type="button"
+                  disabled={item.disabled}
+                  className={`block w-full px-3 py-[6px] text-left text-[13px] hover:bg-[#e8f6fb] disabled:text-[#aaa] ${item.danger ? "text-[#d9363e]" : "text-[#333]"}`}
+                  onClick={() => {
+                    setOpen(false);
+                    item.onClick?.();
+                  }}
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
+          </div>
+          {footer ? (
+            <button
+              type="button"
+              className="border-t border-[#e0e0e0] bg-[#ececec] px-3 py-2 text-left text-[13px] text-[#666] hover:bg-[#e2e2e2]"
+              onClick={() => {
+                setOpen(false);
+                onFooter?.();
+              }}
+            >
+              {footer}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -175,13 +200,13 @@ export function EmailComposer({
   onSend: (value: { to: string; subject: string; body: string }) => void;
   onDraft: (value: { to: string; subject: string; body: string }) => void;
 }) {
-  const [form, setForm] = useState({ from: "Casey Archibald <agent@example.com>", to, cc: "", bcc: "", subject: "", body: "" });
+  const [form, setForm] = useState({ from: "Kayla Gerak <agent@example.com>", to, cc: "", bcc: "", subject: "", body: "" });
   const [sign, setSign] = useState(true);
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   const payload = () => ({
     to: form.to,
     subject: form.subject || "(no subject)",
-    body: sign ? `${form.body}\n\nCasey Archibald · Archibald Real Estate Group` : form.body,
+    body: sign ? `${form.body}\n\nKayla Gerak · Archibald Real Estate Group` : form.body,
   });
   return (
     <ModalFrame title="New Email" onClose={onClose} wide>

@@ -6,6 +6,7 @@ export const href = {
   launchpad: `${SPA}#launchpad/agent`,
   call: `${SPA}#launchpad/dialersummary`,
   leads: `${SPA}#leads`,
+  leadsReturn: `${SPA}#leads/overviewreturn`,
   exportLeads: `${SPA}#leads/export`,
   dialerHistory: `${SPA}#leads/dialer-history`,
   lead: (id: string, tab = "activity") => `${SPA}#leads/details/${encodeURIComponent(id)}/${tab}`,
@@ -25,7 +26,7 @@ export const href = {
   virtualOpenHouses: `${SPA}#properties/virtualopenhouses`,
   addProperty: `${SPA}#properties/add`,
   seller: "/dashboard/sellersuite/seller/#main",
-  landing: "/dashboard/landing/#",
+  landing: "/dashboard/landing/#/",
   landingCat: (category: string) => `/dashboard/landing/#category/${category}`,
   profile: `${SPA}#settings/profile/profile`,
   settings: `${SPA}#settings/profile/settings/agent`,
@@ -96,6 +97,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (b === "export") return { view: "leads", mode: "export", tab: "activity" };
     if (b === "dialer-history") return { view: "leads", mode: "history", tab: "activity" };
     if (b === "details" && c) return { view: "leads", mode: "list", leadId: decodeURIComponent(c), tab: asLeadTab(d) };
+    if (b === "overviewreturn") return { view: "leads", mode: "list", tab: "activity" };
     return { view: "leads", mode: "list", tab: "activity" };
   }
   if (a === "inbox") {

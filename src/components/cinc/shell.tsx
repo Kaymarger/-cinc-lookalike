@@ -206,11 +206,56 @@ function NavIcon({ id }: { id: NavSection }) {
 }
 
 const ACTIVITY = [
-  { icon: "✉", color: "#2e9e5b", text: "Morgan Ellis opened property alert sent 10/18/2026", time: "Oct 21, 2026 at 5:54 PM" },
-  { icon: "↗", color: "#2e9e5b", text: "Jordan Blake clicked a listing link", time: "Oct 21, 2026 at 5:25 PM" },
-  { icon: "◉", color: "#e39b2b", text: "Avery Quinn viewed a property ($2,149,000, 810 235 Keith Road)", time: "Oct 21, 2026 at 4:10 PM" },
-  { icon: "✉", color: "#1c93b5", text: "Casey Archibald sent Priya Sharma a message with subject 'New listings in Kitsilano'", time: "Oct 20, 2026 at 11:02 AM" },
+  { icon: "✉", color: "#2e9e5b", text: "Morgan Ellis opened a property alert Kayla Gerak sent on 10/18/2026", time: "Oct 21, 2026 at 9:17 PM" },
+  { icon: "↗", color: "#2e9e5b", text: "Jordan Blake clicked a listing link from Kayla Gerak", time: "Oct 21, 2026 at 8:42 PM" },
+  { icon: "◉", color: "#e39b2b", text: "Avery Quinn viewed a property ($2,149,000, 810 235 Keith Road)", time: "Oct 21, 2026 at 7:05 PM" },
+  { icon: "✉", color: "#1c93b5", text: "Kayla Gerak sent Priya Sharma a message with subject 'New listings in Kitsilano'", time: "Oct 20, 2026 at 11:02 AM" },
 ];
+
+function TitleIcon({ label }: { label: string }) {
+  const common = "h-4 w-4 shrink-0 text-[#1c93b5]";
+  if (label.includes("Export")) {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 13h10M8 2v8M5 7l3 3 3-3" />
+      </svg>
+    );
+  }
+  if (label.includes("Dialer") || label.includes("Call")) {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M4 3h2l1 3-1.5 1a7 7 0 0 0 3.5 3.5L10 9l3 1v2a1 1 0 0 1-1 1A9 9 0 0 1 3 4a1 1 0 0 1 1-1z" />
+      </svg>
+    );
+  }
+  if (label.includes("Text")) {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 3h10v8H6l-3 2z" />
+      </svg>
+    );
+  }
+  if (label.includes("Open") || label.includes("Virtual")) {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M2 7 8 3l6 4v6H2z" />
+      </svg>
+    );
+  }
+  if (label.includes("Launchpad") || label.includes("Agent")) {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <circle cx="8" cy="6" r="2.2" />
+        <path d="M3.5 13c.6-2 2.2-3 4.5-3s3.9 1 4.5 3" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M3 4h10v8H3z" />
+    </svg>
+  );
+}
 
 const ROSTER = [
   ["Casey Archibald", "Agent"],
@@ -276,7 +321,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
 
   return (
     <ChromeContext.Provider value={api}>
-      <div className="flex h-screen overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333]">
+      <div className="cinc-root relative flex h-screen overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333]">
         <aside className="flex w-[147px] shrink-0 flex-col bg-[#2b3a4a] text-white">
           <div className="flex h-[58px] items-center bg-[#1a2833] px-3">
             <Logo />
@@ -311,7 +356,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                       {kids.map((child) => {
                         const on = childOn(child.label, route);
                         return (
-                          <a key={child.label} href={child.href} className={`flex h-[24px] items-center gap-2 pr-1 pl-5 text-[10px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`}>
+                          <a key={child.label} href={child.href} className={`flex h-[26px] items-center gap-2 pr-1 pl-5 text-[12px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`}>
                             {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${on ? "bg-[#1b9cb8]" : "border border-[#8aa] bg-transparent"}`} />}
                             {child.label}
                           </a>
@@ -335,20 +380,21 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               >
                 <span>{titleOf(route)}</span>
                 {menu.length ? (
-                  <svg width="10" height="8" viewBox="0 0 10 8" className="mt-0.5 text-[#2a9bb8]" aria-hidden>
-                    <path d="M0 0h10L5 8z" fill="currentColor" />
+                  <svg width="12" height="10" viewBox="0 0 12 10" className="mt-1 text-[#2a9bb8]" aria-hidden>
+                    <path d="M0 0h12L6 10z" fill="currentColor" />
                   </svg>
                 ) : null}
               </button>
               {titleOpen && menu.length ? (
-                <div className="absolute top-[calc(100%+10px)] left-0 z-50 w-max min-w-[220px] bg-white py-2 shadow-[0_8px_24px_rgba(15,23,28,0.16)]">
+                <div className="absolute top-[calc(100%+10px)] left-0 z-50 w-max min-w-[240px] bg-white py-2 shadow-[0_8px_24px_rgba(15,23,28,0.16)]">
                   {menu.map((item) => (
                     <a
                       key={item.label}
                       href={item.href}
-                      className="block px-5 py-[10px] text-[15px] leading-5 font-normal text-[#2c2c2c] hover:bg-[#f5f5f5]"
+                      className="flex items-center gap-3 px-4 py-[10px] text-[15px] leading-5 font-normal text-[#2c2c2c] hover:bg-[#f5f5f5]"
                       onClick={() => setTitleOpen(false)}
                     >
+                      <TitleIcon label={item.label} />
                       {item.label}
                     </a>
                   ))}
@@ -380,13 +426,13 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="ml-auto flex items-center gap-3">
               <a
                 href={href.publicSite}
-                className="inline-flex items-center gap-1 bg-[#d9363e] px-2 py-[6px] text-[10px] leading-none font-bold tracking-wide text-white uppercase"
+                className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
                 title="End the demo impersonation and return to the public site"
               >
-                <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.6">
-                  <circle cx="6" cy="4" r="2" />
-                  <path d="M2.5 10c.4-1.6 1.7-2.4 3.5-2.4S9.1 8.4 9.5 10" />
-                  <path d="M9 2.2 11 4.2M11 2.2 9 4.2" />
+                <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
+                  <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
+                  <path d="M4.5 1.5V4h4" />
+                  <path d="M4.5 6.5h4M4.5 8.2h3" />
                 </svg>
                 End Become User
               </a>
@@ -394,9 +440,9 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 Help
               </button>
               <div className="relative">
-                <button type="button" className="flex items-center gap-1 text-[13px] font-semibold text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
+                <button type="button" className="flex items-center gap-0.5 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
                   <span>{CRM_AGENT.initials}</span>
-                  <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
+                  <svg width="7" height="5" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
@@ -422,23 +468,23 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           <div className="flex min-h-0 flex-1">
             <main className="min-w-0 flex-1 overflow-auto">{children}</main>
             {rail ? (
-              <aside className="flex w-[180px] shrink-0 flex-col border-l border-[#e5e5e5] bg-[#f7f7f7]">
-                <div className="border-b border-[#1c93b5] bg-white px-2 py-2 text-[12px] font-semibold text-[#1c93b5]">Activity</div>
+              <aside className="flex w-[220px] shrink-0 flex-col border-l border-[#e5e5e5] bg-[#f4f4f4]">
+                <div className="border-b-2 border-[#1c93b5] bg-white px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">Activity</div>
                 <label className="px-2 py-2">
-                  <select className="h-6 w-full border border-[#ccc] bg-white text-[12px]" value={feed} onChange={(event) => setFeed(event.target.value)}>
+                  <select className="h-7 w-full border border-[#ccc] bg-white text-[12px]" value={feed} onChange={(event) => setFeed(event.target.value)}>
                     {["All", "Notes", "Views & Favorites", "Agent Actions", "Communications"].map((option) => (
                       <option key={option}>{option}</option>
                     ))}
                   </select>
                 </label>
-                <div className="min-h-0 flex-1 overflow-auto px-2">
-                  {ACTIVITY.filter((item) => feed === "All" || (feed === "Communications" ? item.icon === "✉" : feed === "Views & Favorites" ? item.icon !== "✉" : feed === "Agent Actions" ? item.text.startsWith("Casey") : item.icon === "◉")).map((item) => (
-                    <article key={item.time} className="mb-2 bg-white p-2 shadow-sm">
-                      <p className="text-[11px] leading-snug text-[#1c93b5]">
-                        <span className="mr-1" style={{ color: item.color }}>{item.icon}</span>
-                        {item.text}
-                      </p>
-                      <p className="mt-1 text-[10px] text-[#999]">{item.time}</p>
+                <div className="min-h-0 flex-1 overflow-auto px-2 [scrollbar-color:#c5c5c5_transparent]">
+                  {ACTIVITY.filter((item) => feed === "All" || (feed === "Communications" ? item.icon === "✉" : feed === "Views & Favorites" ? item.icon !== "✉" : feed === "Agent Actions" ? item.text.includes("Kayla") : item.icon === "◉")).map((item) => (
+                    <article key={item.time} className="mb-2 flex gap-2 bg-white p-2 shadow-sm">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] text-white" style={{ background: item.color }}>{item.icon}</span>
+                      <div className="min-w-0">
+                        <p className="text-[12px] leading-snug text-[#333]">{item.text}</p>
+                        <p className="mt-1 text-[11px] text-[#888]">{item.time}</p>
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -456,6 +502,18 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             ) : null}
           </div>
         </div>
+        {passwordToast && (route.view === "launchpad" || (route.view === "inbox" && route.folder === "templates") || (route.view === "properties" && route.sub === "text")) ? (
+          <div className="absolute top-[62px] right-4 z-30 flex max-w-sm items-start gap-2 border border-[#f3b4c0] bg-[#fde7ec] px-3 py-2 text-[13px] text-[#c62828] shadow">
+            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-[#c62828] text-[11px] leading-none font-bold">✕</span>
+            <p className="text-left">
+              Uh oh, your password expired.{" "}
+              <button type="button" className="font-semibold underline" onClick={() => setMessage("Password reset link queued for agent@example.com.")}>
+                Let&apos;s reset it now.
+              </button>
+            </p>
+            <button type="button" aria-label="Dismiss" className="text-[16px] leading-none font-bold" onClick={() => { setPasswordToast(false); sessionStorage.setItem("gvhs-pw-toast", "1"); }}>✕</button>
+          </div>
+        ) : null}
       </div>
       {modal}
       {helpOpen ? (
@@ -463,7 +521,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           <div className="w-full max-w-md bg-white p-5 shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
             <h2 className="text-[16px] font-semibold">Help</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-[#444]">
-              This is the Casey Archibald demo of the CINC agent CRM. Messages, calls, and saves stay on this device.
+              This is the Kayla Gerak demo of the CINC agent CRM. Messages, calls, and saves stay on this device.
               Call (604) 363-7858 or write agent@example.com.
             </p>
             <div className="mt-4 flex gap-3 text-[13px]">
@@ -472,14 +530,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button type="button" className="ml-auto text-[#888]" onClick={() => setHelpOpen(false)}>Close</button>
             </div>
           </div>
-        </div>
-      ) : null}
-      {passwordToast ? (
-        <div className="fixed top-3 right-4 z-[80] flex max-w-sm items-start gap-3 border border-[#e23d45] bg-[#fff5f5] px-3 py-2 text-[13px] text-[#c62828] shadow">
-          <button type="button" className="text-left" onClick={() => setMessage("Password reset link queued for agent@example.com.")}>
-            Uh oh, your password expired. Let&apos;s reset it now.
-          </button>
-          <button type="button" aria-label="Dismiss" onClick={() => { setPasswordToast(false); sessionStorage.setItem("gvhs-pw-toast", "1"); }}>×</button>
         </div>
       ) : null}
       {message ? (

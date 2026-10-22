@@ -27,6 +27,11 @@ const workSans = Work_Sans({
   weight: ["300", "400", "500", "600"],
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: {
     default: "Greater Vancouver Area Home Search",

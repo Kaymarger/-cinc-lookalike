@@ -30,7 +30,16 @@ function useRoute() {
   const pathname = usePathname();
   const [hash, setHash] = useState("");
   useEffect(() => {
-    const read = () => setHash(window.location.hash);
+    const read = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path.startsWith("/dashboard/landing") && (hash === "" || hash === "#")) {
+        window.history.replaceState(null, "", "/dashboard/landing/#/");
+      } else if (path.startsWith("/dashboard/sellersuite") && !hash.includes("main")) {
+        window.history.replaceState(null, "", "/dashboard/sellersuite/seller/#main");
+      }
+      setHash(window.location.hash);
+    };
     read();
     window.addEventListener("hashchange", read);
     return () => window.removeEventListener("hashchange", read);

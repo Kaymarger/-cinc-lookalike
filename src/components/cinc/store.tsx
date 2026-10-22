@@ -174,8 +174,8 @@ const PROFILE: Profile = {
   cell: "(604) 363-7858",
   home: "",
   office: "(604) 363-7858",
-  first: "Casey",
-  last: "Archibald",
+  first: "Kayla",
+  last: "Gerak",
   title: "Realtor",
   license: "",
   loan: "",
@@ -188,7 +188,7 @@ const PROFILE: Profile = {
   instagram: "https://www.instagram.com/caseyarchibald",
   youtube: "https://www.youtube.com/@caseyarchibaldvancouverrealtor",
   linkedin: "https://www.linkedin.com/in/casey-archibald-06836730",
-  signature: "Casey Archibald · Archibald Real Estate Group · (604) 363-7858",
+  signature: "Kayla Gerak · Archibald Real Estate Group · (604) 363-7858",
   photoName: "",
 };
 
@@ -232,10 +232,7 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
     title: "AGENT ALERTS",
     items: [
       { id: "Lead Reassign", description: "When a lead is reassigned to you." },
-      { id: "Appointment Request", description: "When a lead requests an appointment." },
       { id: "Direct Mail Activity", description: "When a lead scans a direct-mail piece." },
-      { id: "Deal Reminder", description: "When a deal reminder is due." },
-      { id: "AutoTrack Error", description: "When an AutoTrack step cannot send." },
     ],
   },
 ];
@@ -264,7 +261,7 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
-const DATA_VERSION = 5;
+const DATA_VERSION = 6;
 
 function buildTemplates(): Template[] {
   const rows: Template[] = [];
@@ -279,9 +276,9 @@ function buildTemplates(): Template[] {
       rows.push({
         id: `tpl-${group.replace(/\s+/g, "-").toLowerCase()}-${i}`,
         group,
-        name: group === "ISA" && i === 1 ? "ISA Welcome" : group === "ISA" && i === 2 ? "ISA Follow-up" : `${group === "CINC Templates" ? "CINC" : group.split(" ")[0]} ${i}`,
-        type: i % 3 === 0 ? "Text" : "Email",
-        createdBy: group === "CINC Templates" ? "CINC" : group === "Shared Templates" ? "Team" : "Casey Archibald",
+        name: group === "ISA" && i === 1 ? "Day 2 - Text" : group === "ISA" && i === 2 ? "Day 15 - Text" : `${group === "CINC Templates" ? "CINC" : group.split(" ")[0]} ${i}`,
+        type: group === "ISA" || i % 3 === 0 ? "Text" : "Email",
+        createdBy: group === "CINC Templates" ? "CINC" : group === "Shared Templates" ? "Team" : "Kayla Gerak",
         edited: "09-14-2022",
         body: "Thanks for registering with Archibald Real Estate Group. This sample template stays on this device.",
       });
@@ -291,32 +288,37 @@ function buildTemplates(): Template[] {
 }
 
 function buildMail(): Mail[] {
-  const inbox: Mail[] = Array.from({ length: 40 }, (_, i) => ({
+  const inbox: Mail[] = Array.from({ length: 100 }, (_, i) => ({
     id: `mail-in-${i + 1}`,
     folder: "inbox" as const,
-    kind: (i % 5 === 0 ? "email" : "text") as Mail["kind"],
+    kind: (i % 8 === 0 ? "email" : "text") as Mail["kind"],
     from: "System",
-    to: "Casey Archibald",
+    to: "Kayla Gerak",
     subject: "Lead assigned",
-    body: `Lead sample ${i + 1} has been reassigned to you. STOP=EndMsgs`,
-    at: i < 12 ? `${8 + (i % 5)}:${String(10 + (i % 50)).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}` : "Oct 18, 2026",
-    unread: i < 6,
+    body: `Lead sample ${i + 1} registered. View https://greatervancouverhomesearch.com/search/sample-${i + 1} STOP=EndMsgs`,
+    at: `${(i % 12) || 12}:${String((i * 7) % 60).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}`,
+    unread: i < 8,
   }));
-  const drafts: Mail[] = [
-    { id: "draft-1", folder: "drafts", kind: "email", to: "", subject: "", body: "", at: "3:12 PM" },
-    { id: "draft-2", folder: "drafts", kind: "email", to: "Morgan Ellis", subject: "Re: Saturday showing", body: "Following up on the sample showing request.", at: "Oct 18, 2026" },
+  const sent: Mail[] = [
+    { id: "sent-1", folder: "sent", kind: "email", from: "CC", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
+    { id: "sent-2", folder: "sent", kind: "email", from: "SS", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
+    { id: "sent-3", folder: "sent", kind: "text", from: "CC", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
   ];
-  const trashed: Mail[] = Array.from({ length: 28 }, (_, i) => ({
+  const drafts: Mail[] = [
+    { id: "draft-1", folder: "drafts", kind: "email", to: "", subject: "", body: "", at: "Sep 16, 2026" },
+    { id: "draft-2", folder: "drafts", kind: "email", to: "Morgan Ellis", subject: "Re: Saturday showing", body: "Following up on the sample showing request.", at: "Sep 16, 2026" },
+  ];
+  const trashed: Mail[] = Array.from({ length: 80 }, (_, i) => ({
     id: `trash-${i + 1}`,
     folder: "trashed" as const,
     kind: "text" as const,
     from: "System",
-    to: "Casey Archibald",
+    to: "Kayla Gerak",
     subject: "Lead assigned",
-    body: `Archived notice ${i + 1} for a sample lead. STOP=EndMsgs`,
-    at: "Sep 14, 2026",
+    body: `Archived notice ${i + 1} for a sample lead. https://greatervancouverhomesearch.com/search/sample-${i + 1} STOP=EndMsgs`,
+    at: `${(i % 12) || 12}:${String((i * 3) % 60).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}`,
   }));
-  return [...inbox, ...drafts, ...trashed];
+  return [...inbox, ...sent, ...drafts, ...trashed];
 }
 
 const DEFAULT: SpaState = {
@@ -353,10 +355,11 @@ const DEFAULT: SpaState = {
   openHouses: [],
   landingPages: [
     { id: "lp-b1", name: "Buyer Guide", category: "buyers", url: "/info/buyer-guide", active: false },
-    { id: "lp-s1", name: "What's My Home Worth", category: "sellers", url: "/info/home-worth", active: false },
-    { id: "lp-s2", name: "Seller Checklist", category: "sellers", url: "/info/seller-checklist", active: true },
-    { id: "lp-s3", name: "Market Update", category: "sellers", url: "/info/market-update", active: false },
-    { id: "lp-c1", name: "Contact Casey", category: "contact", url: "/info/contact", active: true },
+    { id: "lp-s1", name: "Get More Money When You Sell", category: "sellers", url: "/info/get-more-money", active: true },
+    { id: "lp-s2", name: "What's My Home Worth", category: "sellers", url: "/info/home-worth", active: false },
+    { id: "lp-s3", name: "Seller Checklist", category: "sellers", url: "/info/seller-checklist", active: true },
+    { id: "lp-s4", name: "Market Update", category: "sellers", url: "/info/market-update", active: false },
+    { id: "lp-c1", name: "Contact the Team", category: "contact", url: "/info/contact", active: true },
     { id: "lp-c2", name: "Book a Call", category: "contact", url: "/info/book-a-call", active: false },
     { id: "lp-c3", name: "Office Hours", category: "contact", url: "/info/office-hours", active: false },
     { id: "lp-c4", name: "About the Team", category: "contact", url: "/info/team", active: true },
@@ -387,7 +390,7 @@ function load(raw: string | null): SpaState {
     return {
       ...DEFAULT,
       ...parsed,
-      profile: { ...DEFAULT.profile, ...parsed.profile },
+      profile: fresh ? DEFAULT.profile : { ...DEFAULT.profile, ...parsed.profile },
       settings: fresh ? DEFAULT.settings : { ...DEFAULT.settings, ...parsed.settings },
       notifications: fresh ? DEFAULT.notifications : { ...DEFAULT.notifications, ...parsed.notifications },
       behavioral: fresh ? DEFAULT.behavioral : { ...DEFAULT.behavioral, ...parsed.behavioral },

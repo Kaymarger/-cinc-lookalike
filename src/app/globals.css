@@ -103,6 +103,16 @@
   }
   html {
     @apply font-sans;
+    font-size: 16px;
+  }
+  /* Agent CRM stays at real CINC sizes at 1280 and grows slightly on wide screens. */
+  .cinc-root {
+    font-size: 13px;
+  }
+  @media (min-width: 1680px) {
+    .cinc-root {
+      zoom: 1.12;
+    }
   }
   h1,
   h2,

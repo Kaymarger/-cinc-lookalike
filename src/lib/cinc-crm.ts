@@ -101,9 +101,9 @@ const IMG = [
 ];
 
 export const CRM_AGENT = {
-  name: "Casey Archibald",
-  initials: "CA",
-  greetingName: "Casey",
+  name: "Kayla Gerak",
+  initials: "KG",
+  greetingName: "Kayla Gerak",
 };
 
 export const CRM_LEADS: CrmLead[] = [
@@ -129,7 +129,7 @@ export const CRM_LEADS: CrmLead[] = [
     saved: 2,
     fav: 1,
     inq: 3,
-    assignedTo: "Casey Archibald",
+    assignedTo: "Kayla Gerak",
     verified: true,
     initials: "MH",
     activity: [
@@ -139,21 +139,21 @@ export const CRM_LEADS: CrmLead[] = [
         kind: "note",
         title: "Note Added",
         body: "Already in contact with an agent.",
-        actor: "Casey Archibald",
+        actor: "Kayla Gerak",
       },
       {
         id: "a2",
         at: "10/18/2026 at 9:02 am",
         kind: "assignment",
-        title: "Lead Was Assigned To Casey Archibald (Buyer's Agent)",
+        title: "Lead Was Assigned To Kayla Gerak (Buyer's Agent)",
       },
     ],
     propertySnippet: {
       address: "2072 Kitchener St, Vancouver, BC V5L 2W8",
       price: "$1,999,999",
       image: IMG[0],
-      message: "I want more info about this home",
-      kind: "Property Inquiry",
+      message: "Showing requested for 2026/10/21",
+      kind: "Showing Request",
     },
   },
   {
@@ -177,7 +177,7 @@ export const CRM_LEADS: CrmLead[] = [
     saved: 5,
     fav: 3,
     inq: 2,
-    assignedTo: "Casey Archibald",
+    assignedTo: "Kayla Gerak",
     verified: true,
     initials: "JA",
     activity: [
@@ -187,13 +187,13 @@ export const CRM_LEADS: CrmLead[] = [
         kind: "note",
         title: "Note Added",
         body: "Already in contact with an agent.",
-        actor: "Casey Archibald",
+        actor: "Kayla Gerak",
       },
       {
         id: "b2",
         at: "10/17/2026 at 11:05 am",
         kind: "assignment",
-        title: "Lead Was Assigned To Casey Archibald (Buyer's Agent)",
+        title: "Lead Was Assigned To Kayla Gerak (Buyer's Agent)",
       },
       {
         id: "b3",
@@ -272,7 +272,7 @@ export const CRM_LEADS: CrmLead[] = [
     saved: 1,
     fav: 0,
     inq: 0,
-    assignedTo: "Casey Archibald",
+    assignedTo: "Kayla Gerak",
     initials: "DP",
     activity: [
       {
@@ -304,7 +304,7 @@ export const CRM_LEADS: CrmLead[] = [
     saved: 0,
     fav: 0,
     inq: 2,
-    assignedTo: "Casey Archibald",
+    assignedTo: "Kayla Gerak",
     verified: true,
     initials: "SR",
     activity: [
@@ -345,7 +345,7 @@ export const CRM_LEADS: CrmLead[] = [
     saved: 4,
     fav: 2,
     inq: 1,
-    assignedTo: "Casey Archibald",
+    assignedTo: "Kayla Gerak",
     initials: "PS",
     activity: [
       {
@@ -364,7 +364,7 @@ const SAMPLE_LAST = ["Adler", "Brooks", "Cho", "Diaz", "Frost", "Gupta", "Hayes"
 const SAMPLE_CITIES = ["Vancouver", "Burnaby", "Richmond", "Surrey", "Coquitlam", "North Vancouver"];
 const SAMPLE_PIPES: CrmPipeline[] = ["New", "Attempted", "Contacted", "Showing", "Nurture", "Closed"];
 const SAMPLE_TYPES: CrmLeadType[] = ["Buyer", "Seller", "Partial", "Recruit"];
-for (let i = 0; i < 120; i++) {
+for (let i = 0; i < 500; i++) {
   const first = SAMPLE_FIRST[i % SAMPLE_FIRST.length];
   const last = SAMPLE_LAST[Math.floor(i / SAMPLE_FIRST.length) % SAMPLE_LAST.length];
   const hour = 8 + (i % 10);
@@ -393,7 +393,7 @@ for (let i = 0; i < 120; i++) {
     saved: i % 4,
     fav: i % 3,
     inq: i % 5,
-    assignedTo: i % 4 === 0 ? "UNASSIGNED" : "Casey Archibald",
+    assignedTo: i % 4 === 0 ? "UNASSIGNED" : "Kayla Gerak",
     verified: i % 3 !== 0,
     initials: `${first[0]}${last[0]}`,
     activity: [
@@ -401,8 +401,8 @@ for (let i = 0; i < 120; i++) {
         id: `sa${i}`,
         at: `10/21/2026 at ${h12}:${minute} ${ampm}`,
         kind: "assignment",
-        title: "Lead Was Assigned To Casey Archibald (Buyer's Agent)",
-        actor: "Casey Archibald",
+        title: "Lead Was Assigned To Kayla Gerak (Buyer's Agent)",
+        actor: "Kayla Gerak",
       },
     ],
     propertySnippet: i < 100
@@ -639,6 +639,47 @@ export const CRM_OPEN_HOUSES = [
     when: "Sunday, October 25, 2:00 PM to 4:00 PM",
   },
 ];
+
+const MORE_LISTINGS = [
+  ["1188 W Pender St Unit 1204, Vancouver", "R2403301", "$2,450,000", 2, 2, 1188],
+  ["4560 Hastings St, Burnaby", "R2404412", "$1,075,000", 3, 2, 1460],
+  ["8122 No. 2 Rd, Richmond", "R2405520", "$1,688,000", 4, 3, 2280],
+  ["3333 Main St Unit 8, Vancouver", "R2406608", "$899,000", 2, 1, 890],
+  ["1500 Howe St Unit 605, Vancouver", "R2407715", "$3,250 per month", 1, 1, 640],
+  ["9091 Cook Rd, Richmond", "R2408822", "$1,429,000", 5, 3, 2610],
+  ["2601 Westview Dr, North Vancouver", "R2409930", "$2,198,000", 4, 3, 2495],
+  ["6888 Station Hill Dr, Burnaby", "R2411044", "$748,000", 2, 2, 980],
+] as const;
+for (let i = 0; i < MORE_LISTINGS.length; i++) {
+  const [address, mls, price, beds, baths, sqft] = MORE_LISTINGS[i];
+  CRM_PROPERTIES.push({
+    id: `p${7 + i}`,
+    address,
+    mls,
+    status: "Active",
+    price,
+    beds,
+    baths,
+    sqft,
+    updated: "Oct 21, 2026",
+    image: IMG[i % IMG.length],
+    feature: "General Listing",
+  });
+  if (i < 6) {
+    CRM_OPEN_HOUSES.push({
+      id: `oh${4 + i}`,
+      address,
+      mls,
+      price,
+      beds,
+      baths,
+      sqft,
+      updated: "Oct 21, 2026",
+      image: IMG[i % IMG.length],
+      when: "Saturday, October 24, 1:00 PM to 4:00 PM",
+    });
+  }
+}
 
 export function getCrmLead(id: string) {
   return CRM_LEADS.find((l) => l.id === id);
