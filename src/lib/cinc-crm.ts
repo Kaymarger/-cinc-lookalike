@@ -76,7 +76,7 @@ export type CrmAutoTrack = {
   id: string;
   name: string;
   category: "General" | "Buyer" | "Listing" | "Nurture" | "Past Client" | "My AutoTracks";
-  status: "active" | "paused";
+  status: "active" | "paused" | "draft";
 };
 
 export type CrmProperty = {
@@ -359,6 +359,64 @@ export const CRM_LEADS: CrmLead[] = [
   },
 ];
 
+const SAMPLE_FIRST = ["Alex", "Blake", "Cameron", "Drew", "Eden", "Finn", "Gray", "Harper", "Indigo", "Jules", "Kai", "Lane", "Milan", "Noel", "Oakley", "Parker", "Quinn", "Reese", "Sage", "Taylor"];
+const SAMPLE_LAST = ["Adler", "Brooks", "Cho", "Diaz", "Frost", "Gupta", "Hayes", "Ito", "Jones", "Khan", "Lopez", "Meyer", "Nguyen", "Ortiz", "Park", "Ross", "Shah", "Tran", "Walsh", "Young"];
+const SAMPLE_CITIES = ["Vancouver", "Burnaby", "Richmond", "Surrey", "Coquitlam", "North Vancouver"];
+const SAMPLE_PIPES: CrmPipeline[] = ["New", "Attempted", "Contacted", "Showing", "Nurture", "Closed"];
+const SAMPLE_TYPES: CrmLeadType[] = ["Buyer", "Seller", "Partial", "Recruit"];
+for (let i = 0; i < 120; i++) {
+  const first = SAMPLE_FIRST[i % SAMPLE_FIRST.length];
+  const last = SAMPLE_LAST[Math.floor(i / SAMPLE_FIRST.length) % SAMPLE_LAST.length];
+  const hour = 8 + (i % 10);
+  const minute = String(i % 60).padStart(2, "0");
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 || 12;
+  CRM_LEADS.push({
+    id: `crm-s${i + 1}`,
+    name: `${first} ${last}`,
+    email: `${first}.${last}${i}@example.com`.toLowerCase(),
+    phone: `(604) 555-${String(2000 + i).slice(-4)}`,
+    rating: 2 + (i % 4),
+    type: SAMPLE_TYPES[i % SAMPLE_TYPES.length],
+    pipeline: SAMPLE_PIPES[i % SAMPLE_PIPES.length],
+    registeredAgo: `${(i % 20) + 1} days`,
+    source: i % 2 ? "IDX Registration" : "Referral Exchange",
+    price: i % 5 === 0 ? "$ n/a" : `$${800 + (i % 12) * 90}k`,
+    city: SAMPLE_CITIES[i % SAMPLE_CITIES.length],
+    timeframe: ["0-3 months", "3-6 months", "6-12 months"][i % 3],
+    lastLogin: `${(i % 9) + 1} hours`,
+    logins: (i % 12) + 1,
+    lastTouch: i % 4 === 0 ? "—" : `${(i % 6) + 1} hours`,
+    nextReminder: i % 7 === 0 ? "-2 days" : "n/a",
+    reminderOverdue: i % 7 === 0,
+    views: i % 15,
+    saved: i % 4,
+    fav: i % 3,
+    inq: i % 5,
+    assignedTo: i % 4 === 0 ? "UNASSIGNED" : "Casey Archibald",
+    verified: i % 3 !== 0,
+    initials: `${first[0]}${last[0]}`,
+    activity: [
+      {
+        id: `sa${i}`,
+        at: `10/21/2026 at ${h12}:${minute} ${ampm}`,
+        kind: "assignment",
+        title: "Lead Was Assigned To Casey Archibald (Buyer's Agent)",
+        actor: "Casey Archibald",
+      },
+    ],
+    propertySnippet: i < 100
+      ? {
+          address: `${100 + i} Sample St, ${SAMPLE_CITIES[i % SAMPLE_CITIES.length]}`,
+          price: `$${(700 + (i % 20) * 50).toLocaleString()},000`,
+          image: IMG[i % IMG.length],
+          message: i % 2 ? "Showing requested for 2026/10/21" : "I want more info about this home",
+          kind: i % 2 ? "Showing Request" : "Property Inquiry",
+        }
+      : undefined,
+  });
+}
+
 export const CRM_TODAY_FEED = CRM_LEADS.filter((l) => l.propertySnippet).map(
   (l) => ({
     id: l.id,
@@ -459,7 +517,7 @@ export const CRM_AUTOTRACKS: CrmAutoTrack[] = [
   { id: "at13", name: "Home Estimate Capture", category: "Listing", status: "active" },
   { id: "at14", name: "Showing No-Show Recovery", category: "Buyer", status: "active" },
   { id: "at15", name: "Custom Westside Buyers", category: "My AutoTracks", status: "paused" },
-  { id: "at16", name: "Recruit Mentorship", category: "General", status: "active" },
+  { id: "at16", name: "Recruit Mentorship", category: "General", status: "draft" },
 ];
 
 export const CRM_PROPERTIES: CrmProperty[] = [
@@ -514,6 +572,71 @@ export const CRM_PROPERTIES: CrmProperty[] = [
     updated: "5 days ago",
     image: IMG[3],
     feature: "General Listing",
+  },
+  {
+    id: "p5",
+    address: "1188 Richards St Unit 2102, Vancouver",
+    mls: "R2401188",
+    status: "Active",
+    price: "$3,995 per month",
+    beds: 2,
+    baths: 2,
+    sqft: 1552,
+    updated: "Oct 21, 2026",
+    image: IMG[0],
+    feature: "General Listing",
+  },
+  {
+    id: "p6",
+    address: "4488 Juneau St, Burnaby",
+    mls: "R2402204",
+    status: "Active",
+    price: "$1,588,000",
+    beds: 4,
+    baths: 3,
+    sqft: 2410,
+    updated: "Oct 20, 2026",
+    image: IMG[2],
+    feature: "General Listing",
+  },
+];
+
+export const CRM_OPEN_HOUSES = [
+  {
+    id: "oh1",
+    address: "5628 Birney Ave Unit 101, Vancouver",
+    mls: "R2391990",
+    price: "$1,298,000",
+    beds: 3,
+    baths: 3,
+    sqft: 1215,
+    updated: "Oct 21, 2026",
+    image: IMG[1],
+    when: "Wednesday, October 21, 12:00 PM to 05:00 PM",
+  },
+  {
+    id: "oh2",
+    address: "7305 Coronado Dr, Burnaby",
+    mls: "R2389012",
+    price: "$868,800",
+    beds: 3,
+    baths: 3,
+    sqft: 1840,
+    updated: "Oct 20, 2026",
+    image: IMG[0],
+    when: "Saturday, October 24, 1:00 PM to 3:00 PM",
+  },
+  {
+    id: "oh3",
+    address: "1416 Purcell Dr, Coquitlam",
+    mls: "R2391044",
+    price: "$1,149,000",
+    beds: 4,
+    baths: 3,
+    sqft: 2100,
+    updated: "Oct 19, 2026",
+    image: IMG[2],
+    when: "Sunday, October 25, 2:00 PM to 4:00 PM",
   },
 ];
 

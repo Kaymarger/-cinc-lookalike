@@ -12,7 +12,7 @@ import {
 
 const KEY = "gvhs-cinc-spa";
 
-export type DealStage = "showing" | "offer" | "contract" | "closed";
+export type DealStage = "showing" | "offer" | "contract" | "closed" | "prelisting" | "active" | "pending";
 
 export type Deal = {
   id: string;
@@ -30,6 +30,7 @@ export type Mail = {
   id: string;
   folder: "inbox" | "sent" | "drafts" | "trashed";
   kind: "email" | "text";
+  from?: string;
   to: string;
   subject: string;
   body: string;
@@ -51,7 +52,7 @@ export type Track = {
   id: string;
   name: string;
   category: string;
-  status: "active" | "paused";
+  status: "active" | "paused" | "draft";
   trigger: string;
 };
 
@@ -72,6 +73,9 @@ export type Campaign = {
   name: string;
   message: string;
   active: boolean;
+  number?: string;
+  property?: string;
+  code?: string;
 };
 
 export type LandingPage = {
@@ -162,6 +166,7 @@ export type SpaState = {
   info: Record<string, Record<string, string>>;
   buyerMatches: Record<string, boolean>;
   customFilters: string[];
+  dataVersion: number;
 };
 
 const PROFILE: Profile = {
@@ -192,11 +197,11 @@ const SETTINGS: SettingsForm = {
   plainText: "No",
   chat: "Enabled",
   contactInfo: "Yes",
-  leadSummary: "Yes",
+  leadSummary: "No",
   summaryOften: "Daily",
   landing: "Launchpad",
   usageReport: "Off",
-  viewReport: "On",
+  viewReport: "Off",
   viewCount: "5",
   viewNotes: "Off",
 };
@@ -228,7 +233,7 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
     items: [
       { id: "Lead Reassign", description: "When a lead is reassigned to you." },
       { id: "Appointment Request", description: "When a lead requests an appointment." },
-      { id: "Appointment Confirmed", description: "When an appointment is confirmed." },
+      { id: "Direct Mail Activity", description: "When a lead scans a direct-mail piece." },
       { id: "Deal Reminder", description: "When a deal reminder is due." },
       { id: "AutoTrack Error", description: "When an AutoTrack step cannot send." },
     ],
@@ -239,7 +244,8 @@ function defaultNotify(): Record<string, NotifyPref> {
   const all: Record<string, NotifyPref> = {};
   for (const group of NOTIFY_GROUPS) {
     for (const item of group.items) {
-      all[item.id] = { cinc: true, email: group.title === "ESSENTIAL ALERTS", text: false };
+      const emailOn = item.id === "Inquiry" || item.id === "Existing Lead Home Value Request";
+      all[item.id] = { cinc: false, email: emailOn, text: true };
     }
   }
   return all;
@@ -258,6 +264,61 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
+const DATA_VERSION = 5;
+
+function buildTemplates(): Template[] {
+  const rows: Template[] = [];
+  const counts: [string, number][] = [
+    ["ISA", 2],
+    ["Uncategorized", 1],
+    ["Shared Templates", 17],
+    ["CINC Templates", 54],
+  ];
+  for (const [group, count] of counts) {
+    for (let i = 1; i <= count; i++) {
+      rows.push({
+        id: `tpl-${group.replace(/\s+/g, "-").toLowerCase()}-${i}`,
+        group,
+        name: group === "ISA" && i === 1 ? "ISA Welcome" : group === "ISA" && i === 2 ? "ISA Follow-up" : `${group === "CINC Templates" ? "CINC" : group.split(" ")[0]} ${i}`,
+        type: i % 3 === 0 ? "Text" : "Email",
+        createdBy: group === "CINC Templates" ? "CINC" : group === "Shared Templates" ? "Team" : "Casey Archibald",
+        edited: "09-14-2022",
+        body: "Thanks for registering with Archibald Real Estate Group. This sample template stays on this device.",
+      });
+    }
+  }
+  return rows;
+}
+
+function buildMail(): Mail[] {
+  const inbox: Mail[] = Array.from({ length: 40 }, (_, i) => ({
+    id: `mail-in-${i + 1}`,
+    folder: "inbox" as const,
+    kind: (i % 5 === 0 ? "email" : "text") as Mail["kind"],
+    from: "System",
+    to: "Casey Archibald",
+    subject: "Lead assigned",
+    body: `Lead sample ${i + 1} has been reassigned to you. STOP=EndMsgs`,
+    at: i < 12 ? `${8 + (i % 5)}:${String(10 + (i % 50)).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}` : "Oct 18, 2026",
+    unread: i < 6,
+  }));
+  const drafts: Mail[] = [
+    { id: "draft-1", folder: "drafts", kind: "email", to: "", subject: "", body: "", at: "3:12 PM" },
+    { id: "draft-2", folder: "drafts", kind: "email", to: "Morgan Ellis", subject: "Re: Saturday showing", body: "Following up on the sample showing request.", at: "Oct 18, 2026" },
+  ];
+  const trashed: Mail[] = Array.from({ length: 28 }, (_, i) => ({
+    id: `trash-${i + 1}`,
+    folder: "trashed" as const,
+    kind: "text" as const,
+    from: "System",
+    to: "Casey Archibald",
+    subject: "Lead assigned",
+    body: `Archived notice ${i + 1} for a sample lead. STOP=EndMsgs`,
+    at: "Sep 14, 2026",
+  }));
+  return [...inbox, ...drafts, ...trashed];
+}
+
 const DEFAULT: SpaState = {
   pipeline: {},
   labels: { "crm-1": ["H"], "crm-2": ["N", "B"], "crm-5": ["R"] },
@@ -266,7 +327,9 @@ const DEFAULT: SpaState = {
   trashed: [],
   alertFreq: {},
   signInAlert: {},
-  notes: {},
+  notes: {
+    "crm-1": [{ id: "note-pin", body: "Already in contact with an agent.", at: "10/18/2026 at 2:10 PM" }],
+  },
   reminders: [
     {
       id: "rem-1",
@@ -280,101 +343,25 @@ const DEFAULT: SpaState = {
   appointments: [],
   calls: [],
   deals: [],
-  mail: [
-    {
-      id: "mail-1",
-      folder: "inbox",
-      kind: "text",
-      to: "Casey Archibald",
-      subject: "Lead assigned",
-      body: "Lead Morgan Ellis has been reassigned to you. STOP=EndMsgs",
-      at: "9:42 AM",
-      unread: true,
-    },
-    {
-      id: "mail-2",
-      folder: "inbox",
-      kind: "text",
-      to: "Casey Archibald",
-      subject: "Lead assigned",
-      body: "Lead Jordan Blake has been reassigned to you. STOP=EndMsgs",
-      at: "9:41 AM",
-      unread: true,
-    },
-    {
-      id: "mail-3",
-      folder: "inbox",
-      kind: "email",
-      to: "Casey Archibald",
-      subject: "New inquiry",
-      body: "Avery Quinn asked about 810 235 Keith Road.",
-      at: "Yesterday",
-    },
-  ],
-  templates: [
-    {
-      id: "tpl-1",
-      group: "ISA",
-      name: "ISA Welcome Email",
-      type: "Email",
-      createdBy: "Casey Archibald",
-      edited: "Oct 12, 2026",
-      body: "Thanks for registering. I am Casey Archibald and I will follow up shortly.",
-    },
-    {
-      id: "tpl-2",
-      group: "ISA",
-      name: "ISA Follow-up Text",
-      type: "Text",
-      createdBy: "Casey Archibald",
-      edited: "Oct 12, 2026",
-      body: "Hi, this is Casey with Archibald Real Estate Group. Is now a good time to chat?",
-    },
-    {
-      id: "tpl-3",
-      group: "Uncategorized",
-      name: "Quick hello",
-      type: "Email",
-      createdBy: "Casey Archibald",
-      edited: "Oct 2, 2026",
-      body: "Just checking in.",
-    },
-    {
-      id: "tpl-4",
-      group: "Shared",
-      name: "Team introduction",
-      type: "Email",
-      createdBy: "Team",
-      edited: "Sep 18, 2026",
-      body: "Welcome to the team inbox.",
-    },
-    {
-      id: "tpl-5",
-      group: "CINC Templates",
-      name: "New lead day 1",
-      type: "Email",
-      createdBy: "CINC",
-      edited: "Jan 4, 2026",
-      body: "Thanks for your interest in Greater Vancouver homes.",
-    },
-  ],
-  groups: ["ISA", "Uncategorized", "Shared", "CINC Templates"],
+  mail: buildMail(),
+  templates: buildTemplates(),
+  groups: ["ISA", "Uncategorized", "Shared Templates", "CINC Templates"],
   tracks: [],
   hiddenTracks: [],
   pocket: [],
-  campaigns: [
-    {
-      id: "camp-1",
-      name: "New inquiry reply",
-      message: "Thanks for reaching out. I am Casey and I will send details shortly.",
-      active: true,
-    },
-  ],
+  campaigns: [],
   openHouses: [],
   landingPages: [
-    { id: "lp-1", name: "Buyer Guide", category: "buyers", url: "/landing/buyer-guide", active: true },
-    { id: "lp-2", name: "What's My Home Worth", category: "sellers", url: "/seller/homeestimate", active: true },
-    { id: "lp-3", name: "Contact Casey", category: "contact", url: "/contact", active: true },
+    { id: "lp-b1", name: "Buyer Guide", category: "buyers", url: "/info/buyer-guide", active: false },
+    { id: "lp-s1", name: "What's My Home Worth", category: "sellers", url: "/info/home-worth", active: false },
+    { id: "lp-s2", name: "Seller Checklist", category: "sellers", url: "/info/seller-checklist", active: true },
+    { id: "lp-s3", name: "Market Update", category: "sellers", url: "/info/market-update", active: false },
+    { id: "lp-c1", name: "Contact Casey", category: "contact", url: "/info/contact", active: true },
+    { id: "lp-c2", name: "Book a Call", category: "contact", url: "/info/book-a-call", active: false },
+    { id: "lp-c3", name: "Office Hours", category: "contact", url: "/info/office-hours", active: false },
+    { id: "lp-c4", name: "About the Team", category: "contact", url: "/info/team", active: true },
+    { id: "lp-c5", name: "Careers", category: "contact", url: "/info/careers", active: false },
+    { id: "lp-c6", name: "Newsletter", category: "contact", url: "/info/newsletter", active: false },
   ],
   sites: [],
   profile: PROFILE,
@@ -382,31 +369,36 @@ const DEFAULT: SpaState = {
   notifications: defaultNotify(),
   integrations: {},
   customLinks: [],
-  behavioral: {
-    "New Listing Match": true,
-    "Price Change": true,
-    "Open House Nearby": false,
-  },
+  behavioral: {},
   plan: "agent",
   requests: {},
   savedSearches: {},
   info: {},
   buyerMatches: {},
   customFilters: [],
+  dataVersion: DATA_VERSION,
 };
 
 function load(raw: string | null): SpaState {
   if (!raw) return DEFAULT;
   try {
     const parsed = JSON.parse(raw) as Partial<SpaState>;
+    const fresh = parsed.dataVersion !== DATA_VERSION;
     return {
       ...DEFAULT,
       ...parsed,
       profile: { ...DEFAULT.profile, ...parsed.profile },
-      settings: { ...DEFAULT.settings, ...parsed.settings },
-      notifications: { ...DEFAULT.notifications, ...parsed.notifications },
-      behavioral: { ...DEFAULT.behavioral, ...parsed.behavioral },
+      settings: fresh ? DEFAULT.settings : { ...DEFAULT.settings, ...parsed.settings },
+      notifications: fresh ? DEFAULT.notifications : { ...DEFAULT.notifications, ...parsed.notifications },
+      behavioral: fresh ? DEFAULT.behavioral : { ...DEFAULT.behavioral, ...parsed.behavioral },
       labels: { ...DEFAULT.labels, ...parsed.labels },
+      mail: fresh ? DEFAULT.mail : parsed.mail ?? DEFAULT.mail,
+      templates: fresh ? DEFAULT.templates : parsed.templates ?? DEFAULT.templates,
+      groups: fresh ? DEFAULT.groups : parsed.groups ?? DEFAULT.groups,
+      campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
+      landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
+      notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
+      dataVersion: DATA_VERSION,
     };
   } catch {
     return DEFAULT;

@@ -149,6 +149,16 @@ function digits(phone: string) {
   return phone.replace(/\D/g, "").length >= 10;
 }
 
+function friendlyWhen(at: string) {
+  if (!at.includes("T")) return at;
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return at;
+  const hour = date.getHours();
+  const h12 = hour % 12 || 12;
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()} at ${h12}:${min} ${hour >= 12 ? "PM" : "AM"}`;
+}
+
 function ago(iso: string) {
   const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 60) return `${mins} min`;
@@ -555,17 +565,21 @@ export function LeadsView({
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#eee] bg-white px-3 py-2">
-        <label className="flex items-center gap-1 text-[12px]">
+      <div className="flex flex-wrap items-center gap-1 border-b border-[#eee] bg-white px-2 py-1">
+        <span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white">
           <input
             className={checkCls}
             type="checkbox"
             checked={slice.length > 0 && slice.every((row) => selected.includes(row.id))}
             onChange={(event) => setSelected(event.target.checked ? slice.map((row) => row.id) : [])}
           />
-        </label>
+          <Menu label={<span className="px-1 text-[9px]">▼</span>} items={[
+            { label: "All on page", onClick: () => setSelected(slice.map((row) => row.id)) },
+            { label: "None", onClick: () => setSelected([]) },
+          ]} />
+        </span>
         <Menu
-          label={<span className="inline-flex h-6 items-center border border-[#b7c4ce] bg-white px-2 text-[12px] text-[#4d6270]">Mass Actions ▾</span>}
+          label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">Mass Actions ▾</span>}
           items={[
             "Send Email to Selected",
             "Send Text to Selected",
@@ -579,79 +593,92 @@ export function LeadsView({
             "Untrash Selected Leads",
           ].map((label) => ({ label, danger: label.startsWith("Trash"), onClick: () => mass(label) }))}
         />
-        <Btn disabled={!dirty} onClick={clearFilters}>Clear All</Btn>
-        <button type="button" title="Refresh filters" className="grid h-[34px] w-[34px] place-items-center bg-[#1c93b5] text-white" onClick={() => chrome.toast("Filters refreshed.")}>↻</button>
-        <select className="h-6 w-[150px] border border-[#ccc] bg-white text-[12px]" value={cincFilter} onChange={(event) => { setCincFilter(event.target.value); setPage(0); }}>
-          <option>None</option>
-          {CINC_FILTERS.map((option) => <option key={option}>{option}</option>)}
-        </select>
-        <Menu
-          label={<span className="inline-flex h-6 w-[170px] items-center border border-[#ccc] bg-white px-2 text-[12px]">Custom Filter: {customFilter} ▾</span>}
-          items={[
-            { label: "Clear", onClick: () => setCustomFilter("None") },
-            ...[...CUSTOM_FILTERS, ...state.customFilters].filter((option) => option.toLowerCase().includes(customQuery.toLowerCase())).map((label) => ({
-              label,
-              onClick: () => setCustomFilter(label),
-            })),
-          ]}
-        />
-        <input className="h-6 w-28 border border-[#ccc] px-1 text-[12px]" placeholder="Find filter" value={customQuery} onChange={(event) => setCustomQuery(event.target.value)} />
-        <Btn disabled={!dirty} title="Save filter" onClick={() => {
-          const name = window.prompt("Name this filter");
-          if (!name) return;
-          update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
-          chrome.toast("Filter saved on this device.");
-        }}>Save</Btn>
-        <button type="button" className="inline-flex h-[26px] items-center gap-1.5 border border-[#d0d0d0] bg-white px-2.5 text-[13px] font-normal text-[#333] shadow-[0_1px_1px_rgba(0,0,0,0.04)]" onClick={() => setDrawer(true)}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 3h12M4 8h8M6 13h4" /></svg>
-          Filters
-        </button>
-        <button type="button" className="ml-auto text-[#666]" title="Print" onClick={() => window.print()}>⎙</button>
-        <Menu
-          header="View Style"
-          label={<span className="text-[12px] font-semibold">VIEW: {view} ▾</span>}
-          items={["Roomy", "Default", "Compact"].map((label) => ({ label, onClick: () => setView(label as typeof view) }))}
-        />
-        <Menu
-          header="Page Size"
-          label={<span className="text-[12px]">{pageSize} ☰ ▾</span>}
-          items={[5, 10, 25, 50, 100].map((size) => ({ label: String(size), onClick: () => { setPageSize(size); setPage(0); } }))}
-        />
-        <span className="text-[12px] text-[#666]">
-          {filtered.length ? `${safePage * pageSize + 1} - ${Math.min(filtered.length, (safePage + 1) * pageSize)} of ${filtered.length}` : "0 of 0"}
-        </span>
-        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
-        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
+        {open && !expanded ? null : (
+          <>
+            <button type="button" className="h-[22px] rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px] text-[#999] disabled:opacity-50" disabled={!dirty} onClick={clearFilters}>Clear All</button>
+            <button type="button" title="Refresh" className="grid h-[22px] w-[22px] place-items-center bg-[#1c93b5] text-[12px] text-white" onClick={() => chrome.toast("Filters refreshed.")}>↻</button>
+            <Menu
+              label={<span className="inline-flex h-[22px] w-[150px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">CINC Filter: {cincFilter} ▾</span>}
+              items={["None", ...CINC_FILTERS].map((label) => ({ label, onClick: () => { setCincFilter(label); setPage(0); } }))}
+            />
+            <Menu
+              label={<span className="inline-flex h-[22px] w-[170px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">Custom Filter: {customFilter} ▾</span>}
+              items={[
+                { label: "None", onClick: () => setCustomFilter("None") },
+                ...[...CUSTOM_FILTERS, ...state.customFilters].filter((option) => option.toLowerCase().includes(customQuery.toLowerCase())).map((label) => ({
+                  label,
+                  onClick: () => setCustomFilter(label),
+                })),
+              ]}
+            />
+            <button type="button" title="Save filter" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#888]" onClick={() => {
+              const name = window.prompt("Name this filter");
+              if (!name) return;
+              update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
+              chrome.toast("Filter saved on this device.");
+            }}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8l3 3v9H3V2zm2 1v4h6V3H5zm1 7h4v3H6v-3z" /></svg>
+            </button>
+            <button type="button" title="Column config" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => setDrawer(true)}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.2" fill="white" /><circle cx="10" cy="8" r="1.2" fill="white" /><circle cx="7" cy="12" r="1.2" fill="white" /></svg>
+            </button>
+            <button type="button" className="ml-auto text-[12px] text-[#1c93b5]" onClick={() => setShowTrash((value) => !value)}>{showTrash ? "Trashed" : ""}</button>
+            <button type="button" title="Print" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => window.print()}>⎙</button>
+            <Menu
+              header="View Style"
+              label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">VIEW: {view} ▾</span>}
+              items={["Roomy", "Default", "Compact"].map((label) => ({ label, onClick: () => setView(label as typeof view) }))}
+            />
+            <Menu
+              header="Page Size"
+              label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">{pageSize} ☰ ▾</span>}
+              items={[5, 10, 25, 50, 100].map((size) => ({ label: String(size), onClick: () => { setPageSize(size); setPage(0); } }))}
+            />
+            <span className="text-[12px] font-bold">
+              {filtered.length ? `${safePage * pageSize + 1} - ${Math.min(filtered.length, (safePage + 1) * pageSize)} of ${filtered.length}` : "0 of 0"}
+            </span>
+            <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
+            <button type="button" className="px-1 text-[#1c93b5] disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
+          </>
+        )}
       </div>
-      <div className="flex items-center justify-between px-3 py-2">
-        <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => setShowTrash((value) => !value)}>
-          {showTrash ? "Showing trashed" : "Showing active"}
-        </button>
-        <Btn kind="teal" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+      {open && !expanded ? null : (
+      <div className="flex items-center justify-end bg-white px-3 py-1">
+        <button type="button" className="inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
           add({ ...input, source: "general" });
           chrome.closeModal();
           chrome.toast("Lead added.");
-        }} />)}>+ Add New Lead</Btn>
+        }} />)}>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
+          Add New Lead
+        </button>
       </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         <div className={`min-w-0 overflow-auto ${open && !expanded ? "w-[205px] shrink-0 border-r border-[#e5e5e5]" : "flex-1"}`}>
           {open && !expanded ? (
-            <ul>
+            <ul className="bg-white">
               {slice.map((row) => (
-                <li key={row.id}>
-                  <a href={href.lead(row.id, tab)} className={`block truncate px-3 py-2 text-[12px] ${row.id === leadId ? "bg-[#d5eaf2] text-[#1c93b5]" : "hover:bg-[#f7f7f7]"}`}>
-                    {row.name}
-                  </a>
+                <li key={row.id} className={`border-b border-[#f0f0f0] ${row.id === leadId ? "bg-[#d5eaf2]" : ""}`}>
+                  <div className="flex gap-1 px-2 py-1">
+                    <input className={`${checkCls} mt-1`} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
+                    <a href={href.lead(row.id, tab)} className="min-w-0 text-[11px]">
+                      <span className="block truncate font-bold text-[#1c93b5]">{row.name}</span>
+                      <span className="block truncate text-[#666]">{row.phone}</span>
+                      <span className="block truncate text-[#666]">{row.email}</span>
+                      <span className="mt-0.5 inline-block rounded-full bg-[#4a4a4a] px-1 text-[9px] text-white">★ {row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
+                    </a>
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
             <table className="w-full min-w-[1100px] border-collapse bg-white text-left">
-              <thead className="text-[10px] font-bold tracking-wide text-[#8a8a8a] uppercase">
+              <thead className="text-[9px] font-bold tracking-wide text-black uppercase">
                 <tr>
-                  {["", "Name/Info", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col) => (
-                    <th key={col} className="border-b border-[#eee] px-2 py-2">{col}</th>
+                  {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
+                    <th key={`${col}-${index}`} className="border-b border-[#eee] px-2 py-2">{col}</th>
                   ))}
                 </tr>
               </thead>
@@ -663,8 +690,8 @@ export function LeadsView({
                     </td>
                     <td className="px-2">
                       <div className="flex items-center gap-1">
-                        <a href={href.lead(row.id)} className="text-[11.5px] font-bold text-[#1c93b5]">{row.name}</a>
-                        <span title={row.verified ? "Verified" : "Unverified"} className={row.verified ? "text-[#1c93b5]" : "text-[#bbb]"}>{row.verified ? "✓" : "○"}</span>
+                        <a href={href.lead(row.id)} className="text-[12px] font-bold text-[#1c93b5]">{row.name}</a>
+                        <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}>{row.verified ? "✓" : "🔒"}</span>
                       </div>
                       <p className="text-[11px]">
                         {row.phone} <span className={row.phoneValid ? "text-[#2e9e5b]" : "text-[#e39b2b]"}>{row.phoneValid ? "✓" : "!"}</span>
@@ -681,19 +708,29 @@ export function LeadsView({
                         {row.email} <span className="text-[#2e9e5b]">✓</span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="rounded-full bg-[#eee] px-1.5 text-[10px]">★ {row.score.toFixed(1)}</span>
+                        <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[10px] text-white">★ {row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
                         <span className={`rounded px-1 text-[10px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
+                      </p>
+                    </td>
+                    <td className="px-1">
+                      <div className="flex flex-col items-center gap-1">
                         {(state.labels[row.id] ?? []).map((label) => (
                           <span key={label} className="grid h-4 w-4 place-items-center rounded-full text-[9px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }}>{label}</span>
                         ))}
-                      </p>
+                        <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => {
+                          const label = window.prompt("Label letter");
+                          if (!label) return;
+                          const letter = label.slice(0, 1).toUpperCase();
+                          update((current) => ({ ...current, labels: { ...current.labels, [row.id]: [...new Set([...(current.labels[row.id] ?? []), letter])] } }));
+                        }}>+</button>
+                      </div>
                     </td>
                     <td className="px-2">
                       <Menu
-                        label={<span className={`inline-flex rounded border px-1 text-[10px] font-semibold uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
+                        label={<span className={`inline-flex max-w-[92px] truncate rounded border px-1 text-[10px] font-semibold uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
                         items={PIPELINES.map((stage) => ({ label: stage, onClick: () => setPipeline(row.id, stage) }))}
                       />
-                      <div className="mt-1 hidden group-hover:block">
+                      <div className="mt-1">
                         <Menu
                           label={<span className="text-[11px] text-[#1c93b5]">Quick Actions ▾</span>}
                           items={[
@@ -708,21 +745,26 @@ export function LeadsView({
                       </div>
                     </td>
                     <td className="px-2 text-[11px]">{row.registered}<br />{row.source}</td>
-                    <td className="px-2 text-[11px]">{row.price}<br />{row.city}</td>
+                    <td className="px-2 text-[11px]">{row.price}<br />{row.city}<br /><span className="text-[9px] text-[#999]">⌂ PRE</span></td>
                     <td className="px-2 text-[11px]">{row.timeframe}</td>
                     <td className="px-2 text-[11px]">{row.lastLogin}<br />{row.logins} Total</td>
-                    <td className="px-2 text-[11px]">{row.lastTouch}</td>
-                    <td className={`px-2 text-[11px] ${row.overdue ? "text-[#d9363e]" : ""}`}>{row.nextReminder}</td>
-                    <td className="px-2 text-[10px]">
-                      <span className="text-[#2e9e5b]">{row.views} Views</span><br />
-                      <span className="text-[#e39b2b]">{row.saved} Saved</span><br />
-                      <span className="text-[#d9363e]">{row.fav} Fav</span> · <span className="text-[#1c93b5]">{row.inq} Inq</span>
-                    </td>
                     <td className="px-2 text-[10px] leading-4">
+                      <span title="Call">📞 {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
+                      <span title="Email">✉ -</span><br />
+                      <span title="Text">💬 -</span>
+                    </td>
+                    <td className={`px-2 text-[11px] ${row.overdue ? "text-[#d9363e]" : ""}`}>{row.nextReminder}</td>
+                    <td className="px-2 text-[10px] leading-4">
+                      <span className="text-[#2e9e5b]">👁 {row.views}</span><br />
+                      <span className="text-[#e39b2b]">🔖 {row.saved}</span><br />
+                      <span className="text-[#d9363e]">♥ {row.fav}</span><br />
+                      <span className="text-[#1c93b5]">? {row.inq}</span>
+                    </td>
+                    <td className="px-2 text-[8px] leading-4 tracking-wide uppercase">
                       {(["agent", "partner", "listing"] as const).map((slot) => (
                         <Menu
                           key={slot}
-                          label={<span className="block text-[#1c93b5] uppercase">{row.assigned[slot]} ▾</span>}
+                          label={<span className="block text-[#1c93b5]">{row.assigned[slot]} ▾</span>}
                           items={(slot === "listing" ? LISTING_AGENTS : TEAM).map((name) => ({
                             label: name,
                             onClick: () => update((current) => ({
@@ -833,24 +875,27 @@ function LeadDetail({
     { id: "plips", label: "AutoTracks" },
   ];
 
+  const calls = state.calls.filter((call) => call.leadId === row.id && call.kind === "call").length;
+  const texts = state.calls.filter((call) => call.leadId === row.id && call.kind === "text").length;
+  const rail = [
+    ["Call", "☎", () => { onLog(row, "call", "Call logged"); chrome.toast(`Called ${row.phone}.`); }],
+    ["Dialer", "▦", () => chrome.toast("Dialer opened for this lead. Use the globe panel to place the next sample call.")],
+    ["Text", "💬", () => composer.text(row.phone, (value) => { onLog(row, "text", "Text sent", value.body); chrome.toast("Text sent."); })],
+    ["Email", "✉", () => composer.email(row.email, (sent, value) => { onLog(row, "email", sent ? "Email sent" : "Draft", value.body); chrome.toast(sent ? "Email sent." : "Draft saved."); })],
+    ["Etta", "✦", () => chrome.openModal(<ModalFrame title="Etta" onClose={chrome.closeModal}><p className="text-[13px]">Etta is CINC&apos;s assistant. This demo saved a note that you opened Etta for {row.name}.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { onLog(row, "note", "Opened Etta", "Asked Etta for a summary."); chrome.closeModal(); }}>Save note</Btn></div></ModalFrame>)],
+  ] as const;
   return (
-    <div className="flex min-w-0 flex-1 bg-[#f5f5f5]">
+    <div className="relative flex min-w-0 flex-1 bg-[#f5f5f5]">
       {!expanded ? (
-        <div className="flex w-[34px] shrink-0 flex-col items-center gap-3 border-r border-[#eee] bg-white py-3">
-          {[
-            ["Call", () => { onLog(row, "call", "Call logged"); chrome.toast(`Called ${row.phone}.`); }],
-            ["Dialer", () => chrome.toast("Dialer is disabled on this lead. Open Dialer from the globe sidebar.")],
-            ["Text", () => composer.text(row.phone, (value) => { onLog(row, "text", "Text sent", value.body); chrome.toast("Text sent."); })],
-            ["Email", () => composer.email(row.email, (sent, value) => { onLog(row, "email", sent ? "Email sent" : "Draft", value.body); chrome.toast(sent ? "Email sent." : "Draft saved."); })],
-            ["Etta", () => chrome.openModal(<ModalFrame title="Etta" onClose={chrome.closeModal}><p className="text-[13px]">Etta is CINC&apos;s assistant. This demo saved a note that you opened Etta for {row.name}.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { onLog(row, "note", "Opened Etta", "Asked Etta for a summary."); chrome.closeModal(); }}>Save note</Btn></div></ModalFrame>)],
-          ].map(([label, action]) => (
-            <button key={label as string} type="button" className={`grid place-items-center text-[#1c93b5] ${label === "Dialer" ? "opacity-40" : ""}`} onClick={action as () => void}>
-              <span className="grid h-[22px] w-[22px] place-items-center rounded-full border border-[#1c93b5] text-[10px]">{(label as string).slice(0, 1)}</span>
-              <span className="text-[8px]">{label as string}</span>
+        <div className="absolute top-10 left-0 z-20 flex w-12 -translate-x-1/2 flex-col items-center gap-2">
+          {rail.map(([label, icon, action]) => (
+            <button key={label} type="button" className="grid place-items-center text-[#1c93b5]" onClick={action}>
+              <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#1c93b5] text-[11px] text-white">{icon}</span>
+              <span className="text-[8px]">{label}</span>
             </button>
           ))}
           <Menu
-            label={<span className="grid place-items-center text-[#1c93b5]"><span className="grid h-[22px] w-[22px] place-items-center rounded-full border border-[#1c93b5] text-[10px]">+</span><span className="text-[8px]">More</span></span>}
+            label={<span className="grid place-items-center text-[#1c93b5]"><span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#1c93b5] text-[12px] text-white">⋯</span><span className="text-[8px]">More</span></span>}
             items={[
               { label: "Add Reminder", onClick: () => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />) },
               { label: "Add Appointment", onClick: () => chrome.openModal(<ApptModal leadId={row.id} onClose={chrome.closeModal} />) },
@@ -862,27 +907,19 @@ function LeadDetail({
         </div>
       ) : null}
       {!expanded ? (
-        <aside className="w-[215px] shrink-0 overflow-auto border-r border-[#eee] bg-white">
-          <div className="flex items-center justify-between border-b border-[#eee] px-2 py-1 text-[#1c93b5]">
-            <a href={href.leads} aria-label="Close">×</a>
+        <aside className="w-[215px] shrink-0 overflow-auto border-r border-[#eee] bg-white pl-4">
+          <div className="flex items-center justify-between border-b border-[#eee] px-2 py-1 text-[#888]">
+            <a href={href.leads} aria-label="Close">✕</a>
             <button type="button" onClick={onExpand} aria-label="Expand">⤢</button>
-            <a href={prev ? href.lead(prev.id, tab) : href.leads} className={prev ? "" : "pointer-events-none opacity-30"}>‹</a>
-            <a href={next ? href.lead(next.id, tab) : href.leads} className={next ? "" : "pointer-events-none opacity-30"}>›</a>
+            <a href={prev ? href.lead(prev.id, tab) : href.leads} className={prev ? "text-[#1c93b5]" : "pointer-events-none opacity-30"}>‹</a>
+            <a href={next ? href.lead(next.id, tab) : href.leads} className={next ? "text-[#1c93b5]" : "pointer-events-none opacity-30"}>›</a>
           </div>
-          <div className="px-3 py-3">
-            <div className="flex items-center gap-2">
-              <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-[#d9d9d9] text-[11px] font-bold">{row.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
-              <div>
-                <p className="text-[14px] font-bold">{row.name}</p>
-                <Menu
-                  label={<span className="text-[11px] text-[#1c93b5]">{row.verified ? "Verified & unlocked ▾" : "Unverified ▾"}</span>}
-                  items={["Verified & unlocked", "Unverified & unlocked", "Unverified & locked"].map((label) => ({ label, onClick: () => chrome.toast(label) }))}
-                />
-              </div>
-            </div>
-            <p className="mt-2 text-[12px]">{row.phone}</p>
-            <p className="text-[12px] text-[#1c93b5]">{row.email}</p>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+          <div className="px-3 py-3 text-center">
+            <span className="mx-auto grid h-7 w-7 place-items-center rounded-full border border-[#2f6fed] text-[11px] font-bold">{row.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
+            <p className="mt-1 text-[13px] font-bold">{row.name} <span className="text-[#2f6fed]">{row.verified ? "✓" : "🔒"}</span> ▾</p>
+            <p className="text-[12px]">{row.phone} <span className="text-[#2e9e5b]">✓</span></p>
+            <p className="text-[12px]">{row.email} <span className="text-[#2e9e5b]">✓</span></p>
+            <div className="mt-2 space-y-1 text-left text-[11px]">
               {["Buyer", "Seller", "Partial", "Recruit"].map((type) => (
                 <label key={type} className="flex items-center gap-1">
                   <input type="radio" name={`type-${row.id}`} checked={row.type === type} onChange={() => update((current) => ({ ...current, leadType: { ...current.leadType, [row.id]: type } }))} />
@@ -894,12 +931,12 @@ function LeadDetail({
               const name = window.prompt("Saved search name");
               if (!name) return;
               update((current) => ({ ...current, savedSearches: { ...current.savedSearches, [row.id]: [...(current.savedSearches[row.id] ?? []), name] } }));
-            }}>+ Saved Search</button>
-            <p className="mt-2 text-[11px] text-[#666]">{row.views} views · {row.saved} saved · {row.fav} fav · {row.inq} inq</p>
+            }}>🔍 + Saved Search</button>
+            <p className="mt-2 flex justify-center gap-2 text-[11px] text-[#666]"><span>👁 {row.views}</span><span>🔖 {row.saved}</span><span>♥ {row.fav}</span><span>? {row.inq}</span><span>📎 0</span></p>
             <div className="mt-2">
               <Menu
                 className="w-full"
-                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1 text-[12px] text-white">{row.pipeline} ▾</span>}
+                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1 text-[12px] text-white">{row.pipeline} ({row.pipeline === "Contacted" ? "10/20/26" : "—"}) ▾</span>}
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
@@ -909,26 +946,31 @@ function LeadDetail({
               const letter = label.slice(0, 1).toUpperCase();
               update((current) => ({ ...current, labels: { ...current.labels, [row.id]: [...new Set([...(current.labels[row.id] ?? []), letter])] } }));
             }}>+ Label</button>
-            <div className="mt-3 flex items-center justify-between text-[12px] font-semibold">
+            <div className="mt-3 flex items-center justify-between text-left text-[12px] font-semibold">
               <span>Active Deals</span>
               <a className="font-normal text-[#1c93b5]" href={href.dealsPurchases}>+ Add Deal</a>
             </div>
-            {deals.length ? deals.map((deal) => <p key={deal.id} className="text-[12px]">{deal.address}</p>) : <p className="text-[11px] text-[#888]">Track the revenue opportunities associated with this lead. Recently added deals? Try to refresh.</p>}
-            <div className="mt-3 bg-[#a7d3df] px-2 py-1 text-[12px] font-bold">Communication</div>
-            <p className="px-2 py-1 text-[11px]">Last Touch {row.lastTouch} · Last Login {row.lastLogin}</p>
-            <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-[12px] font-bold">Email Information</div>
-            <p className="px-2 py-1 text-[11px]">Clicks 0 · Opens 0 · Alert Opens 0% · Phone</p>
-            <p className="mt-3 text-[11px] text-[#666]">Registered {row.registered} ago from {row.source}</p>
+            {deals.length ? deals.map((deal) => <p key={deal.id} className="text-left text-[12px]">{deal.address}</p>) : <p className="text-left text-[11px] text-[#888]">Track the revenue opportunities associated with this lead.</p>}
+            <div className="mt-3 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Communication</div>
+            <div className="grid grid-cols-3 gap-1 bg-[#e7f4f8] p-2 text-[10px]">
+              {[["Last Touch", row.lastTouch], ["Last Login", row.lastLogin], ["Calls", String(calls)], ["Texts", String(texts)], ["Alerts", "0"], ["Emails", "0"]].map(([label, value]) => (
+                <div key={label}><p className="text-[#666]">{label}</p><p className="text-[16px] font-semibold text-[#243238]">{value}</p></div>
+              ))}
+            </div>
+            <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Email Information</div>
+            <div className="grid grid-cols-2 gap-1 bg-[#e7f4f8] p-2 text-left text-[10px]">
+              <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>Phone</b></p>
+            </div>
+            <p className="mt-3 flex items-center gap-1 text-left text-[11px] text-[#666]">🪪 Registered {row.registered} ago from {row.source}</p>
           </div>
         </aside>
       ) : null}
       <section className="min-w-0 flex-1 overflow-auto p-3">
-        <textarea
-          className="mb-2 h-[30px] w-full border border-[#d5d5d5] px-2 py-1 text-[13px] outline-none focus:border-[#1c93b5]"
+        <input
+          className="mb-2 h-[22px] w-full rounded border border-[#d5d5d5] px-2 text-[12px] outline-none focus:border-[#1c93b5]"
           placeholder="Add a note..."
           onKeyDown={(event) => {
             if (event.key !== "Enter") return;
-            event.preventDefault();
             const body = event.currentTarget.value.trim();
             if (!body) return;
             onLog(row, "note", "Note added", body);
@@ -936,70 +978,87 @@ function LeadDetail({
             chrome.toast("Note added.");
           }}
         />
-        <div className="mb-3 grid grid-cols-6 border border-[#e5e5e5] bg-white">
+        <div className="mb-3 grid grid-cols-6 border border-[#e5e5e5] bg-[#fafafa]">
           {tabs.map((item) => (
-            <a key={item.id} href={href.lead(row.id, item.id)} className={`border-t-2 py-2 text-center text-[11px] ${tab === item.id ? "border-[#1c93b5] text-[#1c93b5]" : "border-transparent text-[#666]"}`}>
+            <a key={item.id} href={href.lead(row.id, item.id)} className={`border-t-2 bg-white py-2 text-center text-[11px] ${tab === item.id ? "border-[#1c93b5] text-[#1c93b5]" : "border-transparent text-[#666]"}`}>
               {item.label}
             </a>
           ))}
         </div>
         {tab === "activity" ? (
           <div>
-            <div className="mb-2 flex gap-2">
-              <Btn onClick={() => chrome.toast("Activity filters: notes, calls, emails, and system events are all shown.")}>Filters</Btn>
-              <Btn onClick={() => chrome.toast(state.signInAlert[row.id] ? "Subscribed to sign-in alerts." : "Not subscribed. Toggle Sign-In Alert from Mass Actions.")}>Subscriptions</Btn>
-              <span className="ml-auto text-[12px] text-[#888]">Pinned ▾</span>
+            <div className="mb-2 flex items-center gap-3">
+              <button type="button" className="text-[12px] font-bold" onClick={() => chrome.toast("Activity filters: notes, calls, emails, and system events are all shown.")}>Filters</button>
+              <button type="button" className="text-[12px] font-bold" onClick={() => chrome.toast(state.signInAlert[row.id] ? "Subscribed to sign-in alerts." : "Not subscribed. Toggle Sign-In Alert from Mass Actions.")}>Subscriptions</button>
+              <span className="ml-auto text-[12px] text-[#888]">Pinned</span>
             </div>
-            {notes.map((note) => (
-              <article key={note.id} className="mb-2 border border-[#e5e5e5] border-l-4 border-l-[#1c93b5] bg-white p-3">
-                <p className="text-[13px] font-semibold">Note Added</p>
-                <p className="text-[12px] text-[#888]">{note.at} · {CRM_AGENT.name}</p>
+            {notes[0] ? (
+              <article className="mb-3 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+                <p className="text-[13px] font-bold">📝 Note Added</p>
+                <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
+                <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{notes[0].body}</p>
+                <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.toast("Edit the note from the box above.")}>Edit Note</button></div>
+              </article>
+            ) : null}
+            <p className="my-2 border-t border-dotted border-[#ccc] pt-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
+            <div className="ml-2 border-l border-[#ddd] pl-4">
+            {notes.slice(1).map((note) => (
+              <article key={note.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+                <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#1c93b5]" />
+                <p className="text-[13px] font-bold">👤 Note Added</p>
+                <p className="text-[11px] text-[#888]">{friendlyWhen(note.at)} by {CRM_AGENT.name}</p>
                 <p className="mt-1 text-[13px]">{note.body}</p>
               </article>
             ))}
-            <p className="my-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
             {(crm?.activity ?? site?.activity ?? []).map((item) => (
-              <article key={item.id} className="mb-2 border border-[#e5e5e5] bg-white p-3">
-                <p className="text-[13px] font-semibold">{item.title}</p>
+              <article key={item.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+                <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#bbb]" />
+                <p className="text-[13px] font-bold">👤 {item.title}</p>
                 {"body" in item && item.body ? <p className="text-[12px]">{item.body}</p> : null}
-                <p className="text-[11px] text-[#999]">{item.at}</p>
+                <p className="text-[11px] text-[#999]">{friendlyWhen(item.at)}{"actor" in item && item.actor ? ` by ${item.actor}` : ""}</p>
               </article>
             ))}
-            <p className="text-[13px] text-[#1c93b5]">Thats Everything!</p>
+            </div>
+            <p className="py-4 text-center text-[12px] text-[#999]">That&apos;s Everything!</p>
           </div>
         ) : null}
         {tab === "info" ? <InfoTab row={row} /> : null}
         {tab === "plans" ? (
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-semibold">Reminders</h3>
+            <div className="mb-2 flex items-center justify-between border-b border-[#ddd] pb-1">
+              <h3 className="font-bold">Reminders</h3>
               <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add a Reminder</button>
             </div>
             {reminders.length ? reminders.map((item) => (
-              <article key={item.id} className="mb-2 border border-[#eee] border-l-4 border-l-[#e39b2b] bg-white p-3">
-                <p className="text-[11px] font-bold text-[#e39b2b]">{item.day}</p>
-                <p className="text-[13px]">{item.title}</p>
-                <p className="text-[11px] text-[#888]">Notifying {CRM_AGENT.name} @ {item.due}</p>
-                <label className="mt-1 flex items-center gap-2 text-[12px]">
-                  <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
-                  Completed
-                </label>
-                <div className="mt-2 flex gap-2">
-                  <Btn kind="danger" onClick={() => update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) }))}>Delete</Btn>
-                  <Btn kind="teal" onClick={() => chrome.toast("Reminder updated.")}>Edit</Btn>
+              <article key={item.id} className="mb-2 flex border border-[#eee] border-l-4 border-l-[#e39b2b] bg-white p-3 shadow-sm">
+                <div className="flex-1">
+                  <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
+                  <p className="text-[11px] text-[#888]">Assigned to {CRM_AGENT.name}</p>
+                  <p className="text-[11px] text-[#888]">Created {item.due}</p>
+                  <p className="text-[13px]">{item.title}</p>
+                  <label className="mt-1 flex items-center gap-2 text-[12px]">
+                    <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
+                    Completed
+                  </label>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button type="button" className="border border-[#d9363e] px-2 py-1 text-[11px] text-[#d9363e]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) }))}>DELETE</button>
+                  <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[11px] text-white" onClick={() => chrome.toast("Reminder updated.")}>EDIT</button>
                 </div>
               </article>
-            )) : <p className="text-[13px] text-[#888]">No reminders.</p>}
-            <h3 className="mt-4 font-semibold">Plans</h3>
-            <p className="text-[13px] text-[#888]">No plans assigned.</p>
-            <button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Plan started for this lead.")}>⊕ Start Plan</button>
+            )) : <p className="text-[13px]">No reminders.</p>}
+            <div className="mt-4 mb-2 flex items-center justify-between border-b border-[#ddd] pb-1">
+              <h3 className="font-bold">Plans</h3>
+              <button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Plan started for this lead.")}>⊕ Start Plan</button>
+            </div>
+            <p className="text-[13px]">No plans assigned.</p>
           </div>
         ) : null}
         {tab === "appointments" ? (
           <div>
-            <div className="mb-2 flex justify-between"><h3 className="font-semibold">Appointments</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add Appointment</button></div>
-            {appts.filter((item) => !item.request).length ? appts.filter((item) => !item.request).map((item) => <p key={item.id} className="mb-1 bg-white p-2">{item.title} · {item.when}</p>) : <p className="text-[13px] text-[#888]">No Appointments.</p>}
-            <div className="mt-4 mb-2 flex justify-between"><h3 className="font-semibold">Appointment Requests</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} request onClose={chrome.closeModal} />)}>⊕ Add Appointment Request</button></div>
+            <div className="mb-2 flex justify-between border-b border-[#ddd] pb-1"><h3 className="font-bold">Appointments</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add Appointment</button></div>
+            {appts.filter((item) => !item.request).length ? appts.filter((item) => !item.request).map((item) => <p key={item.id} className="mb-1 bg-white p-2">{item.title} · {item.when}</p>) : <p className="text-[13px]">No Appointments.</p>}
+            <div className="mt-4 mb-2 flex justify-between border-b border-[#ddd] pb-1"><h3 className="font-bold">Appointment Requests</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} request onClose={chrome.closeModal} />)}>⊕ Add Appointment Request</button></div>
             {appts.filter((item) => item.request).map((item) => <p key={item.id} className="mb-1 bg-white p-2">{item.title}</p>)}
           </div>
         ) : null}
@@ -1010,16 +1069,18 @@ function LeadDetail({
               <span className="rounded-full bg-[#1c93b5] px-2 py-0.5 text-[12px] text-white">AutoTracks</span>
               <button type="button" className="grid h-7 w-7 place-items-center rounded-full bg-[#1c93b5] text-white" onClick={() => chrome.toast("AutoTrack added.")}>+</button>
             </div>
-            <article className="border border-[#e5e5e5] bg-white p-3">
-              <div className="flex justify-between"><p className="font-semibold">Follow Up Reminders</p><span className="text-[10px] text-[#999]">CANCELLED</span></div>
-              <p className="text-[12px] text-[#888]">General | Started on Oct 18, 2026</p>
+            <article className="relative border border-[#e5e5e5] bg-white p-3 pl-8 shadow-sm">
+              <button type="button" className="absolute top-6 -left-3 grid h-6 w-6 place-items-center rounded-full bg-[#bbb] text-white" onClick={() => chrome.toast("AutoTrack removed from this lead.")}>✕</button>
+              <span className="absolute top-0 right-3 bg-[#666] px-2 py-1 text-[10px] text-white">CANCELLED</span>
+              <p className="font-bold">Follow Up Reminders</p>
+              <p className="text-[12px] text-[#888]">General | Started on Oct 18, 2026 at 2:10 PM</p>
               <div className="my-2 h-1.5 bg-[#eee]"><div className="h-full w-0 bg-[#1c93b5]" /></div>
               <p className="text-[12px]">0 of 6 steps completed</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <p className="bg-[#e7f5f8] p-2 text-[12px]">Triggered by New Lead / Start Trigger(s)</p>
-                <p className="bg-[#e7f5f8] p-2 text-[12px]">Triggered by Pipeline Complete - Contacted / Stop Trigger(s)</p>
+                <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by New Lead</p><p className="text-[11px] text-[#888]">Start Trigger(s)</p></div>
+                <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by Pipeline Complete - Contacted</p><p className="text-[11px] text-[#888]">Stop Trigger(s)</p></div>
               </div>
-              <button type="button" className="mt-2 text-[12px] text-[#1c93b5]" onClick={() => chrome.toast("Steps: Day 1 call, Day 2 email, Day 4 text, Day 7 call, Day 10 email, Day 14 close.")}>View More</button>
+              <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.toast("Steps: Day 1 call, Day 2 email, Day 4 text, Day 7 call, Day 10 email, Day 14 close.")}>View More</button></div>
             </article>
           </div>
         ) : null}
@@ -1037,15 +1098,29 @@ function InfoTab({ row }: { row: Row }) {
     first: saved.first || row.name.split(" ")[0] || "",
     last: saved.last || row.name.split(" ").slice(1).join(" "),
     email: saved.email || row.email,
+    email2: saved.email2 || "",
     cell: saved.cell || row.phone,
+    home: saved.home || "",
+    work: saved.work || "",
+    address: saved.address || "",
     city: saved.city || row.city,
+    state: saved.state || "BC",
+    zip: saved.zip || "",
+    timezone: saved.timezone || "America/Vancouver",
+    recruit: saved.recruit || (row.type === "Recruit" ? "Yes" : "No"),
+    sold: saved.sold || "",
     timeframe: saved.timeframe || row.timeframe,
   });
-  const fields: [string, keyof typeof form][] = [["First name", "first"], ["Last name", "last"], ["Email", "email"], ["Cell phone", "cell"], ["City", "city"], ["Timeframe to buy", "timeframe"]];
+  const fields: [string, keyof typeof form][] = [
+    ["First Name", "first"], ["Last Name", "last"], ["Email", "email"], ["Secondary Contact Email", "email2"],
+    ["Cell Phone", "cell"], ["Home Phone", "home"], ["Work Phone", "work"], ["Address", "address"],
+    ["City", "city"], ["State", "state"], ["Zip", "zip"], ["Timezone", "timezone"],
+    ["Recruit Lead", "recruit"], ["Sold Price", "sold"],
+  ];
   return (
-    <div className="bg-white p-3">
+    <div className="border border-[#e5e5e5] bg-white p-3 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold">Details</h3>
+        <h3 className="font-semibold text-[#1c93b5]">Details</h3>
         <Btn kind="teal" onClick={() => {
           if (edit) {
             update((current) => ({ ...current, info: { ...current.info, [row.id]: form } }));
@@ -1056,27 +1131,41 @@ function InfoTab({ row }: { row: Row }) {
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <p className="mb-2 text-[12px] font-semibold">Key Info</p>
+          <p className="mb-2 border-b border-[#ddd] pb-1 text-[12px] font-semibold">Key Info</p>
           {fields.map(([label, key]) => (
             <div key={key} className="mb-2">
-              <p className="text-[10px] tracking-wide text-[#888] uppercase">{label}</p>
-              {edit ? <input className={inputCls} value={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.value })} /> : <p className="text-[12px]">{form[key] || "—"}</p>}
+              <p className="text-[10px] font-bold tracking-wide text-[#888] uppercase">{label}</p>
+              {edit ? <input className={inputCls} value={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.value })} /> : <p className="text-[13px]">{form[key] || "—"}</p>}
             </div>
           ))}
-          <Btn kind="danger" onClick={() => chrome.toast("Trash this lead from Quick Actions.")}>Trash</Btn>
-          <p className="mt-3 text-[12px] text-[#888]">Social Info — No social info found.</p>
+          <button type="button" className="mt-2 inline-flex items-center gap-1 bg-[#eee] px-2 py-1 text-[12px] text-[#555]" onClick={() => chrome.toast("Use Quick Actions to trash this lead.")}>🗑 Trash</button>
+          <p className="mt-3 border-b border-[#ddd] pb-1 text-[12px] font-semibold">Social Info</p>
+          <p className="mt-1 text-[12px] text-[#888]">No social info found.</p>
         </div>
         <div className="text-[12px]">
-          <p className="mb-2 font-semibold">Assignment</p>
-          <p>Agent assigned: {row.assigned.agent}</p>
-          <p>Partner assigned: {row.assigned.partner}</p>
-          <p>Listing agent assigned: {row.assigned.listing}</p>
-          <p className="mt-3 font-semibold">User Data</p>
-          <p>Registered: {row.registered}</p>
-          <p>Source: {row.source}</p>
-          <p>Login count: {row.logins}</p>
-          <p>Last touch: {row.lastTouch}</p>
-          <p className="mt-3 text-[11px] text-[#999]">Sensitive fields stay on this device and are not sent to a server.</p>
+          <p className="mb-2 border-b border-[#ddd] pb-1 font-semibold">Assignment</p>
+          <p><button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Reassign from the Assigned To column.")}>Agent Assigned ▾</button> {row.assigned.agent}</p>
+          <p><button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Partner stays Unassigned in this demo.")}>Partner Assigned ▾</button> {row.assigned.partner}</p>
+          <p><button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Listing agent stays Unassigned in this demo.")}>Listing Agent Assigned ▾</button> {row.assigned.listing}</p>
+          <p className="mt-3 border-b border-[#ddd] pb-1 font-semibold">User Data</p>
+          {[
+            ["Registered", row.registered],
+            ["Source", row.source],
+            ["Source Page", "Homepage"],
+            ["Timeframe to Buy (original)", form.timeframe],
+            ["Inquiry Count", String(row.inq)],
+            ["Last Login", row.lastLogin],
+            ["Login Count", String(row.logins)],
+            ["Last Touch", row.lastTouch],
+            ["DISC Profile", "—"],
+            ["Favorite City", row.city],
+            ["Pre-Qualified", "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="mb-1">
+              <p className="text-[10px] font-bold tracking-wide text-[#888] uppercase">{label}</p>
+              <p>{value}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1098,22 +1187,26 @@ function Conversation({
   return (
     <div>
       <span className="rounded-full bg-[#1c93b5] px-3 py-1 text-[12px] text-white">Text</span>
-      <textarea className="mt-2 h-20 w-full border border-[#ccc] p-2 text-[13px]" placeholder="Enter message" maxLength={320} value={body} onChange={(event) => setBody(event.target.value)} />
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-[12px] text-[#888]">{body.length}/320</span>
-        <Btn onClick={() => { setMuted((value) => !value); chrome.toast(muted ? "Unmuted." : "Muted."); }}>Mute</Btn>
-        <Btn kind="teal" onClick={() => { if (!body.trim()) return; onLog(row, "text", "Text sent", body); setBody(""); chrome.toast("Reply sent."); }}>Reply</Btn>
+      <div className="mt-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+        <input className="h-8 w-full border border-[#eee] px-2 text-[13px]" placeholder="Enter message" maxLength={320} value={body} onChange={(event) => setBody(event.target.value)} />
+        <div className="mt-2 flex items-center gap-2 bg-[#f6f6f6] p-2">
+          <span className="text-[12px] text-[#888]">{body.length}/320</span>
+          <button type="button" disabled className="ml-auto bg-[#ddd] px-3 py-1 text-[12px] text-[#888]" onClick={() => { setMuted((value) => !value); chrome.toast(muted ? "Unmuted." : "Muted."); }}>Mute</button>
+          <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => { if (!body.trim() || muted) return; onLog(row, "text", "Text sent", body); setBody(""); chrome.toast("Reply sent."); }}>Reply</button>
+        </div>
       </div>
-      <p className="text-[11px] text-[#999]">Message and data rates may apply. See more in the public terms.</p>
+      <p className="mt-2 text-[11px] text-[#999]">Images shown below were sent directly by a lead via SMS/MMS. See more</p>
       {texts.length ? texts.map((text) => <p key={text.id} className="mt-2 bg-white p-2 text-[12px]">{text.at}</p>) : (
-        <div className="py-8 text-center">
-          <svg viewBox="0 0 80 64" className="mx-auto h-16 w-20 text-[#7ec8e0]">
-            <ellipse cx="40" cy="28" rx="18" ry="16" fill="currentColor" />
-            <circle cx="33" cy="26" r="2" fill="#243238" />
-            <circle cx="47" cy="26" r="2" fill="#243238" />
-            <rect x="28" y="44" width="24" height="12" rx="2" fill="#1c93b5" />
+        <div className="mt-3 border border-[#eee] bg-white py-10 text-center">
+          <svg viewBox="0 0 120 90" className="mx-auto h-24 w-32 text-[#b7e0ea]">
+            <ellipse cx="60" cy="48" rx="36" ry="18" fill="currentColor" />
+            <circle cx="46" cy="36" r="14" fill="#8fd0c8" />
+            <circle cx="70" cy="34" r="16" fill="#7ec8e0" />
+            <rect x="40" y="52" width="40" height="22" rx="8" fill="#6bb7a8" />
+            <circle cx="52" cy="40" r="2" fill="#243238" />
+            <circle cx="64" cy="40" r="2" fill="#243238" />
           </svg>
-          <p className="mt-2 text-[14px] text-[#666]">It&apos;s quiet in here.</p>
+          <p className="mt-2 text-[16px] text-[#888]">It&apos;s quiet in here.</p>
         </div>
       )}
     </div>

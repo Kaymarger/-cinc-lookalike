@@ -4,13 +4,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT } from "@/lib/cinc-crm";
 import { ChromeContext } from "./chrome-context";
 import { href, sectionOf, titleMenu, titleOf, type CincRoute, type NavSection } from "./route";
-import { Caret } from "./ui";
-
 const NAV: {
   id: NavSection;
   label: string;
   href: string;
-  dot?: boolean;
+  badge?: boolean;
   children?: { label: string; href: string }[];
 }[] = [
   {
@@ -22,21 +20,13 @@ const NAV: {
       { label: "Call Summary", href: href.call },
     ],
   },
-  { id: "leads", label: "Leads", href: href.leads, dot: true },
-  {
-    id: "deals",
-    label: "Deals",
-    href: href.dealsPurchases,
-    children: [
-      { label: "Purchases", href: href.dealsPurchases },
-      { label: "Listings", href: href.dealsListings },
-    ],
-  },
+  { id: "leads", label: "Leads", href: href.leads, badge: true },
+  { id: "deals", label: "Deals", href: href.dealsPurchases },
   {
     id: "comms",
     label: "Communications",
     href: href.inbox,
-    dot: true,
+    badge: true,
     children: [
       { label: "Inbox", href: href.inbox },
       { label: "Sent", href: href.sent },
@@ -51,7 +41,7 @@ const NAV: {
     href: href.autotracks,
     children: [
       { label: "AutoTracks", href: href.autotracks },
-      { label: "Behavioral Comms", href: href.behavioral },
+      { label: "Behavioral Messaging", href: href.behavioral },
       { label: "CINC AI", href: href.ai },
     ],
   },
@@ -73,26 +63,94 @@ const NAV: {
     children: [
       { label: "Seller Suite", href: href.seller },
       { label: "Landing Pages", href: href.landing },
+      { label: "Buyers Pages", href: href.landingCat("buyers") },
+      { label: "Sellers Pages", href: href.landingCat("sellers") },
+      { label: "Contact Pages", href: href.landingCat("contact") },
+      { label: "Add Landing Page", href: "/dashboard/landing/#add" },
     ],
   },
 ];
 
+function childOn(label: string, route: CincRoute) {
+  if (label === "Agent") return route.view === "launchpad";
+  if (label === "Call Summary") return route.view === "callsummary";
+  if (route.view === "inbox") {
+    if (label === "Inbox") return route.folder === "inbox";
+    if (label === "Sent") return route.folder === "sent";
+    if (label === "Drafts") return route.folder === "drafts";
+    if (label === "Trashed") return route.folder === "trashed";
+    if (label === "Templates") return route.folder === "templates";
+  }
+  if (label === "AutoTracks") return route.view === "autotracks";
+  if (label === "Behavioral Messaging") return route.view === "behavioral";
+  if (label === "CINC AI") return route.view === "ai";
+  if (route.view === "properties") {
+    if (label === "Properties") return route.sub === "list" || route.sub === "add";
+    if (label === "Text Responder") return route.sub === "text";
+    if (label === "Upcoming Open Houses") return route.sub === "open";
+    if (label === "Virtual Open Houses") return route.sub === "virtual";
+  }
+  if (label === "Seller Suite") return route.view === "seller";
+  if (route.view === "landing") {
+    if (label === "Landing Pages") return route.category === "all";
+    if (label === "Buyers Pages") return route.category === "buyers";
+    if (label === "Sellers Pages") return route.category === "sellers";
+    if (label === "Contact Pages") return route.category === "contact";
+  }
+  return false;
+}
+
+function SubIcon({ label }: { label: string }) {
+  const common = "h-3 w-3 shrink-0";
+  if (label === "Inbox") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M2 3h12v8H2zM2 8h3l1 2h4l1-2h3" />
+      </svg>
+    );
+  }
+  if (label === "Sent") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M2 8 14 2 9 14l-1.5-4.5L2 8z" />
+      </svg>
+    );
+  }
+  if (label === "Drafts") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 13h7l3-3V3H3v10zM10 13v-3h3" />
+      </svg>
+    );
+  }
+  if (label === "Trashed") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 4h10M6 4V3h4v1M5 4l.6 9h4.8L11 4" />
+      </svg>
+    );
+  }
+  return null;
+}
+
 function Logo() {
   return (
     <span className="flex items-center gap-2">
-      <span className="grid grid-cols-2 gap-[2px]">
-        <i className="block h-[7px] w-[7px] bg-[#1eb4d4]" />
-        <i className="block h-[7px] w-[7px] bg-[#1eb4d4]" />
-        <i className="block h-[7px] w-[7px] bg-[#1789a8]" />
-        <i className="block h-[7px] w-[7px] bg-[#1789a8]" />
+      <span className="grid h-7 w-7 place-items-center rounded-[5px] bg-[#1eb4d4]">
+        <span className="grid grid-cols-2 gap-[2px]">
+          <i className="block h-[7px] w-[3px] bg-white" />
+          <i className="block h-[7px] w-[3px] bg-white" />
+          <i className="block h-[3px] w-[7px] bg-white" />
+          <i className="block h-[3px] w-[7px] bg-white" />
+        </span>
       </span>
-      <span className="text-[18px] font-semibold tracking-tight text-white lowercase">cinc</span>
+      <span className="text-[20px] leading-none font-semibold tracking-tight text-white">cinc</span>
     </span>
   );
 }
 
 function NavIcon({ id }: { id: NavSection }) {
-  const common = "h-[15px] w-[15px]";
+  const common = "h-4 w-4";
   if (id === "launchpad") {
     return (
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -164,8 +222,8 @@ const ROSTER = [
 export function Shell({ route, children }: { route: CincRoute; children: ReactNode }) {
   const section = sectionOf(route);
   const menu = titleMenu(route);
-  const [hover, setHover] = useState<NavSection | null>(null);
   const [titleOpen, setTitleOpen] = useState(false);
+  const [passwordToast, setPasswordToast] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -183,8 +241,12 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   }, [message]);
 
   useEffect(() => {
-    document.title = `${titleOf(route)} · CINC`;
+    document.title = `${titleOf(route) || "CINC"} · CINC`;
   }, [route]);
+
+  useEffect(() => {
+    if (!sessionStorage.getItem("gvhs-pw-toast")) setPasswordToast(true);
+  }, []);
 
   useEffect(() => {
     if (!titleOpen) return;
@@ -210,46 +272,51 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
     [leadSearch, searchOpen, rail],
   );
 
-  const showSearch = route.view === "leads";
+  const showSearch = route.view === "leads" || route.view === "inbox" || route.view === "autotracks" || route.view === "behavioral" || route.view === "ai" || route.view === "properties" || route.view === "landing";
 
   return (
     <ChromeContext.Provider value={api}>
       <div className="flex h-screen overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333]">
-        <aside className="flex w-[147px] shrink-0 flex-col bg-[#2c3c44] text-white">
-          <div className="flex h-[58px] items-center bg-[#243238] px-3">
+        <aside className="flex w-[147px] shrink-0 flex-col bg-[#2b3a4a] text-white">
+          <div className="flex h-[58px] items-center bg-[#1a2833] px-3">
             <Logo />
           </div>
-          <nav className="pt-[28px]" onMouseLeave={() => setHover(null)}>
+          <nav className="pt-2">
             {NAV.map((item) => {
               const active = section === item.id;
-              const open = active || hover === item.id;
+              let kids = (item.children ?? []).filter((child) => !(route.view === "inbox" && route.folder === "templates" && child.label !== "Templates"));
+              if (item.id === "web" && route.view !== "landing") {
+                kids = kids.filter((child) => child.label === "Seller Suite" || child.label === "Landing Pages");
+              }
               return (
-                <div key={item.id} className="relative" onMouseEnter={() => setHover(item.id)}>
+                <div key={item.id}>
                   <a
                     href={item.href}
-                    className={`flex h-[31px] items-center gap-2 px-3 text-[13px] ${active ? "bg-[#3a4e59] text-[#1b9cb8]" : "text-[#f4f7f8] hover:bg-[#33444d]"}`}
+                    className={`flex h-[30px] items-center gap-2 px-5 text-[13px] whitespace-nowrap ${active ? "bg-[#36485a] text-[#1b9cb8]" : "text-[#f4f7f8] hover:bg-[#33485a]"}`}
                   >
-                    <NavIcon id={item.id} />
-                    <span className="truncate">{item.label}</span>
-                    {item.dot ? <span className="ml-auto h-[7px] w-[7px] shrink-0 rounded-full bg-[#e23d45]" /> : null}
+                    <span className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full ${active ? "ring-1 ring-[#1b9cb8]" : ""}`}>
+                      <NavIcon id={item.id} />
+                      {item.badge ? <span className="absolute top-0 left-0 h-[5px] w-[9px] rounded-[1px] bg-[#e23d45]" /> : null}
+                    </span>
+                    <span>{item.label}</span>
                   </a>
-                  {active && item.children ? (
-                    <div className="bg-[#243238] py-1">
-                      {item.children.map((child) => (
-                        <a key={child.label} href={child.href} className="flex h-[26px] items-center gap-2 pr-2 pl-7 text-[12px] text-[#d5dde1] hover:text-white">
+                  {active && kids.length ? (
+                    <div className="bg-[#1e2c38] py-1">
+                      {item.id === "comms" ? (
+                        <p className="flex h-[24px] items-center gap-2 px-3 text-[11px] whitespace-nowrap text-[#1b9cb8]">
                           <span className="h-[5px] w-[5px] rounded-full bg-[#1b9cb8]" />
-                          {child.label}
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
-                  {!active && open && item.children ? (
-                    <div className="absolute top-0 left-full z-30 min-w-[180px] border border-[#1c282e] bg-[#2c3c44] py-1 shadow-lg">
-                      {item.children.map((child) => (
-                        <a key={child.label} href={child.href} className="block px-3 py-[6px] text-[12px] text-white hover:bg-[#364850] hover:text-[#1b9cb8]">
-                          {child.label}
-                        </a>
-                      ))}
+                          CINC Inbox
+                        </p>
+                      ) : null}
+                      {kids.map((child) => {
+                        const on = childOn(child.label, route);
+                        return (
+                          <a key={child.label} href={child.href} className={`flex h-[24px] items-center gap-2 pr-1 pl-5 text-[10px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`}>
+                            {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${on ? "bg-[#1b9cb8]" : "border border-[#8aa] bg-transparent"}`} />}
+                            {child.label}
+                          </a>
+                        );
+                      })}
                     </div>
                   ) : null}
                 </div>
@@ -263,11 +330,15 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-[7px] text-[22px] leading-none font-light text-[#2a9bb8]"
+                className="flex items-center gap-2 text-[19px] leading-none font-light text-[#2a9bb8]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
-                {menu.length ? <Caret className="mt-px text-[#2a9bb8]" /> : null}
+                {menu.length ? (
+                  <svg width="10" height="8" viewBox="0 0 10 8" className="mt-0.5 text-[#2a9bb8]" aria-hidden>
+                    <path d="M0 0h10L5 8z" fill="currentColor" />
+                  </svg>
+                ) : null}
               </button>
               {titleOpen && menu.length ? (
                 <div className="absolute top-[calc(100%+10px)] left-0 z-50 w-max min-w-[220px] bg-white py-2 shadow-[0_8px_24px_rgba(15,23,28,0.16)]">
@@ -288,7 +359,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button
                 type="button"
                 title="Search"
-                className="grid h-7 w-7 place-items-center text-[#1c93b5]"
+                className="grid h-7 w-7 place-items-center text-[#333]"
                 onClick={() => setSearchOpen((value) => !value)}
               >
                 <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -309,18 +380,23 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="ml-auto flex items-center gap-3">
               <a
                 href={href.publicSite}
-                className="inline-flex items-center gap-1 bg-[#d9363e] px-2 py-[5px] text-[10px] font-bold tracking-wide text-white uppercase"
+                className="inline-flex items-center gap-1 bg-[#d9363e] px-2 py-[6px] text-[10px] leading-none font-bold tracking-wide text-white uppercase"
                 title="End the demo impersonation and return to the public site"
               >
-                <span aria-hidden>↩</span> End Become User
+                <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.6">
+                  <circle cx="6" cy="4" r="2" />
+                  <path d="M2.5 10c.4-1.6 1.7-2.4 3.5-2.4S9.1 8.4 9.5 10" />
+                  <path d="M9 2.2 11 4.2M11 2.2 9 4.2" />
+                </svg>
+                End Become User
               </a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
               <div className="relative">
                 <button type="button" className="flex items-center gap-1 text-[13px] font-semibold text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-[#1c93b5] text-[11px] text-white">{CRM_AGENT.initials}</span>
-                  <span className="text-[#888]">▾</span>
+                  <span>{CRM_AGENT.initials}</span>
+                  <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
@@ -396,6 +472,14 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button type="button" className="ml-auto text-[#888]" onClick={() => setHelpOpen(false)}>Close</button>
             </div>
           </div>
+        </div>
+      ) : null}
+      {passwordToast ? (
+        <div className="fixed top-3 right-4 z-[80] flex max-w-sm items-start gap-3 border border-[#e23d45] bg-[#fff5f5] px-3 py-2 text-[13px] text-[#c62828] shadow">
+          <button type="button" className="text-left" onClick={() => setMessage("Password reset link queued for agent@example.com.")}>
+            Uh oh, your password expired. Let&apos;s reset it now.
+          </button>
+          <button type="button" aria-label="Dismiss" onClick={() => { setPasswordToast(false); sessionStorage.setItem("gvhs-pw-toast", "1"); }}>×</button>
         </div>
       ) : null}
       {message ? (
