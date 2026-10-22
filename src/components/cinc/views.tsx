@@ -6,7 +6,7 @@ import { useLeads } from "@/lib/leads";
 import { useChrome } from "./chrome-context";
 import { href } from "./route";
 import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage } from "./store";
-import { Btn, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
+import { Btn, Caret, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 function ordinal(day: number) {
   const suffix = ["th", "st", "nd", "rd"];
@@ -342,7 +342,14 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const [group, setGroup] = useState("ISA");
   const [picked, setPicked] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const messages = state.mail.filter((mail) => mail.folder === folder && `${mail.subject} ${mail.body} ${mail.to}`.toLowerCase().includes(query.toLowerCase()));
+  const [kindFilter, setKindFilter] = useState<"all" | "unread" | "email" | "text">("all");
+  const messages = state.mail.filter((mail) => {
+    if (mail.folder !== folder) return false;
+    if (kindFilter === "unread" && !mail.unread) return false;
+    if (kindFilter === "email" && mail.kind !== "email") return false;
+    if (kindFilter === "text" && mail.kind !== "text") return false;
+    return `${mail.subject} ${mail.body} ${mail.to}`.toLowerCase().includes(query.toLowerCase());
+  });
 
   function send(kind: "email" | "text", value: { to: string; subject?: string; body: string }, target: "sent" | "drafts") {
     update((current) => ({
@@ -388,7 +395,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-t border-[#eee]">
-                  <td><input type="checkbox" checked={picked.includes(row.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, row.id] : picked.filter((id) => id !== row.id))} /></td>
+                  <td className="px-3"><input className={checkCls} type="checkbox" checked={picked.includes(row.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, row.id] : picked.filter((id) => id !== row.id))} /></td>
                   <td className="py-2">{row.name}</td>
                   <td>{row.type}</td>
                   <td>{row.createdBy}</td>
@@ -405,25 +412,38 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#eee] bg-white px-3 py-2">
-        <input type="checkbox" onChange={(event) => setPicked(event.target.checked ? messages.map((mail) => mail.id) : [])} />
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e5e5] bg-white px-4 py-2">
+        <input className={checkCls} type="checkbox" onChange={(event) => setPicked(event.target.checked ? messages.map((mail) => mail.id) : [])} />
         <Btn kind="teal" onClick={() => composer.email("", (sent, value) => send("email", value, sent ? "sent" : "drafts"))}>New Email</Btn>
         <Btn kind="teal" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</Btn>
-        <button type="button" title="Trash" onClick={() => update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, folder: "trashed" } : mail) }))}>🗑</button>
-        <button type="button" className="grid h-6 w-6 place-items-center bg-[#1c93b5] text-white" onClick={() => chrome.toast("Inbox refreshed.")}>↻</button>
-        <Menu label={<span className="border border-[#ccc] px-2 py-1 text-[12px]">Filters ▾</span>} items={[{ label: "Unread", onClick: () => chrome.toast("Showing every message in this folder. Unread items are marked in the list.") }, { label: "Email only", onClick: () => chrome.toast("Use the Type column mindset: emails and texts are both listed.") }]} />
-        <span className="ml-auto text-[12px] text-[#666]">{messages.length ? `1 – ${messages.length} of ${messages.length}` : "0 of 0"}</span>
-        <input className="h-6 w-36 border border-[#ccc] px-2 text-[12px]" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <button type="button" title="Trash" className="grid h-[26px] w-[26px] place-items-center border border-[#d0d0d0] bg-white text-[#666]" onClick={() => update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, folder: "trashed" } : mail) }))}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 4h10M6 4V3h4v1M5 4l.5 9h5L11 4" /></svg>
+        </button>
+        <button type="button" title="Refresh" className="grid h-[26px] w-[26px] place-items-center bg-[#1c93b5] text-white" onClick={() => chrome.toast("Inbox refreshed.")}>↻</button>
+        <Menu
+          label={<span className="inline-flex h-[26px] items-center gap-1.5 border border-[#d0d0d0] bg-white px-2.5 text-[13px] font-normal text-[#333] shadow-[0_1px_1px_rgba(0,0,0,0.04)]">Filters <Caret className="text-[#666]" /></span>}
+          items={[
+            { label: "All messages", onClick: () => setKindFilter("all") },
+            { label: "Unread", onClick: () => setKindFilter("unread") },
+            { label: "Email", onClick: () => setKindFilter("email") },
+            { label: "Text", onClick: () => setKindFilter("text") },
+          ]}
+        />
+        <span className="ml-auto text-[12px] text-[#777]">{messages.length ? `1 – ${messages.length} of ${messages.length}` : "0 of 0"}</span>
+        <input className="h-[26px] w-36 border border-[#d0d0d0] bg-white px-2 text-[13px]" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto bg-[#f5f5f5]">
         {messages.length ? messages.map((mail) => (
-          <article key={mail.id} className="flex gap-3 border-b border-[#eee] bg-white px-4 py-3">
-            <input type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
+          <article key={mail.id} className="flex items-start gap-3 border-b border-[#e6e6e6] bg-white px-4 py-[11px]">
+            <input className={`${checkCls} mt-[3px]`} type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
             <div className="min-w-0 flex-1">
-              <p className={mail.unread ? "font-bold" : ""}>{mail.subject} <span className="text-[11px] text-[#999]">{mail.kind}</span></p>
-              <p className="truncate text-[12px] text-[#666]">{mail.body}</p>
+              <p className="text-[14px] leading-5 text-[#222]">
+                <span className={mail.unread ? "font-bold" : "font-semibold"}>{mail.subject}</span>
+                <span className="ml-2 text-[13px] font-normal text-[#9a9a9a]">{mail.kind}</span>
+              </p>
+              <p className="truncate text-[13px] leading-5 text-[#8a8a8a]">{mail.body}</p>
             </div>
-            <span className="text-[11px] text-[#999]">{mail.at}</span>
+            <span className="pt-0.5 text-[12px] text-[#9a9a9a]">{mail.at}</span>
           </article>
         )) : (
           <div className="p-6">

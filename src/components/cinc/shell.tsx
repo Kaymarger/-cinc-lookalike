@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT } from "@/lib/cinc-crm";
 import { ChromeContext } from "./chrome-context";
 import { href, sectionOf, titleMenu, titleOf, type CincRoute, type NavSection } from "./route";
+import { Caret } from "./ui";
 
 const NAV: {
   id: NavSection;
@@ -165,6 +166,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const menu = titleMenu(route);
   const [hover, setHover] = useState<NavSection | null>(null);
   const [titleOpen, setTitleOpen] = useState(false);
+  const titleRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
@@ -183,6 +185,15 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   useEffect(() => {
     document.title = `${titleOf(route)} · CINC`;
   }, [route]);
+
+  useEffect(() => {
+    if (!titleOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!titleRef.current?.contains(event.target as Node)) setTitleOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [titleOpen]);
 
   const api = useMemo(
     () => ({
@@ -216,11 +227,11 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 <div key={item.id} className="relative" onMouseEnter={() => setHover(item.id)}>
                   <a
                     href={item.href}
-                    className={`flex h-[30px] items-center gap-2 px-3 text-[13px] ${active ? "bg-[#364850] text-[#1b9cb8]" : "text-white hover:bg-[#33444d]"}`}
+                    className={`flex h-[31px] items-center gap-2 px-3 text-[13px] ${active ? "bg-[#3a4e59] text-[#1b9cb8]" : "text-[#f4f7f8] hover:bg-[#33444d]"}`}
                   >
                     <NavIcon id={item.id} />
                     <span className="truncate">{item.label}</span>
-                    {item.dot ? <span className="ml-auto h-[6px] w-[6px] rounded-full bg-[#e23b3b]" /> : null}
+                    {item.dot ? <span className="ml-auto h-[7px] w-[7px] shrink-0 rounded-full bg-[#e23d45]" /> : null}
                   </a>
                   {active && item.children ? (
                     <div className="bg-[#243238] py-1">
@@ -248,20 +259,25 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[58px] shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white px-4">
-            <div className="relative">
+          <header className="flex h-[58px] shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-5">
+            <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-1 text-[19px] font-light text-[#2a9bb8]"
+                className="flex items-center gap-[7px] text-[22px] leading-none font-light text-[#2a9bb8]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
-                {titleOf(route)}
-                {menu.length ? <span className="text-[12px] text-[#7eb7c8]">▾</span> : null}
+                <span>{titleOf(route)}</span>
+                {menu.length ? <Caret className="mt-px text-[#2a9bb8]" /> : null}
               </button>
               {titleOpen && menu.length ? (
-                <div className="absolute top-8 left-0 z-40 min-w-[220px] border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setTitleOpen(false)}>
+                <div className="absolute top-[calc(100%+10px)] left-0 z-50 w-max min-w-[220px] bg-white py-2 shadow-[0_8px_24px_rgba(15,23,28,0.16)]">
                   {menu.map((item) => (
-                    <a key={item.label} href={item.href} className="block px-3 py-2 text-[13px] text-[#333] hover:bg-[#f3fafc]" onClick={() => setTitleOpen(false)}>
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      className="block px-5 py-[10px] text-[15px] leading-5 font-normal text-[#2c2c2c] hover:bg-[#f5f5f5]"
+                      onClick={() => setTitleOpen(false)}
+                    >
                       {item.label}
                     </a>
                   ))}

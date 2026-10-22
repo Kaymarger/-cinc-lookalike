@@ -204,7 +204,7 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
     case "launchpad":
       return [{ label: "Call Summary", href: href.call }];
     case "callsummary":
-      return [{ label: "Agent", href: href.launchpad }];
+      return [{ label: "Agent Launchpad", href: href.launchpad }];
     case "leads":
       return [
         { label: "Export Leads", href: href.exportLeads },
@@ -232,28 +232,8 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
         { label: "CINC AI", href: href.ai },
       ];
     case "properties":
-      if (route.sub === "text") {
-        return [
-          { label: "Properties", href: href.properties },
-          { label: "Upcoming Open Houses", href: href.openHouses },
-          { label: "Virtual Open Houses", href: href.virtualOpenHouses },
-        ];
-      }
-      if (route.sub === "open") {
-        return [
-          { label: "Properties", href: href.properties },
-          { label: "Text Responder", href: href.textResponder },
-          { label: "Virtual Open Houses", href: href.virtualOpenHouses },
-        ];
-      }
-      if (route.sub === "virtual") {
-        return [
-          { label: "Properties", href: href.properties },
-          { label: "Text Responder", href: href.textResponder },
-          { label: "Upcoming Open Houses", href: href.openHouses },
-        ];
-      }
       return [
+        { label: "Properties", href: href.properties },
         { label: "Text Responder", href: href.textResponder },
         { label: "Upcoming Open Houses", href: href.openHouses },
         { label: "Virtual Open Houses", href: href.virtualOpenHouses },
@@ -266,10 +246,31 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
     case "landing":
       return [
         { label: "Seller Suite", href: href.seller },
-        { label: "All Pages", href: href.landing },
+        { label: "Landing Pages", href: href.landing },
         { label: "Buyers", href: href.landingCat("buyers") },
         { label: "Sellers", href: href.landingCat("sellers") },
         { label: "Contact", href: href.landingCat("contact") },
+      ];
+    case "settings":
+      return [
+        { label: "Profile", href: href.profile },
+        { label: "Settings", href: href.settings },
+        { label: "Integrations", href: href.integrations },
+        { label: "Notifications", href: href.notifications },
+        { label: "Custom Links", href: href.customLinks },
+      ];
+    case "plans":
+    case "dialer":
+    case "calendar":
+    case "tasks":
+    case "marketing":
+    case "reports":
+      return [
+        { label: "Plans", href: href.plans },
+        { label: "Profile & Settings", href: href.profile },
+        { label: "Dialer", href: href.dialer },
+        { label: "Calendar", href: href.calendar },
+        { label: "Tasks", href: href.tasks },
       ];
     default:
       return [];

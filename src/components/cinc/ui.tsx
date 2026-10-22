@@ -3,6 +3,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useChrome } from "./chrome-context";
 
+export function Caret({ className = "text-current" }: { className?: string }) {
+  return (
+    <svg className={className} width="10" height="6" viewBox="0 0 10 6" aria-hidden>
+      <path d="M1 1.15 5 4.85 9 1.15" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export const checkCls = "size-[14px] shrink-0 accent-[#60717b]";
+
 export function Btn({
   children,
   onClick,

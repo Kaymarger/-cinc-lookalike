@@ -6,7 +6,7 @@ import { useLeads, type Lead } from "@/lib/leads";
 import { useChrome } from "./chrome-context";
 import { href, type LeadTab } from "./route";
 import { nowLabel, uid, useCinc, type Assign } from "./store";
-import { Btn, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
+import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const PIPELINES = [
   "New Lead",
@@ -558,6 +558,7 @@ export function LeadsView({
       <div className="flex flex-wrap items-center gap-2 border-b border-[#eee] bg-white px-3 py-2">
         <label className="flex items-center gap-1 text-[12px]">
           <input
+            className={checkCls}
             type="checkbox"
             checked={slice.length > 0 && slice.every((row) => selected.includes(row.id))}
             onChange={(event) => setSelected(event.target.checked ? slice.map((row) => row.id) : [])}
@@ -601,7 +602,10 @@ export function LeadsView({
           update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
           chrome.toast("Filter saved on this device.");
         }}>Save</Btn>
-        <Btn onClick={() => setDrawer(true)}>Filters</Btn>
+        <button type="button" className="inline-flex h-[26px] items-center gap-1.5 border border-[#d0d0d0] bg-white px-2.5 text-[13px] font-normal text-[#333] shadow-[0_1px_1px_rgba(0,0,0,0.04)]" onClick={() => setDrawer(true)}>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 3h12M4 8h8M6 13h4" /></svg>
+          Filters
+        </button>
         <button type="button" className="ml-auto text-[#666]" title="Print" onClick={() => window.print()}>⎙</button>
         <Menu
           header="View Style"
@@ -655,7 +659,7 @@ export function LeadsView({
                 {slice.map((row, index) => (
                   <tr key={row.id} className={`group border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`}>
                     <td className="px-2">
-                      <input type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
+                      <input className={checkCls} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
                     </td>
                     <td className="px-2">
                       <div className="flex items-center gap-1">
