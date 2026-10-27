@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lato, Roboto, Work_Sans } from "next/font/google";
+import { AdPixels } from "@/components/ad-pixels";
 import { AppChrome } from "@/components/app-chrome";
 import { CompareProvider } from "@/lib/compare";
 import { DemoAuthProvider } from "@/lib/demo-auth";
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${lato.variable} ${roboto.variable} ${workSans.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
+        <AdPixels />
         <SavedHomesProvider>
           <SavedSearchesProvider>
             <CompareProvider>

@@ -175,6 +175,9 @@ const SOURCE: Record<string, string> = {
   photo_gate: "Photo Gate",
   search_alert: "Search Alert",
   general: "Website",
+  buyer_signup: "Buyer Signup",
+  seller_signup: "Seller Signup",
+  home_valuation: "Home Valuation",
 };
 
 const CRM_PIPE: Record<string, string> = {
@@ -204,10 +207,22 @@ function siteRow(lead: Lead): Row {
     phoneValid: digits(lead.phone),
     verified: lead.source === "registration",
     score: lead.score,
-    type: "Buyer",
+    type:
+      lead.intent === "seller" ||
+      lead.intent === "valuation" ||
+      lead.source === "seller_signup" ||
+      lead.source === "home_valuation"
+        ? "Seller"
+        : "Buyer",
     pipeline: SITE_PIPE[lead.status] ?? "New Lead",
     registered: ago(lead.createdAt),
-    source: SOURCE[lead.source] ?? "Website",
+    source: [
+      SOURCE[lead.source] ?? "Website",
+      lead.attribution?.utmSource,
+      lead.attribution?.utmCampaign,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     price: lead.propertyAddress ? "Inquiry" : "$ n/a",
     city: "Vancouver",
     timeframe: lead.searchLabel || "—",
@@ -220,7 +235,11 @@ function siteRow(lead: Lead): Row {
     saved: lead.savedSearches.length,
     fav: 0,
     inq: lead.source === "ask_question" || lead.source === "showing_request" ? 1 : 0,
-    assigned: { agent: CRM_AGENT.name, partner: "Unassigned", listing: "Unassigned" },
+    assigned: {
+      agent: lead.assignedTo || CRM_AGENT.name,
+      partner: "Unassigned",
+      listing: "Unassigned",
+    },
   };
 }
 

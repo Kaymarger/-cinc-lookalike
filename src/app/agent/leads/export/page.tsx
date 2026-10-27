@@ -36,7 +36,7 @@ export default function ExportLeadsPage() {
         </button>
       </div>
       {done && <p className="mb-2 text-[13px] text-[#1e8449]">{done}</p>}
-      <p className="mb-3 text-[13px] text-[#5a6f82]">{rows.length} sample leads on this device. Nothing is uploaded.</p>
+      <p className="mb-3 text-[13px] text-[#5a6f82]">{rows.length} leads, including office leads when a database is connected and sample rows kept for this demo.</p>
       <table className="w-full border-collapse bg-white text-left text-[13px]">
         <thead className="bg-[#e8f1f8] text-[11px] uppercase text-[#5a6f82]">
           <tr>

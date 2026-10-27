@@ -20,9 +20,11 @@ export default function PrivacyPage() {
         <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-[#555]">
           <p>
             Greater Vancouver Area Home Search is a real estate search platform
-            powered by CINC for Archibald Real Estate Group. This demonstration
-            site stores search preferences, saved homes, and inquiry details
-            locally in your browser for demo purposes only.
+            powered by CINC for Archibald Real Estate Group. Search preferences
+            and saved homes stay in your browser. Inquiry details you submit
+            are sent to Archibald Real Estate Group and, when a database is
+            connected, stored so an agent can follow up. Ad click parameters
+            such as campaign names may be stored with that inquiry.
           </p>
           <p>
             On the live site at greatervancouverhomesearch.com, personal

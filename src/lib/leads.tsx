@@ -9,6 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  attributionSummary,
+  readStoredAttribution,
+  trackLeadConversion,
+  type LeadAttribution,
+  type LeadIntent,
+} from "@/lib/lead-intake";
 
 const STORAGE_KEY = "gvhs-leads";
 
@@ -25,7 +32,10 @@ export type LeadSource =
   | "registration"
   | "photo_gate"
   | "search_alert"
-  | "general";
+  | "general"
+  | "buyer_signup"
+  | "seller_signup"
+  | "home_valuation";
 
 export type LeadActivityKind =
   | "signup"
@@ -71,6 +81,10 @@ export type Lead = {
   savedSearches: string[];
   viewedProperties: string[];
   actionPlan?: string;
+  intent?: LeadIntent;
+  consent?: boolean;
+  attribution?: LeadAttribution;
+  assignedTo?: string;
 };
 
 type CreateLeadInput = {
@@ -83,12 +97,16 @@ type CreateLeadInput = {
   propertyId?: string;
   searchLabel?: string;
   notes?: string;
+  intent?: LeadIntent;
+  consent?: boolean;
+  attribution?: LeadAttribution;
 };
 
 type Ctx = {
   ready: boolean;
   leads: Lead[];
   add: (input: CreateLeadInput) => Lead;
+  capture: (input: CreateLeadInput) => Promise<{ ok: boolean; message?: string }>;
   updateStatus: (id: string, status: LeadStatus) => void;
   updateNotes: (id: string, notes: string) => void;
   appendNote: (id: string, line: string) => void;
@@ -210,6 +228,10 @@ export function normalizeLead(raw: Partial<Lead> & Pick<Lead, "id" | "name" | "e
     viewedProperties:
       raw.viewedProperties ?? (raw.propertyAddress ? [raw.propertyAddress] : []),
     actionPlan: raw.actionPlan,
+    intent: raw.intent,
+    consent: raw.consent,
+    attribution: raw.attribution,
+    assignedTo: raw.assignedTo,
   };
 }
 
@@ -240,6 +262,9 @@ export const LEAD_SOURCE_LABEL: Record<LeadSource, string> = {
   photo_gate: "Photo gallery",
   search_alert: "Search alert",
   general: "General inquiry",
+  buyer_signup: "Buyer signup",
+  seller_signup: "Seller signup",
+  home_valuation: "Home valuation",
 };
 
 export const LEAD_STATUSES: LeadStatus[] = [
@@ -260,14 +285,40 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const existing = readLeads();
+    const seeded =
+      existing.length === 0 ? SEED.map((item) => normalizeLead(item as Lead)) : existing;
     if (existing.length === 0) {
-      const seeded = SEED.map((item) => normalizeLead(item as Lead));
-      setLeads(seeded);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-    } else {
-      setLeads(existing);
     }
-    setReady(true);
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLeads(seeded);
+      setReady(true);
+    });
+    fetch("/api/leads", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { leads?: Partial<Lead>[] };
+      })
+      .then((data) => {
+        if (cancelled || !data?.leads?.length) return;
+        const remote = data.leads.map((item) =>
+          normalizeLead(item as Lead)
+        );
+        const remoteIds = new Set(remote.map((lead) => lead.id));
+        setLeads((prev) => {
+          const localOnly = prev.filter((lead) => !remoteIds.has(lead.id));
+          return [...remote, ...localOnly].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -275,9 +326,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
   }, [leads, ready]);
 
-  const add = useCallback((input: CreateLeadInput) => {
+  const buildLead = useCallback((input: CreateLeadInput): Lead => {
     const now = new Date().toISOString();
-    const lead: Lead = {
+    const attribution = input.attribution ?? readStoredAttribution();
+    const campaign = attributionSummary(attribution);
+    const notes = input.notes ?? "";
+    return {
       id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: input.name.trim(),
       email: input.email.trim(),
@@ -288,29 +342,101 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       propertyAddress: input.propertyAddress,
       propertyId: input.propertyId,
       searchLabel: input.searchLabel,
-      notes: input.notes ?? "",
+      notes,
       createdAt: now,
       updatedAt: now,
-      score: input.source === "registration" ? 70 : 58,
+      score: input.source === "registration" || input.source === "buyer_signup" ? 70 : 58,
       savedSearches: input.searchLabel ? [input.searchLabel] : [],
       viewedProperties: input.propertyAddress ? [input.propertyAddress] : [],
       tasks: [],
+      intent: input.intent,
+      consent: input.consent,
+      attribution,
       activity: [
         {
           id: `act-${Date.now()}`,
           at: now,
-          kind: input.source === "registration" ? "signup" : "system",
+          kind:
+            input.source === "registration" || input.source === "buyer_signup"
+              ? "signup"
+              : "system",
           title:
-            input.source === "registration"
+            input.source === "registration" || input.source === "buyer_signup"
               ? "Free Access signup"
               : "Lead captured",
-          body: input.notes || LEAD_SOURCE_LABEL[input.source],
+          body: [notes, campaign].filter(Boolean).join("\n") || LEAD_SOURCE_LABEL[input.source],
         },
       ],
     };
-    setLeads((prev) => [lead, ...prev]);
-    return lead;
   }, []);
+
+  const publish = useCallback((lead: Lead, input: CreateLeadInput) => {
+    return fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: lead.id,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        smsOptIn: lead.smsOptIn,
+        source: lead.source,
+        intent: input.intent,
+        propertyAddress: lead.propertyAddress,
+        propertyId: lead.propertyId,
+        searchLabel: lead.searchLabel,
+        notes: lead.notes,
+        consent: input.consent,
+        attribution: lead.attribution,
+      }),
+    }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        persisted?: boolean;
+        message?: string;
+        lead?: Partial<Lead>;
+      } | null;
+      if (data?.lead) {
+        setLeads((prev) =>
+          prev.map((item) =>
+            item.id === lead.id ? normalizeLead({ ...item, ...data.lead, id: item.id }) : item
+          )
+        );
+      }
+      if (response.ok && data?.ok !== false && data?.persisted) trackLeadConversion();
+      return {
+        ok: response.ok && data?.ok !== false,
+        persisted: Boolean(data?.persisted),
+        message: data?.message,
+      };
+    });
+  }, []);
+
+  const add = useCallback((input: CreateLeadInput) => {
+    const lead = buildLead(input);
+    setLeads((prev) => [lead, ...prev]);
+    void publish(lead, input).catch(() => undefined);
+    return lead;
+  }, [buildLead, publish]);
+
+  const capture = useCallback(async (input: CreateLeadInput) => {
+    const lead = buildLead(input);
+    setLeads((prev) => [lead, ...prev.filter((item) => item.id !== lead.id)]);
+    try {
+      const result = await publish(lead, input);
+      if (!result.ok) {
+        setLeads((prev) => prev.filter((item) => item.id !== lead.id));
+        return { ok: false, message: result.message || "Please check the form and try again." };
+      }
+      return { ok: true };
+    } catch {
+      setLeads((prev) => prev.filter((item) => item.id !== lead.id));
+      return {
+        ok: false,
+        message: "We could not reach the office just now. Please call (604) 363-7858.",
+      };
+    }
+  }, [buildLead, publish]);
 
   const updateStatus = useCallback((id: string, status: LeadStatus) => {
     setLeads((prev) =>
@@ -468,6 +594,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       ready,
       leads,
       add,
+      capture,
       updateStatus,
       updateNotes,
       appendNote,
@@ -485,6 +612,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       ready,
       leads,
       add,
+      capture,
       updateStatus,
       updateNotes,
       appendNote,

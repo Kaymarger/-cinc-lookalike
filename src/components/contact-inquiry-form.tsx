@@ -33,6 +33,8 @@ export function ContactInquiryForm({
       source,
       propertyAddress: address || undefined,
       notes: message,
+      consent: true,
+      intent: includeAddress ? "valuation" : "inquiry",
     });
     setName(fullName);
     setSent(true);
@@ -49,10 +51,10 @@ export function ContactInquiryForm({
           Your inquiry was sent successfully. Casey will follow up shortly.
         </p>
         <p className="mt-3 text-xs text-[#888]">
-          Demo lead also appears in the{" "}
-          <Link href="/agent/leads" className="text-[var(--cedar)] underline">
-            agent inbox
-          </Link>
+          Your request is with {SITE.agent}. You can also reach the office at{" "}
+          <a href={`tel:${SITE.phoneTel}`} className="text-[var(--cedar)] underline">
+            {SITE.phoneDisplay}
+          </a>
           .
         </p>
       </div>

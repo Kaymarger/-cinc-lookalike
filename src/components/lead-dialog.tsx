@@ -47,6 +47,8 @@ export function LeadDialog({
       source: resolvedSource,
       propertyAddress,
       propertyId,
+      consent: true,
+      intent: "inquiry",
     });
     setName(fullName);
     setSent(true);
@@ -206,7 +208,15 @@ export function LeadDialog({
                       : "Continue"}
                 </button>
                 <p className="text-center text-xs text-[var(--ink-muted)]">
-                  Demo — your note is saved for the agent workspace on this device.
+                  By continuing you agree we may contact you about this home. See{" "}
+                  <a href="/terms" className="underline">
+                    Terms
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" className="underline">
+                    Privacy
+                  </a>
+                  .
                 </p>
               </form>
             </>

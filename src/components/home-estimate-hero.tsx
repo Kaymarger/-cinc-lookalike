@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { useLeads } from "@/lib/leads";
 
@@ -34,6 +33,8 @@ export function HomeEstimateHero({
       source: "general",
       propertyAddress,
       notes: String(data.get("Message") || "Home estimate request"),
+      intent: "valuation",
+      consent: true,
     });
     setName(fullName);
     setSent(true);
@@ -75,14 +76,11 @@ export function HomeEstimateHero({
                 We received your estimate request. Casey will follow up shortly.
               </p>
               <p className="mt-3 text-xs text-[#888]">
-                Demo lead also appears in the{" "}
-                <Link
-                  href="/agent/leads"
-                  className="text-[var(--cedar)] underline"
-                >
-                  agent inbox
-                </Link>
-                .
+                Casey will follow up with your estimate. Call{" "}
+                <a href="tel:6043637858" className="text-[var(--cedar)] underline">
+                  (604) 363-7858
+                </a>{" "}
+                if you would rather talk now.
               </p>
             </div>
           ) : (
