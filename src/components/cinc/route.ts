@@ -33,6 +33,7 @@ export const href = {
   integrations: `${SPA}#settings/profile/integrations/agent`,
   notifications: `${SPA}#settings/profile/notifications/agent`,
   customLinks: `${SPA}#settings/profile/customlinks/agent`,
+  users: `${SPA}#settings/users`,
   plans: `${SPA}#plans`,
   dialer: `${SPA}#dialer`,
   calendar: `${SPA}#calendar`,
@@ -59,6 +60,7 @@ export type CincRoute =
   | { view: "seller" }
   | { view: "landing"; category: "all" | "buyers" | "sellers" | "contact" }
   | { view: "settings"; tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" }
+  | { view: "users" }
   | { view: "plans" }
   | { view: "dialer" }
   | { view: "calendar" }
@@ -118,6 +120,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (b === "add") return { view: "properties", sub: "add" };
     return { view: "properties", sub: "list" };
   }
+  if (a === "settings" && b === "users") return { view: "users" };
   if (a === "settings") {
     const tab = c === "settings" || c === "integrations" || c === "notifications" || c === "customlinks" || c === "profile" ? c : "profile";
     return { view: "settings", tab };
@@ -184,6 +187,8 @@ export function titleOf(route: CincRoute): string {
       return "Landing Pages";
     case "settings":
       return "Settings";
+    case "users":
+      return "Users";
     case "plans":
       return "Plans";
     case "dialer":
@@ -220,6 +225,7 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
     case "seller":
     case "landing":
     case "settings":
+    case "users":
       return [];
     case "properties":
       return [
@@ -291,6 +297,8 @@ export function agentPathToCinc(pathname: string): string {
     "/agent/settings/integrations": href.integrations,
     "/agent/settings/notifications": href.notifications,
     "/agent/settings/customlinks": href.customLinks,
+    "/agent/settings/users": href.users,
+    "/agent/users": href.users,
     "/agent/plans": href.plans,
     "/agent/dialer": href.dialer,
     "/agent/calendar": href.calendar,

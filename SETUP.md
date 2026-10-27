@@ -23,9 +23,26 @@ Until `AGENT_PASSWORD` is set, `/agent` shows “Set AGENT_PASSWORD in Vercel”
 5. Accept the environment variables Vercel offers. That adds `DATABASE_URL` and `POSTGRES_URL` for Production. Include Preview too if you use preview deploys.
 6. Redeploy when Vercel asks. If it does not ask, open **Deployments** and redeploy the latest production deployment.
 
-You do not run SQL by hand. The `captured_leads` table is created during the build when a database URL is present, and again the first time a lead is saved or you open the leads screen.
+You do not run SQL by hand. The lead, user, and saved-search tables are created during the build when a database URL is present, and again the first time the office uses the database.
 
 On **Leads**, a banner says whether the database is connected.
+
+## Team logins
+
+The office password is the owner login. Leave the email blank on `/agent/login` and use `AGENT_PASSWORD`. The first time the database is connected, that sign-in creates the owner admin (Casey Archibald, `agent@example.com`).
+
+An admin or broker then opens **Users** in the account menu and adds people. Each person gets an email and a password of at least 8 characters. Passwords are stored as a hash. Roles are Admin, Broker, Agent, ISA, and Lender.
+
+- Admins and brokers see every lead and can reassign them.
+- Agents see only leads assigned to them.
+- ISAs see their own leads plus unassigned (pond) leads, and can reassign.
+- Lenders see only leads where they are the partner.
+
+If the database is not connected, the Users screen says so and the office password still signs in the owner. Team email logins, profile saves, and saved searches wait until Neon is connected.
+
+## Saved searches on a lead
+
+On a lead, **+ Saved Search** stores area, price, beds, baths, property type, and email alert frequency in the database. The lead sees those searches on **My Notebook** and **Saved searches** after they sign in on the public site with the same email.
 
 ## 3. Optional alerts and ad tags
 

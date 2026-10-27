@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AccountSearchList } from "@/components/account-searches";
 
 type Note = { id: string; title: string; body: string };
 
@@ -84,6 +85,7 @@ export default function NotebookPage() {
           )}
         </div>
       </form>
+      <AccountSearchList />
       <ul className="mt-6 space-y-3">
         {notes.map((note) => (
           <li key={note.id} className="border border-[#dbe3e8] bg-white p-4">

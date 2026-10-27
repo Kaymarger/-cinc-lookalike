@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { PageAssist } from "@/components/page-assist";
+import { AccountSearchList } from "@/components/account-searches";
 import { savedSearchHref, useSavedSearches } from "@/lib/saved-searches";
 
 export default function AlertsPage() {
@@ -77,6 +78,8 @@ export default function AlertsPage() {
             ))}
           </ul>
         )}
+
+        <AccountSearchList heading="Saved searches from your agent" />
 
         {searches.length > 0 && (
           <button

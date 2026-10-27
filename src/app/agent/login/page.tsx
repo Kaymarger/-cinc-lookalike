@@ -16,7 +16,8 @@ export default async function AgentLoginPage({
 }) {
   const params = await searchParams;
   const next = safeNext(typeof params.next === "string" ? params.next : "/agent");
-  const error = params.error === "1";
+  const error = params.error === "1" || params.error === "db";
+  const dbError = params.error === "db";
   const locked = !agentPassword();
   const jar = await cookies();
   if (!locked && (await verifySession(jar.get(COOKIE_NAME)?.value))) {
@@ -40,10 +41,20 @@ export default async function AgentLoginPage({
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed text-[#555]">
-              Sign in to open leads, the dialer, and the rest of the office.
+              Owners can leave email blank and use the office password. Everyone else signs in with the email and password an admin created.
             </p>
             <form method="post" action="/api/agent/login" className="mt-6 space-y-3">
               <input type="hidden" name="next" value={next} />
+              <label className="block text-sm font-medium text-[#1f2930]">
+                Email
+                <input
+                  name="email"
+                  type="email"
+                  autoComplete="username"
+                  placeholder="Leave blank for the office password"
+                  className="mt-1 h-12 w-full border border-[#ccc] px-3 text-base outline-none focus:border-[#1976d2]"
+                />
+              </label>
               <label className="block text-sm font-medium text-[#1f2930]">
                 Password
                 <input
@@ -56,7 +67,9 @@ export default async function AgentLoginPage({
               </label>
               {error ? (
                 <p className="text-sm text-[#c62828]" role="alert">
-                  That password is not right.
+                  {dbError
+                    ? "Team logins need a database. Leave email blank and use the office password, or connect Neon in Vercel."
+                    : "That email or password is not right."}
                 </p>
               ) : null}
               <button

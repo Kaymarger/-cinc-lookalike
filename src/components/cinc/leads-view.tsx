@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CRM_AGENT, CRM_AUTOTRACKS, CRM_LEADS } from "@/lib/cinc-crm";
+import { leadVisibleTo } from "@/lib/office-access";
 import { useLeads, type Lead } from "@/lib/leads";
+import { LeadSearches } from "./lead-searches";
+import { useOfficeSession } from "./office-session";
 import { useChrome } from "./chrome-context";
 import { go, href, type LeadTab } from "./route";
 import { nowLabel, uid, useCinc, type Assign } from "./store";
@@ -143,6 +146,8 @@ type Row = {
   fav: number;
   inq: number;
   assigned: Assign;
+  assignedUserId?: string | null;
+  partnerUserId?: string | null;
 };
 
 function digits(phone: string) {
@@ -237,9 +242,11 @@ function siteRow(lead: Lead): Row {
     inq: lead.source === "ask_question" || lead.source === "showing_request" ? 1 : 0,
     assigned: {
       agent: lead.assignedTo || CRM_AGENT.name,
-      partner: "Unassigned",
-      listing: "Unassigned",
+      partner: lead.partnerName || "Unassigned",
+      listing: lead.listingAgent || "Unassigned",
     },
+    assignedUserId: lead.assignedUserId,
+    partnerUserId: lead.partnerUserId,
   };
 }
 
@@ -314,6 +321,7 @@ export function LeadsView({
   tab: LeadTab;
 }) {
   const { leads, add, appendActivity, database } = useLeads();
+  const office = useOfficeSession();
   const { state, update } = useCinc();
   const chrome = useChrome();
   const composer = useComposer();
@@ -353,6 +361,33 @@ export function LeadsView({
   }, [leadId, tab]);
   const openTab = leadId ? tab : lastTab;
 
+  const assignChoices = useMemo(() => {
+    const people = office.roster;
+    if (!people.length) return { agents: TEAM, partners: TEAM, listing: LISTING_AGENTS };
+    const names = (roles: string[]) => ["Unassigned", ...people.filter((user) => roles.includes(user.role)).map((user) => user.name)];
+    return {
+      agents: [...names(["admin", "broker", "agent", "isa"]), "Routing Engine"],
+      partners: names(["lender"]).length > 1 ? names(["lender"]) : ["Unassigned", ...people.map((user) => user.name)],
+      listing: names(["admin", "broker", "agent"]),
+    };
+  }, [office.roster]);
+
+  function saveAssign(id: string, assign: Assign) {
+    if (!office.canReassign) {
+      chrome.toast("Your role cannot reassign leads.");
+      return;
+    }
+    update((current) => ({
+      ...current,
+      assigned: { ...current.assigned, [id]: assign },
+    }));
+    void fetch("/api/leads/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, agent: assign.agent, partner: assign.partner, listing: assign.listing }),
+    }).catch(() => undefined);
+  }
+
   const rows = useMemo(() => {
     const merged = [...leads.map(siteRow), ...crmRows()].map((row) => ({
       ...row,
@@ -360,8 +395,17 @@ export function LeadsView({
       type: state.leadType[row.id] ?? row.type,
       assigned: state.assigned[row.id] ?? row.assigned,
     }));
-    return merged;
-  }, [leads, state.pipeline, state.leadType, state.assigned]);
+    if (!office.ready || !office.user) return [];
+    if (office.seesAll) return merged;
+    return merged.filter((row) =>
+      leadVisibleTo(office.user!, {
+        assignedTo: row.assigned.agent,
+        assignedUserId: state.assigned[row.id] ? null : row.assignedUserId,
+        partnerName: row.assigned.partner,
+        partnerUserId: state.assigned[row.id] ? null : row.partnerUserId,
+      })
+    );
+  }, [leads, state.pipeline, state.leadType, state.assigned, office.ready, office.user, office.seesAll]);
 
   const filtered = rows.filter((row, index) => {
     const trashed = state.trashed.includes(row.id);
@@ -537,17 +581,14 @@ export function LeadsView({
     } else if (action === "Reassign Agents") {
       chrome.openModal(
         <ReassignModal
+          agents={assignChoices.agents}
+          partners={assignChoices.partners}
+          listing={assignChoices.listing}
           onClose={chrome.closeModal}
           onSave={(assign) => {
-            update((current) => {
-              const assigned = { ...current.assigned };
-              selected.forEach((id) => {
-                assigned[id] = assign;
-              });
-              return { ...current, assigned };
-            });
+            selected.forEach((id) => saveAssign(id, assign));
             chrome.closeModal();
-            chrome.toast("Agents reassigned on this device.");
+            chrome.toast(office.database?.connected ? "Agents reassigned." : "Agents reassigned on this device.");
           }}
         />,
       );
@@ -604,6 +645,7 @@ export function LeadsView({
       >
         {database?.message ?? "Checking whether the database is connected…"}
       </p>
+      {!office.ready ? <p className="bg-white px-3 py-2 text-[13px] text-[#666]">Checking your access…</p> : null}
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
       ) : null}
@@ -814,12 +856,9 @@ export function LeadsView({
                         <Menu
                           key={slot}
                           label={<span className="block text-[#1c93b5]">{row.assigned[slot]} ▾</span>}
-                          items={(slot === "listing" ? LISTING_AGENTS : TEAM).map((name) => ({
+                          items={(slot === "listing" ? assignChoices.listing : slot === "partner" ? assignChoices.partners : assignChoices.agents).map((name) => ({
                             label: name,
-                            onClick: () => update((current) => ({
-                              ...current,
-                              assigned: { ...current.assigned, [row.id]: { ...row.assigned, [slot]: name } },
-                            })),
+                            onClick: () => saveAssign(row.id, { ...row.assigned, [slot]: name }),
                           }))}
                         />
                       ))}
@@ -840,6 +879,8 @@ export function LeadsView({
             onExpand={() => setExpanded((value) => !value)}
             onLog={log}
             onPipeline={setPipeline}
+            assignChoices={assignChoices}
+            onAssign={saveAssign}
           />
         ) : null}
       </div>
@@ -893,6 +934,8 @@ function LeadDetail({
   onExpand,
   onLog,
   onPipeline,
+  assignChoices,
+  onAssign,
 }: {
   row: Row;
   tab: LeadTab;
@@ -901,6 +944,8 @@ function LeadDetail({
   onExpand: () => void;
   onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) => void;
   onPipeline: (id: string, stage: string) => void;
+  assignChoices: { agents: string[]; partners: string[]; listing: string[] };
+  onAssign: (id: string, assign: Assign) => void;
 }) {
   const chrome = useChrome();
   const composer = useComposer();
@@ -1047,11 +1092,7 @@ function LeadDetail({
                 </label>
               ))}
             </div>
-            <button type="button" className="mt-2 text-[12px] text-[#1c93b5]" onClick={() => {
-              const name = window.prompt("Saved search name");
-              if (!name) return;
-              update((current) => ({ ...current, savedSearches: { ...current.savedSearches, [row.id]: [...(current.savedSearches[row.id] ?? []), name] } }));
-            }}>🔍 + Saved Search</button>
+            <LeadSearches leadId={row.id} leadEmail={row.email} />
             <p className="mt-2 flex justify-center gap-2 text-[11px] text-[#666]"><span>👁 {row.views}</span><span>🔖 {row.saved}</span><span>♥ {row.fav}</span><span>? {row.inq}</span><span>📎 0</span></p>
             <div className="mt-2">
               <Menu
@@ -1164,7 +1205,7 @@ function LeadDetail({
             <p className="py-4 text-center text-[12px] text-[#999]">That&apos;s Everything!</p>
           </div>
         ) : null}
-        {tab === "info" ? <InfoTab row={row} onTrash={() => { update((current) => ({ ...current, trashed: [...new Set([...current.trashed, row.id])] })); go(href.leadsReturn); chrome.toast("Lead moved to trash."); }} /> : null}
+        {tab === "info" ? <InfoTab row={row} assignChoices={assignChoices} onAssign={onAssign} onTrash={() => { update((current) => ({ ...current, trashed: [...new Set([...current.trashed, row.id])] })); go(href.leadsReturn); chrome.toast("Lead moved to trash."); }} /> : null}
         {tab === "plans" ? (
           <div>
             <div className="mb-2 flex items-center justify-between border-b border-[#ddd] pb-1">
@@ -1248,7 +1289,17 @@ function LeadDetail({
   );
 }
 
-function InfoTab({ row, onTrash }: { row: Row; onTrash: () => void }) {
+function InfoTab({
+  row,
+  assignChoices,
+  onAssign,
+  onTrash,
+}: {
+  row: Row;
+  assignChoices: { agents: string[]; partners: string[]; listing: string[] };
+  onAssign: (id: string, assign: Assign) => void;
+  onTrash: () => void;
+}) {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const [edit, setEdit] = useState(false);
@@ -1307,9 +1358,9 @@ function InfoTab({ row, onTrash }: { row: Row; onTrash: () => void }) {
             <p key={slot}>
               <Menu
                 label={<span className="text-[#1c93b5]">{slot === "agent" ? "Agent Assigned" : slot === "partner" ? "Partner Assigned" : "Listing Agent Assigned"} ▾</span>}
-                items={(slot === "listing" ? LISTING_AGENTS : TEAM).map((name) => ({
+                items={(slot === "listing" ? assignChoices.listing : slot === "partner" ? assignChoices.partners : assignChoices.agents).map((name) => ({
                   label: name,
-                  onClick: () => update((current) => ({ ...current, assigned: { ...current.assigned, [row.id]: { ...row.assigned, [slot]: name } } })),
+                  onClick: () => onAssign(row.id, { ...row.assigned, [slot]: name }),
                 }))}
               />{" "}
               {row.assigned[slot]}
@@ -1521,13 +1572,29 @@ function ChoiceModal({ title, options, onClose, onSave }: { title: string; optio
   );
 }
 
-function ReassignModal({ onClose, onSave }: { onClose: () => void; onSave: (assign: Assign) => void }) {
-  const [assign, setAssign] = useState<Assign>({ agent: "Kayla Gerak", partner: "Unassigned", listing: "Unassigned" });
+function ReassignModal({
+  agents,
+  partners,
+  listing,
+  onClose,
+  onSave,
+}: {
+  agents: string[];
+  partners: string[];
+  listing: string[];
+  onClose: () => void;
+  onSave: (assign: Assign) => void;
+}) {
+  const [assign, setAssign] = useState<Assign>({
+    agent: agents.find((name) => name !== "Unassigned") || "Unassigned",
+    partner: "Unassigned",
+    listing: "Unassigned",
+  });
   return (
     <ModalFrame title="Reassign Agents" onClose={onClose}>
-      <Field label="Agent"><select className={inputCls} value={assign.agent} onChange={(event) => setAssign({ ...assign, agent: event.target.value })}>{TEAM.map((name) => <option key={name}>{name}</option>)}</select></Field>
-      <Field label="Partner"><select className={inputCls} value={assign.partner} onChange={(event) => setAssign({ ...assign, partner: event.target.value })}>{TEAM.map((name) => <option key={name}>{name}</option>)}</select></Field>
-      <Field label="Listing agent"><select className={inputCls} value={assign.listing} onChange={(event) => setAssign({ ...assign, listing: event.target.value })}>{LISTING_AGENTS.map((name) => <option key={name}>{name}</option>)}</select></Field>
+      <Field label="Agent"><select className={inputCls} value={assign.agent} onChange={(event) => setAssign({ ...assign, agent: event.target.value })}>{agents.map((name) => <option key={name}>{name}</option>)}</select></Field>
+      <Field label="Partner"><select className={inputCls} value={assign.partner} onChange={(event) => setAssign({ ...assign, partner: event.target.value })}>{partners.map((name) => <option key={name}>{name}</option>)}</select></Field>
+      <Field label="Listing agent"><select className={inputCls} value={assign.listing} onChange={(event) => setAssign({ ...assign, listing: event.target.value })}>{listing.map((name) => <option key={name}>{name}</option>)}</select></Field>
       <div className="flex justify-end gap-2"><Btn onClick={onClose}>Cancel</Btn><Btn kind="teal" onClick={() => onSave(assign)}>Save</Btn></div>
     </ModalFrame>
   );

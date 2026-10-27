@@ -5,10 +5,16 @@ import {
   type LeadIntent,
   type SanitizedLead,
 } from "@/lib/lead-intake";
+import type { OfficeRole } from "@/lib/office-access";
+import { seesAllLeads } from "@/lib/office-access";
 
 export type StoredLead = SanitizedLead & {
   status: "new";
   activityBody: string;
+  assignedUserId: string | null;
+  partnerName: string;
+  partnerUserId: string | null;
+  listingAgent: string;
 };
 
 type LeadRow = {
@@ -28,11 +34,15 @@ type LeadRow = {
   consent_text: string | null;
   attribution: LeadAttribution | string | null;
   assigned_to: string | null;
+  assigned_user_id: string | null;
+  partner_user_id: string | null;
+  partner_name: string | null;
+  listing_agent: string | null;
   created_at: Date | string;
 };
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS captured_leads (
+const SCHEMA_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS captured_leads (
   id text PRIMARY KEY,
   name text NOT NULL,
   email text NOT NULL,
@@ -49,10 +59,63 @@ CREATE TABLE IF NOT EXISTS captured_leads (
   consent_text text,
   attribution jsonb NOT NULL DEFAULT '{}'::jsonb,
   assigned_to text,
+  assigned_user_id text,
+  partner_user_id text,
+  partner_name text,
+  listing_agent text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
-);
-`;
+)`,
+  `ALTER TABLE captured_leads ADD COLUMN IF NOT EXISTS assigned_user_id text`,
+  `ALTER TABLE captured_leads ADD COLUMN IF NOT EXISTS partner_user_id text`,
+  `ALTER TABLE captured_leads ADD COLUMN IF NOT EXISTS partner_name text`,
+  `ALTER TABLE captured_leads ADD COLUMN IF NOT EXISTS listing_agent text`,
+  `CREATE TABLE IF NOT EXISTS office_users (
+  id text PRIMARY KEY,
+  email text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  role text NOT NULL,
+  first_name text NOT NULL DEFAULT '',
+  last_name text NOT NULL DEFAULT '',
+  cell text NOT NULL DEFAULT '',
+  home_phone text NOT NULL DEFAULT '',
+  office_phone text NOT NULL DEFAULT '',
+  title text NOT NULL DEFAULT '',
+  license_number text NOT NULL DEFAULT '',
+  loan_url text NOT NULL DEFAULT '',
+  bio text NOT NULL DEFAULT '',
+  signature text NOT NULL DEFAULT '',
+  subdomain text NOT NULL DEFAULT '',
+  facebook text NOT NULL DEFAULT '',
+  google text NOT NULL DEFAULT '',
+  pinterest text NOT NULL DEFAULT '',
+  twitter text NOT NULL DEFAULT '',
+  instagram text NOT NULL DEFAULT '',
+  youtube text NOT NULL DEFAULT '',
+  linkedin text NOT NULL DEFAULT '',
+  active boolean NOT NULL DEFAULT true,
+  bootstrap boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS lead_saved_searches (
+  id text PRIMARY KEY,
+  lead_id text NOT NULL,
+  lead_email text NOT NULL,
+  name text NOT NULL,
+  city text NOT NULL DEFAULT '',
+  min_price integer,
+  max_price integer,
+  beds integer,
+  baths integer,
+  property_type text NOT NULL DEFAULT '',
+  frequency text NOT NULL DEFAULT 'Daily',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE INDEX IF NOT EXISTS lead_saved_searches_email_idx ON lead_saved_searches (lower(lead_email))`,
+  `CREATE INDEX IF NOT EXISTS lead_saved_searches_lead_idx ON lead_saved_searches (lead_id)`,
+];
 
 const globalSql = globalThis as unknown as {
   __gvhsSql?: ReturnType<typeof postgres>;
@@ -125,7 +188,11 @@ async function ready() {
   const sql = client();
   if (!sql) return null;
   if (!globalSql.__gvhsSchema) {
-    const pending = sql.unsafe(SCHEMA).then(() => undefined);
+    const pending = (async () => {
+      for (const statement of SCHEMA_STATEMENTS) {
+        await sql.unsafe(statement);
+      }
+    })();
     globalSql.__gvhsSchema = pending;
     pending.catch(() => {
       if (globalSql.__gvhsSchema === pending) globalSql.__gvhsSchema = undefined;
@@ -133,6 +200,10 @@ async function ready() {
   }
   await globalSql.__gvhsSchema;
   return sql;
+}
+
+export async function officeDb() {
+  return ready();
 }
 
 function asAttribution(value: LeadAttribution | string | null): LeadAttribution {
@@ -175,20 +246,27 @@ export function rowToStoredLead(row: LeadRow): StoredLead {
     consentText: row.consent_text ?? undefined,
     attribution,
     assignedTo: row.assigned_to || "Casey Archibald",
+    assignedUserId: row.assigned_user_id,
+    partnerName: row.partner_name || "Unassigned",
+    partnerUserId: row.partner_user_id,
+    listingAgent: row.listing_agent || "Unassigned",
     createdAt,
     status: "new",
     activityBody: [notes, summary].filter(Boolean).join("\n"),
   };
 }
 
-export async function insertLead(lead: SanitizedLead): Promise<StoredLead> {
+export async function insertLead(
+  lead: SanitizedLead & { assignedUserId?: string | null }
+): Promise<StoredLead> {
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
   const rows = await sql<LeadRow[]>`
     INSERT INTO captured_leads (
       id, name, email, phone, sms_opt_in, source, intent, status,
       property_address, property_id, search_label, notes, consent, consent_text,
-      attribution, assigned_to, created_at, updated_at
+      attribution, assigned_to, assigned_user_id, partner_name, listing_agent,
+      created_at, updated_at
     ) VALUES (
       ${lead.id},
       ${lead.name},
@@ -206,6 +284,9 @@ export async function insertLead(lead: SanitizedLead): Promise<StoredLead> {
       ${lead.consentText ?? null},
       ${sql.json(lead.attribution)},
       ${lead.assignedTo},
+      ${lead.assignedUserId ?? null},
+      'Unassigned',
+      'Unassigned',
       ${lead.createdAt},
       ${lead.createdAt}
     )
@@ -215,14 +296,77 @@ export async function insertLead(lead: SanitizedLead): Promise<StoredLead> {
   return rowToStoredLead(rows[0]);
 }
 
-export async function listLeads(limit = 500): Promise<StoredLead[]> {
+export type LeadScope = {
+  role: OfficeRole;
+  userId: string;
+  name: string;
+};
+
+export async function getLead(id: string): Promise<StoredLead | null> {
+  const sql = await ready();
+  if (!sql) return null;
+  const rows = await sql<LeadRow[]>`
+    SELECT * FROM captured_leads WHERE id = ${id} LIMIT 1
+  `;
+  return rows[0] ? rowToStoredLead(rows[0]) : null;
+}
+
+export async function listLeads(limit = 500, scope?: LeadScope | null): Promise<StoredLead[]> {
   const sql = await ready();
   if (!sql) return [];
-  const rows = await sql<LeadRow[]>`
-    SELECT *
-    FROM captured_leads
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `;
+  const name = (scope?.name || "").trim().toLowerCase();
+  const rows = !scope || seesAllLeads(scope.role)
+    ? await sql<LeadRow[]>`
+        SELECT * FROM captured_leads ORDER BY created_at DESC LIMIT ${limit}
+      `
+    : scope.role === "agent"
+      ? await sql<LeadRow[]>`
+          SELECT * FROM captured_leads
+          WHERE assigned_user_id = ${scope.userId} OR lower(assigned_to) = ${name}
+          ORDER BY created_at DESC LIMIT ${limit}
+        `
+      : scope.role === "isa"
+        ? await sql<LeadRow[]>`
+            SELECT * FROM captured_leads
+            WHERE assigned_user_id = ${scope.userId}
+              OR lower(assigned_to) = ${name}
+              OR assigned_to IS NULL
+              OR btrim(assigned_to) = ''
+              OR lower(assigned_to) = 'unassigned'
+            ORDER BY created_at DESC LIMIT ${limit}
+          `
+        : scope.role === "lender"
+          ? await sql<LeadRow[]>`
+              SELECT * FROM captured_leads
+              WHERE partner_user_id = ${scope.userId} OR lower(partner_name) = ${name}
+              ORDER BY created_at DESC LIMIT ${limit}
+            `
+          : [];
   return rows.map(rowToStoredLead);
+}
+
+export async function assignCapturedLead(
+  id: string,
+  assign: {
+    agent: string;
+    agentUserId: string | null;
+    partner: string;
+    partnerUserId: string | null;
+    listing: string;
+  }
+): Promise<StoredLead | null> {
+  const sql = await ready();
+  if (!sql) return null;
+  const rows = await sql<LeadRow[]>`
+    UPDATE captured_leads
+    SET assigned_to = ${assign.agent},
+        assigned_user_id = ${assign.agentUserId},
+        partner_name = ${assign.partner},
+        partner_user_id = ${assign.partnerUserId},
+        listing_agent = ${assign.listing},
+        updated_at = now()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return rows[0] ? rowToStoredLead(rows[0]) : null;
 }

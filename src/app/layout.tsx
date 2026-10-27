@@ -3,6 +3,7 @@ import { Lato, Roboto, Work_Sans } from "next/font/google";
 import { AdPixels } from "@/components/ad-pixels";
 import { AppChrome } from "@/components/app-chrome";
 import { CompareProvider } from "@/lib/compare";
+import { OfficeSessionProvider } from "@/components/cinc/office-session";
 import { DemoAuthProvider } from "@/lib/demo-auth";
 import { LeadsProvider } from "@/lib/leads";
 import { RecentlyViewedProvider } from "@/lib/recently-viewed";
@@ -56,7 +57,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <RecentlyViewedProvider>
                 <LeadsProvider>
                   <DemoAuthProvider>
-                    <AppChrome>{children}</AppChrome>
+                    <OfficeSessionProvider>
+                      <AppChrome>{children}</AppChrome>
+                    </OfficeSessionProvider>
                   </DemoAuthProvider>
                 </LeadsProvider>
               </RecentlyViewedProvider>

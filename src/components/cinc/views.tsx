@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CRM_AGENT, CRM_AUTOTRACKS, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { useLeads } from "@/lib/leads";
 import { useChrome } from "./chrome-context";
+import { useOfficeSession } from "./office-session";
 import { href } from "./route";
 import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template } from "./store";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
@@ -1257,8 +1258,77 @@ export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrati
 function ProfileTab() {
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const office = useOfficeSession();
   const profile = state.profile;
   const set = (key: keyof typeof profile, value: string) => update((current) => ({ ...current, profile: { ...current.profile, [key]: value } }));
+  const hydrated = useRef(false);
+  useEffect(() => {
+    const user = office.user;
+    if (!user || hydrated.current) return;
+    hydrated.current = true;
+    queueMicrotask(() => {
+      update((current) => ({
+        ...current,
+        profile: {
+          ...current.profile,
+          email: user.email,
+          cell: user.cell,
+          home: user.home,
+          office: user.office,
+          first: user.firstName,
+          last: user.lastName,
+          title: user.title,
+          license: user.license,
+          loan: user.loan,
+          bio: user.bio,
+          subdomain: user.subdomain,
+          facebook: user.facebook,
+          google: user.google,
+          pinterest: user.pinterest,
+          twitter: user.twitter,
+          instagram: user.instagram,
+          youtube: user.youtube,
+          linkedin: user.linkedin,
+          signature: user.signature,
+        },
+      }));
+    });
+  }, [office.user, update]);
+  async function persist(okMessage: string) {
+    if (!office.user || office.user.id === "bootstrap" || !office.database?.connected) {
+      chrome.toast(office.database && !office.database.connected ? office.database.message : `${okMessage} on this device.`);
+      return;
+    }
+    const current = state.profile;
+    const response = await fetch(`/api/office/users/${office.user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: current.email,
+        cell: current.cell,
+        home: current.home,
+        office: current.office,
+        firstName: current.first,
+        lastName: current.last,
+        title: current.title,
+        license: current.license,
+        loan: current.loan,
+        bio: current.bio,
+        subdomain: current.subdomain,
+        facebook: current.facebook,
+        google: current.google,
+        pinterest: current.pinterest,
+        twitter: current.twitter,
+        instagram: current.instagram,
+        youtube: current.youtube,
+        linkedin: current.linkedin,
+        signature: current.signature,
+      }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    chrome.toast(response.ok ? okMessage : data?.message || "Could not save your profile.");
+    if (response.ok) office.refresh();
+  }
   const socials: [string, keyof typeof profile][] = [
     ["Facebook Page", "facebook"],
     ["Google+ Page", "google"],
@@ -1283,7 +1353,7 @@ function ProfileTab() {
         <label className="mb-1 block text-right text-[12px]">Subdomain</label>
         <input className={inputCls} value={profile.subdomain} onChange={(event) => set("subdomain", event.target.value)} />
         <p className="mt-1 text-[12px]">.greatervancouverhomesearch.com</p>
-        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => chrome.toast("Subdomain saved on this device.")}>Update</Btn></div>
+        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => void persist("Subdomain saved.")}>Update</Btn></div>
       </Card>
       <Card title="Agent CINC Number">
         <p className="font-mono text-[12px]">{AGENT_NUMBER}</p>
@@ -1295,7 +1365,7 @@ function ProfileTab() {
             <input className={inputCls} value={profile[key]} onChange={(event) => set(key, event.target.value)} />
           </label>
         ))}
-        <div className="text-right"><Btn kind="blue" onClick={() => chrome.toast("Social links saved.")}>Update</Btn></div>
+        <div className="text-right"><Btn kind="blue" onClick={() => void persist("Social links saved.")}>Update</Btn></div>
       </Card>
       </div>
       <div className="space-y-4">
@@ -1322,12 +1392,12 @@ function ProfileTab() {
           </div>
         </Field>
         <Field label="Biography"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={profile.bio} onChange={(event) => set("bio", event.target.value)} /></Field>
-        <div className="text-right"><Btn kind="blue" onClick={() => chrome.toast("Personal info saved.")}>Update</Btn></div>
+        <div className="text-right"><Btn kind="blue" onClick={() => void persist("Personal info saved.")}>Update</Btn></div>
       </Card>
       <Card title="Signature">
         <p className="mb-1 text-[12px] text-[#888]">Paragraph · 12pt</p>
         <textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={profile.signature} onChange={(event) => set("signature", event.target.value)} />
-        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => chrome.toast("Signature saved.")}>Update</Btn></div>
+        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => void persist("Signature saved.")}>Update</Btn></div>
       </Card>
       </div>
     </div>

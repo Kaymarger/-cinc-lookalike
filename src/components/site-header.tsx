@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuthModal } from "@/components/auth-modal";
+import { useOfficeSession } from "@/components/cinc/office-session";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { cn } from "@/lib/utils";
 
@@ -23,11 +24,63 @@ const ACCOUNT = [
   { href: "/account/settings", label: "Settings" },
 ];
 
+const AGENT_MENU = [
+  { href: "/agent/leads", label: "Dashboard", icon: "dashboard" },
+  { href: "/seller/homepulse", label: "HomePulse", icon: "homepulse" },
+  { href: "/notebook", label: "My Notebook", icon: "notebook" },
+  { href: "/account/settings", label: "Settings", icon: "settings" },
+] as const;
+
+function AgentIcon({ name }: { name: (typeof AGENT_MENU)[number]["icon"] | "logout" }) {
+  const common = "h-4 w-4 shrink-0 text-[#4a5560]";
+  if (name === "dashboard") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+        <path d="M3 10.5a5 5 0 1 1 10 0" />
+        <path d="M8 10.5 10.5 6.5" />
+        <path d="M3 13.5h10" />
+      </svg>
+    );
+  }
+  if (name === "homepulse") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+        <path d="M2 11.5 5.2 7.8l2.2 2.4 2.3-4.2L14 9" />
+        <path d="M2 13.5h12" />
+      </svg>
+    );
+  }
+  if (name === "notebook") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+        <path d="M4 2.5h7.5v11H4z" />
+        <path d="M6 2.5v11M6.8 5.5h3.2M6.8 8h3.2" />
+      </svg>
+    );
+  }
+  if (name === "settings") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+        <circle cx="8" cy="8" r="2" />
+        <path d="M8 2.2v1.6M8 12.2v1.6M2.2 8h1.6M12.2 8h1.6M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M12.2 3.8l-1.1 1.1M4.9 11.1l-1.1 1.1" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+      <path d="M6.5 3.5H3.5v9h3" />
+      <path d="M7 8h6.2M11 5.5 13.5 8 11 10.5" />
+    </svg>
+  );
+}
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { ready, user, signOut } = useDemoAuth();
+  const office = useOfficeSession();
+  const agent = office.user;
   const { openSignup } = useAuthModal();
 
   function close() {
@@ -73,7 +126,7 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          {ready && user && (
+          {ready && user && !agent && (
             <div className="relative">
               <button
                 type="button"
@@ -107,7 +160,50 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-2 hidden items-center lg:flex">
-          {ready && user ? (
+          {agent ? (
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={accountOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setAccountOpen((v) => !v);
+                  setMoreOpen(false);
+                }}
+                className="inline-flex max-w-[220px] items-center gap-1 px-3 text-[12px] font-bold tracking-[1px] text-[#1976d2] uppercase"
+              >
+                <span className="truncate">{agent.name}</span>
+                <svg width="8" height="5" viewBox="0 0 8 6" aria-hidden className="shrink-0">
+                  <path d="M0 0h8L4 6z" fill="#1976d2" />
+                </svg>
+              </button>
+              {accountOpen ? (
+                <div className="absolute top-full right-0 z-50 min-w-[220px] border border-[#e6e6e6] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                  {AGENT_MENU.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={close}
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-bold tracking-[0.08em] text-[#333] uppercase hover:bg-[#f4f7f8]"
+                    >
+                      <AgentIcon name={item.icon} />
+                      {item.label}
+                    </Link>
+                  ))}
+                  <form action="/api/agent/logout" method="post" onSubmit={() => signOut()}>
+                    <input type="hidden" name="next" value="/" />
+                    <button
+                      type="submit"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[12px] font-bold tracking-[0.08em] text-[#333] uppercase hover:bg-[#f4f7f8]"
+                    >
+                      <AgentIcon name="logout" />
+                      Logout
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+            </div>
+          ) : ready && user ? (
             <div className="relative">
               <button
                 type="button"
@@ -178,7 +274,27 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            {user &&
+            {agent
+              ? AGENT_MENU.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    className="flex items-center gap-3 border-b border-white/15 py-3 text-[12px] font-bold tracking-[1px] !text-white uppercase"
+                  >
+                    {item.label}
+                  </Link>
+                ))
+              : null}
+            {agent ? (
+              <form action="/api/agent/logout" method="post" onSubmit={() => signOut()}>
+                <input type="hidden" name="next" value="/" />
+                <button type="submit" className="py-3 text-left text-[12px] font-bold tracking-[1px] uppercase">
+                  Logout
+                </button>
+              </form>
+            ) : null}
+            {!agent && user &&
               ACCOUNT.map((item) => (
                 <Link
                   key={item.href}
@@ -189,7 +305,7 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-            {user ? (
+            {!agent && user ? (
               <button
                 type="button"
                 className="py-3 text-left text-[12px] font-bold tracking-[1px] uppercase"
@@ -200,7 +316,7 @@ export function SiteHeader() {
               >
                 Logout
               </button>
-            ) : (
+            ) : !agent ? (
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
@@ -223,7 +339,7 @@ export function SiteHeader() {
                   Sign up
                 </button>
               </div>
-            )}
+            ) : null}
           </nav>
         </div>
       )}

@@ -85,6 +85,10 @@ export type Lead = {
   consent?: boolean;
   attribution?: LeadAttribution;
   assignedTo?: string;
+  assignedUserId?: string | null;
+  partnerName?: string;
+  partnerUserId?: string | null;
+  listingAgent?: string;
 };
 
 type CreateLeadInput = {
@@ -238,6 +242,10 @@ export function normalizeLead(raw: Partial<Lead> & Pick<Lead, "id" | "name" | "e
     consent: raw.consent,
     attribution: raw.attribution,
     assignedTo: raw.assignedTo,
+    assignedUserId: raw.assignedUserId,
+    partnerName: raw.partnerName,
+    partnerUserId: raw.partnerUserId,
+    listingAgent: raw.listingAgent,
   };
 }
 

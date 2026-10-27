@@ -8,6 +8,8 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
 import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
 import { assignedAgentName, notifyAssignedAgent } from "@/lib/notify-lead";
+import { currentActor } from "@/lib/office-actor";
+import { findUserByName } from "@/lib/office-users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +54,10 @@ function publicLead(lead: SanitizedLead | StoredLead) {
     consent: lead.consent,
     attribution: lead.attribution,
     assignedTo: lead.assignedTo,
+    assignedUserId: "assignedUserId" in lead ? lead.assignedUserId : null,
+    partnerName: "partnerName" in lead ? lead.partnerName : "Unassigned",
+    partnerUserId: "partnerUserId" in lead ? lead.partnerUserId : null,
+    listingAgent: "listingAgent" in lead ? lead.listingAgent : "Unassigned",
     createdAt: lead.createdAt,
     updatedAt: lead.createdAt,
     activity: [
@@ -74,21 +80,33 @@ export async function GET() {
   if (!(await verifySession(jar.get(COOKIE_NAME)?.value))) {
     return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
   }
-  const database = await databaseStatus();
+  const actor = await currentActor();
+  if (!actor) {
+    return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
+  }
+  const database = actor.database.configured ? actor.database : await databaseStatus();
   if (!database.connected) {
     return Response.json({
       ok: true,
       configured: database.configured,
       database,
+      viewer: actor.publicUser,
+      seesAll: actor.seesAll,
       leads: [],
     });
   }
   try {
-    const leads = await listLeads();
+    const leads = await listLeads(500, {
+      role: actor.user.role,
+      userId: actor.user.id,
+      name: actor.user.name,
+    });
     return Response.json({
       ok: true,
       configured: true,
       database,
+      viewer: actor.publicUser,
+      seesAll: actor.seesAll,
       leads: leads.map(publicLead),
     });
   } catch (error) {
@@ -216,7 +234,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const saved = await insertLead(parsed.lead);
+    const owner = await findUserByName(parsed.lead.assignedTo).catch(() => null);
+    const saved = await insertLead({ ...parsed.lead, assignedUserId: owner?.id ?? null });
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
     return Response.json({
       ok: true,

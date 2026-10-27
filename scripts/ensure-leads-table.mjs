@@ -20,10 +20,19 @@ const sql = postgres(url, {
   connect_timeout: 20,
 });
 
+function statements(schema) {
+  return schema
+    .split(";")
+    .map((part) => part.replace(/--[^\n]*/g, "").trim())
+    .filter(Boolean);
+}
+
 try {
   const schema = readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8");
-  await sql.unsafe(schema);
-  console.log("[leads] captured_leads is ready.");
+  for (const statement of statements(schema)) {
+    await sql.unsafe(statement);
+  }
+  console.log("[leads] captured_leads, office_users, and lead_saved_searches are ready.");
 } catch (error) {
   console.warn(
     "[leads] Could not create the table during build. It will be created on first use.",

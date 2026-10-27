@@ -17,6 +17,12 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/agent/login") return NextResponse.next();
 
+  if (pathname.startsWith("/api/office") || pathname.startsWith("/api/leads/")) {
+    const ok = await verifySession(request.cookies.get(COOKIE_NAME)?.value);
+    if (ok) return NextResponse.next();
+    return NextResponse.json({ ok: false, message: "Sign in required." }, { status: 401 });
+  }
+
   if (pathname === "/api/leads") {
     if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
     const ok = await verifySession(request.cookies.get(COOKIE_NAME)?.value);
@@ -45,5 +51,7 @@ export const config = {
     "/dashboard/sellersuite/:path*",
     "/dashboard/landing/:path*",
     "/api/leads",
+    "/api/leads/:path*",
+    "/api/office/:path*",
   ],
 };

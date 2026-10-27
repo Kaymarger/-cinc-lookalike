@@ -125,7 +125,10 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const signOut = useCallback(() => setUser(null), []);
+  const signOut = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    setUser(null);
+  }, []);
 
   const value = useMemo(
     () => ({

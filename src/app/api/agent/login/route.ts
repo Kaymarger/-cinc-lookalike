@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import {
   COOKIE_NAME,
   cookieBase,
-  passwordMatches,
   safeNext,
   signSession,
   agentPassword,
 } from "@/lib/agent-auth";
+import { loginOffice } from "@/lib/office-actor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,12 +29,17 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
-async function readBody(request: Request): Promise<{ password: string; next: string; html: boolean }> {
+async function readBody(request: Request): Promise<{ email: string; password: string; next: string; html: boolean }> {
   const type = request.headers.get("content-type") || "";
   const html = !type.includes("application/json");
   if (!html) {
-    const body = (await request.json().catch(() => null)) as { password?: unknown; next?: unknown } | null;
+    const body = (await request.json().catch(() => null)) as {
+      email?: unknown;
+      password?: unknown;
+      next?: unknown;
+    } | null;
     return {
+      email: String(body?.email ?? ""),
       password: String(body?.password ?? ""),
       next: safeNext(typeof body?.next === "string" ? body.next : ""),
       html,
@@ -42,6 +47,7 @@ async function readBody(request: Request): Promise<{ password: string; next: str
   }
   const form = await request.formData();
   return {
+    email: String(form.get("email") ?? ""),
     password: String(form.get("password") ?? ""),
     next: safeNext(String(form.get("next") ?? "")),
     html,
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
     return redirectTo(loginPath({ error: "1" }));
   }
 
-  const { password, next, html } = await readBody(request);
+  const { email, password, next, html } = await readBody(request);
   const secure = new URL(request.url).protocol === "https:";
 
   if (!agentPassword()) {
@@ -74,12 +80,18 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!(await passwordMatches(password))) {
-    if (html) return redirectTo(loginPath({ error: "1", next }));
-    return NextResponse.json({ ok: false, message: "That password is not right." }, { status: 401 });
+  const result = await loginOffice(email, password);
+  if (!result.ok) {
+    const error = result.reason === "db" ? "db" : "1";
+    if (html) return redirectTo(loginPath({ error, next }));
+    const message =
+      result.reason === "db"
+        ? "Team logins need a database. Leave the email blank and use the office password, or connect Neon."
+        : "That email or password is not right.";
+    return NextResponse.json({ ok: false, message }, { status: result.reason === "db" ? 503 : 401 });
   }
 
-  const response = html ? redirectTo(next) : NextResponse.json({ ok: true });
-  response.cookies.set(COOKIE_NAME, await signSession(), cookieBase(secure));
+  const response = html ? redirectTo(next) : NextResponse.json({ ok: true, userId: result.userId });
+  response.cookies.set(COOKIE_NAME, await signSession(result.userId), cookieBase(secure));
   return response;
 }

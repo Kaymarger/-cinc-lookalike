@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LeadsView } from "./leads-view";
+import { UsersView } from "./users-view";
 import { parseRoute } from "./route";
 import { Shell } from "./shell";
 import { CincStoreProvider } from "./store";
@@ -61,6 +62,7 @@ function View() {
   if (route.view === "seller") return <SellerView />;
   if (route.view === "landing") return <LandingView category={route.category} />;
   if (route.view === "settings") return <SettingsView tab={route.tab} />;
+  if (route.view === "users") return <UsersView />;
   if (route.view === "plans") return <PlansView />;
   if (route.view === "dialer") return <DialerView />;
   if (route.view === "calendar") return <CalendarView />;

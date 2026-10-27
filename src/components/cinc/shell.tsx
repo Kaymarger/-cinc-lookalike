@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT } from "@/lib/cinc-crm";
 import { ChromeContext } from "./chrome-context";
+import { useOfficeSession } from "./office-session";
 import { href, sectionOf, titleMenu, titleOf, type CincRoute, type NavSection } from "./route";
 const NAV: {
   id: NavSection;
@@ -265,7 +266,11 @@ const ROSTER = [
 ];
 
 export function Shell({ route, children }: { route: CincRoute; children: ReactNode }) {
+  const office = useOfficeSession();
   const section = sectionOf(route);
+  const initials = office.user
+    ? office.user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()
+    : CRM_AGENT.initials;
   const menu = titleMenu(route);
   const [titleOpen, setTitleOpen] = useState(false);
   const [passwordToast, setPasswordToast] = useState(false);
@@ -446,13 +451,16 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               </form>
               <div className="relative">
                 <button type="button" className="flex items-center gap-0.5 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
-                  <span>{CRM_AGENT.initials}</span>
+                  <span>{initials}</span>
                   <svg width="7" height="5" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
                     <a href={href.plans} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Plans</a>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
+                    {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
+                      <a href={href.users} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Users</a>
+                    ) : null}
                     <a href={href.publicSite} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
                     <form action="/api/agent/logout" method="post">
                       <button type="submit" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]">

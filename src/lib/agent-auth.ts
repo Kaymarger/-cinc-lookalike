@@ -69,25 +69,47 @@ export async function passwordMatches(input: string): Promise<boolean> {
   return safeEqual(left, right);
 }
 
-export async function signSession(now = Date.now()): Promise<string> {
+const USER_ID = /^[A-Za-z0-9_-]{1,80}$/;
+
+export async function signSession(userId = "bootstrap", now = Date.now()): Promise<string> {
+  const id = USER_ID.test(userId) ? userId : "bootstrap";
   const secret = await sessionSecret();
-  const payload = `v1.${now + SESSION_MAX_AGE * 1000}`;
+  const payload = `v2.${now + SESSION_MAX_AGE * 1000}.${id}`;
   const signature = await sign(secret, payload);
   return `${payload}.${signature}`;
 }
 
-export async function verifySession(token: string | undefined | null): Promise<boolean> {
-  if (!agentPassword() || !token) return false;
+export async function readSession(
+  token: string | undefined | null
+): Promise<{ userId: string } | null> {
+  if (!agentPassword() || !token) return null;
   const parts = token.split(".");
-  if (parts.length !== 3) return false;
-  const [version, exp, signature] = parts;
-  if (version !== "v1" || !exp || !signature) return false;
-  const expires = Number(exp);
-  if (!Number.isFinite(expires) || expires < Date.now()) return false;
   const secret = await sessionSecret();
-  if (!secret) return false;
-  const expected = await sign(secret, `${version}.${exp}`);
-  return safeEqual(signature, expected);
+  if (!secret) return null;
+
+  if (parts.length === 3 && parts[0] === "v1") {
+    const [, exp, signature] = parts;
+    if (!exp || !signature) return null;
+    const expires = Number(exp);
+    if (!Number.isFinite(expires) || expires < Date.now()) return null;
+    const expected = await sign(secret, `v1.${exp}`);
+    return safeEqual(signature, expected) ? { userId: "bootstrap" } : null;
+  }
+
+  if (parts.length === 4 && parts[0] === "v2") {
+    const [, exp, userId, signature] = parts;
+    if (!exp || !userId || !signature || !USER_ID.test(userId)) return null;
+    const expires = Number(exp);
+    if (!Number.isFinite(expires) || expires < Date.now()) return null;
+    const expected = await sign(secret, `v2.${exp}.${userId}`);
+    return safeEqual(signature, expected) ? { userId } : null;
+  }
+
+  return null;
+}
+
+export async function verifySession(token: string | undefined | null): Promise<boolean> {
+  return (await readSession(token)) !== null;
 }
 
 export function cookieBase(secure: boolean, maxAge = SESSION_MAX_AGE) {
