@@ -72,6 +72,39 @@ export function leadsDatabaseConfigured(): boolean {
   return databaseUrl().length > 0;
 }
 
+export type DatabaseStatus = {
+  connected: boolean;
+  configured: boolean;
+  message: string;
+};
+
+export async function databaseStatus(): Promise<DatabaseStatus> {
+  if (!leadsDatabaseConfigured()) {
+    return {
+      connected: false,
+      configured: false,
+      message:
+        "Database is not connected. In Vercel, open Storage, create a Neon database, then redeploy. The app uses DATABASE_URL or POSTGRES_URL.",
+    };
+  }
+  try {
+    await listLeads(1);
+    return {
+      connected: true,
+      configured: true,
+      message: "Database connected. New leads from the public site are saved here.",
+    };
+  } catch {
+    console.error("[leads] database status check failed");
+    return {
+      connected: false,
+      configured: true,
+      message:
+        "A database URL is set, but the office could not reach it. Check DATABASE_URL or POSTGRES_URL in Vercel, then redeploy.",
+    };
+  }
+}
+
 function client() {
   const url = databaseUrl();
   if (!url) return null;

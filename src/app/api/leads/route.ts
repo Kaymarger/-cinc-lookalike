@@ -4,7 +4,9 @@ import {
   sanitizeLeadInput,
   type SanitizedLead,
 } from "@/lib/lead-intake";
-import { insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
+import { cookies } from "next/headers";
+import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
+import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
 import { assignedAgentName, notifyAssignedAgent } from "@/lib/notify-lead";
 
 export const runtime = "nodejs";
@@ -68,20 +70,42 @@ function publicLead(lead: SanitizedLead | StoredLead) {
 }
 
 export async function GET() {
-  if (!leadsDatabaseConfigured()) {
-    return Response.json({ ok: true, configured: false, leads: [] });
+  const jar = await cookies();
+  if (!(await verifySession(jar.get(COOKIE_NAME)?.value))) {
+    return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
+  }
+  const database = await databaseStatus();
+  if (!database.connected) {
+    return Response.json({
+      ok: true,
+      configured: database.configured,
+      database,
+      leads: [],
+    });
   }
   try {
     const leads = await listLeads();
     return Response.json({
       ok: true,
       configured: true,
+      database,
       leads: leads.map(publicLead),
     });
   } catch (error) {
     console.error("[leads] read failed", error instanceof Error ? error.name : "error");
     return Response.json(
-      { ok: false, configured: true, leads: [], message: "Leads are temporarily unavailable." },
+      {
+        ok: false,
+        configured: true,
+        database: {
+          connected: false,
+          configured: true,
+          message:
+            "A database URL is set, but the office could not reach it. Check DATABASE_URL or POSTGRES_URL in Vercel, then redeploy.",
+        },
+        leads: [],
+        message: "Leads are temporarily unavailable.",
+      },
       { status: 503 }
     );
   }

@@ -313,7 +313,7 @@ export function LeadsView({
   leadId?: string;
   tab: LeadTab;
 }) {
-  const { leads, add, appendActivity } = useLeads();
+  const { leads, add, appendActivity, database } = useLeads();
   const { state, update } = useCinc();
   const chrome = useChrome();
   const composer = useComposer();
@@ -594,6 +594,16 @@ export function LeadsView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <p
+        role="status"
+        className={
+          database?.connected
+            ? "bg-[#e7f6ec] px-3 py-2 text-[13px] text-[#1e7a34]"
+            : "bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]"
+        }
+      >
+        {database?.message ?? "Checking whether the database is connected…"}
+      </p>
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
       ) : null}

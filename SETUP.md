@@ -1,0 +1,46 @@
+# Set up the live site
+
+The public home search and `/start` work with no setup. The agent office stays locked until you set a password. Leads are saved in a database only after you connect Neon.
+
+Do this in the Vercel project that deploys from `main`. After you add or change any variable, redeploy (Deployments → the latest deployment → Redeploy). A finished deploy does not see new variables.
+
+## 1. Lock the agent office
+
+1. Open the project on [vercel.com](https://vercel.com).
+2. Go to **Settings → Environment Variables**.
+3. Add `AGENT_PASSWORD`. The value is the password you will type at `/agent`. Use a long password you can remember or store in a password manager.
+4. Optional: add `AUTH_SECRET` as a second long random string. It signs the login cookie. If you leave it blank, the cookie is signed with a value derived from `AGENT_PASSWORD`.
+5. Redeploy.
+
+Until `AGENT_PASSWORD` is set, `/agent` shows “Set AGENT_PASSWORD in Vercel” and does not open the office.
+
+## 2. Add a free Neon database
+
+1. In the same Vercel project, open the **Storage** tab.
+2. Click **Create Database** (sometimes labeled **Create**).
+3. Choose **Neon** (Postgres). Pick the free plan if Vercel asks.
+4. Click through **Continue**, then connect it to this project and confirm **Create** / **Connect**.
+5. Accept the environment variables Vercel offers. That adds `DATABASE_URL` and `POSTGRES_URL` for Production. Include Preview too if you use preview deploys.
+6. Redeploy when Vercel asks. If it does not ask, open **Deployments** and redeploy the latest production deployment.
+
+You do not run SQL by hand. The `captured_leads` table is created during the build when a database URL is present, and again the first time a lead is saved or you open the leads screen.
+
+On **Leads**, a banner says whether the database is connected.
+
+## 3. Optional alerts and ad tags
+
+| You want | Account | Variables |
+| --- | --- | --- |
+| Email when a lead arrives | [Resend](https://resend.com) or [SendGrid](https://sendgrid.com), with a verified from-address | `AGENT_ALERT_EMAIL`, plus `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` |
+| Text when a lead arrives | [Twilio](https://www.twilio.com) and a Twilio phone number | `AGENT_ALERT_PHONE`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
+| Name stored on the lead | — | `AGENT_ALERT_NAME` (optional; otherwise Casey Archibald) |
+| Meta ads | Meta Events Manager | `META_PIXEL_ID` |
+| Google ads | Google Ads conversion action | `GOOGLE_ADS_ID` (`AW-…`) and `GOOGLE_ADS_CONVERSION_LABEL` |
+
+`LEAD_ALERT_FROM_EMAIL` can be used as the from-address if the provider-specific from variable is empty. `NEXT_PUBLIC_SITE_URL` is optional and is the link included in the alert email.
+
+If an alert variable is missing, that alert is skipped. The lead is still saved when the database is connected.
+
+## What stays public
+
+`/start`, the rest of the home search, and sending a lead (`POST /api/leads`) do not require the password. Reading the lead list does.

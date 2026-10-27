@@ -439,6 +439,11 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
+              <form action="/api/agent/logout" method="post">
+                <button type="submit" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">
+                  Log out
+                </button>
+              </form>
               <div className="relative">
                 <button type="button" className="flex items-center gap-0.5 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
                   <span>{CRM_AGENT.initials}</span>
@@ -449,6 +454,11 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     <a href={href.plans} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Plans</a>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
                     <a href={href.publicSite} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
+                    <form action="/api/agent/logout" method="post">
+                      <button type="submit" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]">
+                        Log out
+                      </button>
+                    </form>
                   </div>
                 ) : null}
               </div>

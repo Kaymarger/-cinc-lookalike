@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AgentAlias } from "@/components/cinc/agent-alias";
+import { AgentGate } from "@/components/agent-gate";
 
 export const metadata: Metadata = {
   title: {
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
-  return <AgentAlias>{children}</AgentAlias>;
+  return <AgentGate>{children}</AgentGate>;
 }

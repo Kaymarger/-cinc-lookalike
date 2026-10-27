@@ -102,9 +102,15 @@ type CreateLeadInput = {
   attribution?: LeadAttribution;
 };
 
+export type DatabaseNotice = {
+  connected: boolean;
+  message: string;
+};
+
 type Ctx = {
   ready: boolean;
   leads: Lead[];
+  database: DatabaseNotice | null;
   add: (input: CreateLeadInput) => Lead;
   capture: (input: CreateLeadInput) => Promise<{ ok: boolean; message?: string }>;
   updateStatus: (id: string, status: LeadStatus) => void;
@@ -282,6 +288,7 @@ export const LEAD_SOURCES = Object.keys(
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [ready, setReady] = useState(false);
+  const [database, setDatabase] = useState<DatabaseNotice | null>(null);
 
   useEffect(() => {
     const existing = readLeads();
@@ -300,10 +307,20 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     fetch("/api/leads", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
-        return (await response.json()) as { leads?: Partial<Lead>[] };
+        return (await response.json()) as {
+          leads?: Partial<Lead>[];
+          database?: DatabaseNotice;
+        };
       })
       .then((data) => {
-        if (cancelled || !data?.leads?.length) return;
+        if (cancelled || !data) return;
+        if (data.database?.message) {
+          setDatabase({
+            connected: Boolean(data.database.connected),
+            message: data.database.message,
+          });
+        }
+        if (!data.leads?.length) return;
         const remote = data.leads.map((item) =>
           normalizeLead(item as Lead)
         );
@@ -593,6 +610,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     () => ({
       ready,
       leads,
+      database,
       add,
       capture,
       updateStatus,
@@ -611,6 +629,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     [
       ready,
       leads,
+      database,
       add,
       capture,
       updateStatus,
