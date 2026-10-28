@@ -639,8 +639,8 @@ export function LeadsView({
         role="status"
         className={
           database?.connected
-            ? "bg-[#e7f6ec] px-3 py-2 text-[13px] text-[#1e7a34]"
-            : "bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]"
+            ? "bg-white px-3 py-1 text-[11px] text-[#6a8f74]"
+            : "bg-[#fff6e5] px-3 py-1 text-[11px] text-[#8a5a00]"
         }
       >
         {database?.message ?? "Checking whether the database is connected…"}

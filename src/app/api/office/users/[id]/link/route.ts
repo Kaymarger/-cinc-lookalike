@@ -15,13 +15,14 @@ export async function POST(
   if (!actor.database.connected) {
     return Response.json({ ok: false, message: actor.database.message }, { status: 409 });
   }
-  if (!actor.canManageUsers) {
-    return Response.json({ ok: false, message: "Only an admin or broker can create these links." }, { status: 403 });
-  }
+  const { id } = await context.params;
   const body = (await request.json().catch(() => null)) as { kind?: unknown } | null;
   const kind = body?.kind === "invite" ? "invite" : body?.kind === "reset" ? "reset" : null;
   if (!kind) return Response.json({ ok: false, message: "Choose a reset link or an invite link." }, { status: 400 });
-  const { id } = await context.params;
+  const selfReset = kind === "reset" && actor.user.id === id && !actor.impersonating;
+  if (!actor.canManageUsers && !selfReset) {
+    return Response.json({ ok: false, message: "Only an admin or broker can create these links." }, { status: 403 });
+  }
   const user = await findUserById(id);
   if (!user) return Response.json({ ok: false, message: "That user was not found." }, { status: 404 });
   if (!user.active) {

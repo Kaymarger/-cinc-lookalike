@@ -326,9 +326,9 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
 
   return (
     <ChromeContext.Provider value={api}>
-      <div className={`cinc-root relative flex overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
-        <aside className="flex w-[147px] shrink-0 flex-col bg-[#2b3a4a] text-white">
-          <div className="flex h-[58px] items-center bg-[#1a2833] px-3">
+      <div className={`cinc-root relative flex overflow-hidden bg-[#f4f4f4] font-[Arial,Helvetica,sans-serif] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
+        <aside className="flex w-[210px] shrink-0 flex-col bg-[#2d3c4b] text-white">
+          <div className="flex h-[58px] items-center bg-[#2d3c4b] px-4">
             <Logo />
           </div>
           <nav className="pt-2">
@@ -342,9 +342,9 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 <div key={item.id}>
                   <a
                     href={item.href}
-                    className={`flex h-[30px] items-center gap-2 px-5 text-[13px] whitespace-nowrap ${active ? "bg-[#36485a] text-[#1b9cb8]" : "text-[#f4f7f8] hover:bg-[#33485a]"}`}
+                    className={`flex h-[34px] items-center gap-2 px-4 text-[13px] whitespace-nowrap ${active ? "bg-[#243240] text-[#3db5d6]" : "text-[#f4f7f8] hover:bg-[#36485a]"}`}
                   >
-                    <span className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full ${active ? "ring-1 ring-[#1b9cb8]" : ""}`}>
+                    <span className="relative grid h-6 w-6 shrink-0 place-items-center">
                       <NavIcon id={item.id} />
                       {item.badge ? <span className="absolute top-0 left-0 h-[5px] w-[9px] rounded-[1px] bg-[#e23d45]" /> : null}
                     </span>
@@ -380,7 +380,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[19px] leading-none font-light text-[#2a9bb8]"
+                className="flex items-center gap-2 text-[22px] leading-none font-light text-[#4aa8c8]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -436,13 +436,18 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   title="Stop viewing the office as this user"
                   onClick={office.endImpersonation}
                 >
+                  <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
+                    <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
+                    <path d="M4.5 1.5V4h4" />
+                    <path d="M4.5 6.5h4M4.5 8.2h3" />
+                  </svg>
                   End Become User
                 </button>
               ) : (
                 <a
                   href={href.publicSite}
                   className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
-                  title="End the demo impersonation and return to the public site"
+                  title="Leave the agent office and return to the public site"
                 >
                   <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
                     <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
@@ -455,11 +460,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
-              <form action="/api/agent/logout" method="post">
-                <button type="submit" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">
-                  Log out
-                </button>
-              </form>
               <div className="relative">
                 <button type="button" className="flex items-center gap-0.5 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
                   <span>{initials}</span>

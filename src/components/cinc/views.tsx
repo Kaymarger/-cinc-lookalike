@@ -10,7 +10,7 @@ import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type De
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const AGENT_NUMBER = "4829103344556677";
-const MDID = "4f8c2a91b7e64d0c9a13e5b27864c0d1";
+const MDID = "MM8D0000AAAA0000BBBB0000CCCC0001";
 
 const toolBtn = "inline-flex h-[22px] items-center gap-1 rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px] text-[#333] disabled:opacity-40";
 
@@ -724,16 +724,16 @@ export function AutoTracksView() {
   const paused = tracks.filter((track) => track.status === "paused").length;
   return (
     <div className="p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex gap-2">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="flex items-end divide-x divide-[#ddd] border-b border-[#e5e5e5]">
           {[
             [String(tracks.length), "Total"],
             [String(active), "Active"],
             [String(paused), "Paused"],
           ].map(([value, label]) => (
-            <div key={label} className="min-w-[92px] border border-[#e5e5e5] bg-white px-3 py-2 text-center shadow-sm">
-              <p className="text-[22px] leading-none font-bold text-[#1c93b5]">{value}</p>
-              <p className="mt-1 text-[12px] text-[#666]">{label}</p>
+            <div key={label} className="min-w-[72px] px-4 pb-1 text-center">
+              <p className="text-[28px] leading-none font-light text-[#1c93b5]">{value}</p>
+              <p className="mt-1 text-[12px] text-[#777]">{label}</p>
             </div>
           ))}
         </div>
@@ -749,20 +749,40 @@ export function AutoTracksView() {
           const seed = track.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
           const days = [7, 14, 21, 30, 45, 60][seed % 6];
           const stats = [
-            ["Active", String((seed % 40) + 2)],
-            ["%Open", `${(seed % 70) + 5}%`],
-            ["%Click", `${(seed % 28) + 1}%`],
+            ["% Open Rate", `${seed % 40}`],
+            ["% Click Rate", `${seed % 12}`],
             ["Leads", String((seed % 80) + 3)],
-            ["Completed", String((seed % 50) + 1)],
-            ["Touches", String((seed % 12) + 3)],
-            ["Steps", String((seed % 6) + 4)],
+            ["Completed", String((seed % 400) + 4)],
+            ["Touches", String((seed % 6) + 1)],
+            ["Steps", String((seed % 6) + 1)],
           ];
           return (
-            <article key={track.id} className="border-t border-[#eee] px-4 py-4">
-              <div className="mb-3 flex items-start gap-3">
+            <article key={track.id} className="border-t border-[#eee]">
+              <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <button type="button" className="text-[15px] font-semibold text-[#1c93b5]" onClick={() => chrome.openModal(<TrackModal initial={track} onClose={chrome.closeModal} onSaved={setCat} />)}>{track.name}</button>
-                  <p className="text-[12px] text-[#666]">{days} days · Public · {CRM_AGENT.name} · {track.status}</p>
+                  <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => chrome.openModal(<TrackModal initial={track} onClose={chrome.closeModal} onSaved={setCat} />)}>
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
+                    {track.name}
+                  </button>
+                  <p className="text-[12px] text-[#666]">Duration: {days} Days</p>
+                  <p className="text-[12px] text-[#666]">Public ({CRM_AGENT.name})</p>
+                </div>
+                <div className="w-16 text-center">
+                  <div className={`mx-auto grid h-12 w-12 place-items-center rounded-full border-2 ${track.status === "active" ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#bbb] text-[#999]"}`}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M9 1 3 9h4l-1 6 7-9H9z" /></svg>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#666]">{track.status === "active" ? "Active" : track.status === "paused" ? "Paused" : "Draft"}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-center text-[11px] text-[#888]">Email</p>
+                  <div className="flex gap-3">
+                    {stats.map(([label, value]) => (
+                      <div key={label} className="w-14 text-center">
+                        <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#d5e8ee] text-[12px] text-[#7aa]">{value}</div>
+                        <p className="mt-1 text-[10px] leading-tight text-[#888]">{label}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <Menu
                   label={<span className="px-2 text-[18px] leading-none text-[#666]">…</span>}
@@ -781,14 +801,6 @@ export function AutoTracksView() {
                     { label: "Delete", danger: true, onClick: () => update((current) => ({ ...current, hiddenTracks: [...current.hiddenTracks, track.id], tracks: current.tracks.filter((item) => item.id !== track.id) })) },
                   ]}
                 />
-              </div>
-              <div className="flex flex-wrap gap-4">
-                {stats.map(([label, value]) => (
-                  <div key={label} className="w-16 text-center">
-                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border-[3px] border-[#1c93b5] text-[12px] font-bold text-[#243238]">{value}</div>
-                    <p className="mt-1 text-[11px] text-[#666]">{label}</p>
-                  </div>
-                ))}
               </div>
             </article>
           );
@@ -831,27 +843,22 @@ const BEHAVIORS: { group: string; items: string[] }[] = [
     group: "General Behavior",
     items: [
       "Lead updated their phone number upon visit to the site.",
-      "Lead updated their email address upon visit to the site.",
       "Lead submitted a Property Inquiry.",
-      "Lead requested a showing.",
       "Lead viewed the same property 3 times within 5 days.",
-      "Lead saved a search.",
-      "Lead favorited a property.",
       "Lead opened an email after 30 days of inactivity.",
-      "Lead clicked a listing link in an email.",
-      "Lead returned to the site after 14 days away.",
-      "Lead shared a listing with someone else.",
+      "Lead hasn't logged in for 30 days and logs back in.",
+      "Lead viewed any property 10 times within 7 days.",
+      "Lead favorited 3 properties within 14 days.",
+      "Lead submitted a home evaluation 7 or more days after registration.",
     ],
   },
   {
     group: "Pipeline Behavior",
     items: [
-      "Lead moved to Attempted Contact.",
-      "Lead moved to Contacted.",
+      "Lead in the sold pipeline returns to the site after a year or more.",
+      "Lead in the contacted pipeline returns to the site after 30 days, and there have been no call notes applied and no appointments set.",
       "Lead moved to Appointment Set.",
       "Lead became an Active Client.",
-      "Lead moved to Appointment Met.",
-      "Lead moved to Pending.",
     ],
   },
 ];
@@ -1147,10 +1154,8 @@ export function SellerView() {
   );
 }
 
-function pageStats(id: string) {
-  let seed = 0;
-  for (let index = 0; index < id.length; index += 1) seed += id.charCodeAt(index);
-  return { leads: seed % 17, views: (seed * 3) % 90, conv: seed % 8 };
+function pageStats(_id: string) {
+  return { leads: 0, views: 0, conv: 0 };
 }
 
 export function LandingView({ category }: { category: "all" | "buyers" | "sellers" | "contact" }) {
@@ -1217,7 +1222,7 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
             <p className="text-center text-[13px] font-bold">{pageStats(page.id).views}</p>
             <p className="text-center text-[13px] font-bold">{pageStats(page.id).conv}%</p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => {
+              <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => {
                 const name = window.prompt("Page name", page.name);
                 if (!name) return;
                 update((current) => ({ ...current, landingPages: current.landingPages.map((item) => item.id === page.id ? { ...item, name } : item) }));
@@ -1231,21 +1236,35 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
   );
 }
 
-export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" }) {
-  const tabs = [
+export function SettingsTabs({ active }: { active: string }) {
+  const office = useOfficeSession();
+  const tabs: [string, string, string][] = [
     ["profile", "Profile", href.profile],
     ["settings", "Settings", href.settings],
     ["integrations", "Integrations", href.integrations],
     ["notifications", "Notifications", href.notifications],
     ["customlinks", "Custom Links", href.customLinks],
-  ] as const;
+  ];
+  if (office.canManageUsers) tabs.push(["users", "Users", href.users]);
+  return (
+    <div className="mb-4 flex border border-[#c8c8c8] bg-[#f3f3f3] text-[13px]">
+      {tabs.map(([id, label, link]) => (
+        <a
+          key={id}
+          href={link}
+          className={`flex-1 border-r border-[#d0d0d0] py-2.5 text-center last:border-r-0 ${active === id ? "border-t-[3px] border-t-[#1c93b5] bg-white font-semibold text-[#243238]" : "text-[#555] hover:bg-white"}`}
+        >
+          {label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" }) {
   return (
     <div className="p-4">
-      <div className="mb-4 grid grid-cols-5 border border-[#ddd] bg-[#ececec] text-[11px] font-bold">
-        {tabs.map(([id, label, link]) => (
-          <a key={id} href={link} className={`border-r border-[#ddd] py-3 text-center last:border-r-0 ${tab === id ? "border-t-[3px] border-t-[#1c93b5] bg-white text-[#1c93b5]" : "text-[#555]"}`}>{label}</a>
-        ))}
-      </div>
+      <SettingsTabs active={tab} />
       {tab === "profile" ? <ProfileTab /> : null}
       {tab === "settings" ? <SettingsTab /> : null}
       {tab === "integrations" ? <IntegrationsTab /> : null}
@@ -1329,6 +1348,25 @@ function ProfileTab() {
     chrome.toast(response.ok ? okMessage : data?.message || "Could not save your profile.");
     if (response.ok) office.refresh();
   }
+  const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
+  async function sendRecovery() {
+    if (!office.user || office.user.id === "bootstrap" || !office.database?.connected) {
+      chrome.toast(office.database && !office.database.connected ? office.database.message : "Recovery links need the office database.");
+      return;
+    }
+    const response = await fetch(`/api/office/users/${office.user.id}/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "reset" }),
+    });
+    const data = (await response.json().catch(() => null)) as { url?: string; emailed?: boolean; message?: string } | null;
+    if (!response.ok || !data?.url) {
+      chrome.toast(data?.message || "Could not create a recovery link.");
+      return;
+    }
+    setRecoveryUrl(data.url);
+    chrome.toast(data.emailed ? "Recovery link emailed and shown below." : "Copy the recovery link below. Email is not configured.");
+  }
   const socials: [string, keyof typeof profile][] = [
     ["Facebook Page", "facebook"],
     ["Google+ Page", "google"],
@@ -1345,9 +1383,12 @@ function ProfileTab() {
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
         <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell}</span></div>
         <div className="flex justify-end gap-2">
-          <Btn kind="blue" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ kind: "email", to: profile.email, subject: "Password recovery", body: `Recovery link for ${profile.email}.` }), ...current.mail] })); chrome.toast(`Recovery email queued for ${profile.email}. It is in Sent.`); }}>Send Email Recovery Link</Btn>
-          <Btn kind="blue" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ kind: "text", to: profile.cell, subject: "Recovery text", body: `Recovery code for ${profile.cell}.` }), ...current.mail] })); chrome.toast(`Recovery text queued for ${profile.cell}. It is in Sent.`); }}>Send Text Recovery Link</Btn>
+          <Btn kind="blue" onClick={() => void sendRecovery()}>Send Email Recovery Link</Btn>
+          <Btn kind="blue" onClick={() => void sendRecovery()}>Send Text Recovery Link</Btn>
         </div>
+        {recoveryUrl ? (
+          <p className="mt-3 break-all border border-[#d7eef4] bg-[#f3fafc] p-2 text-[12px] text-[#1c93b5]">{recoveryUrl}</p>
+        ) : null}
       </Card>
       <Card title="Site Subdomain">
         <label className="mb-1 block text-right text-[12px]">Subdomain</label>

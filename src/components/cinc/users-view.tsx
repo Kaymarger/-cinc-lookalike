@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import { RoutingPanel } from "./routing-panel";
+import { SettingsTabs } from "./views";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { Btn, Field, inputCls } from "./ui";
 
@@ -180,8 +181,9 @@ export function UsersView() {
 
   return (
     <div className="p-4">
+      <SettingsTabs active="users" />
       <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-[20px] font-semibold text-[#243238]">Users</h1>
+        <h1 className="text-[18px] font-semibold text-[#243238]">Users</h1>
         {office.canManageUsers ? (
           <button type="button" className="h-[26px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={startCreate}>
             Add User
