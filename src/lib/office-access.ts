@@ -83,12 +83,41 @@ export const ALERT_FREQUENCIES = ["Off", "Instant", "Daily", "Weekly", "Monthly"
 export type AlertFrequency = (typeof ALERT_FREQUENCIES)[number];
 
 export const SEARCH_PROPERTY_TYPES = [
-  "House",
+  "Single Family",
   "Condo",
   "Townhouse",
+  "Multi-Family",
+  "Land",
+  "Manufactured",
+  "House",
   "Half Duplex",
   "Apartment",
 ] as const;
+
+export const SEARCH_STATUSES = ["Any", "Active", "Pending", "Coming Soon", "Sold"] as const;
+export const SEARCH_GARAGES = ["Any", "1+", "2+", "3+"] as const;
+
+export type SearchCriteria = {
+  county: string;
+  sqftMin: number | null;
+  sqftMax: number | null;
+  yearMin: number | null;
+  yearMax: number | null;
+  status: string;
+  garage: string;
+  keywords: string;
+};
+
+export const EMPTY_CRITERIA: SearchCriteria = {
+  county: "",
+  sqftMin: null,
+  sqftMax: null,
+  yearMin: null,
+  yearMax: null,
+  status: "Any",
+  garage: "Any",
+  keywords: "",
+};
 
 export type LeadSavedSearch = {
   id: string;
@@ -102,6 +131,7 @@ export type LeadSavedSearch = {
   baths: number | null;
   propertyType: string;
   frequency: AlertFrequency;
+  criteria: SearchCriteria;
   createdAt: string;
   updatedAt: string;
 };
@@ -116,6 +146,14 @@ export type SavedSearchInput = {
   propertyType?: unknown;
   frequency?: unknown;
   leadEmail?: unknown;
+  county?: unknown;
+  sqftMin?: unknown;
+  sqftMax?: unknown;
+  yearMin?: unknown;
+  yearMax?: unknown;
+  status?: unknown;
+  garage?: unknown;
+  keywords?: unknown;
 };
 
 function cleanText(value: unknown, max: number): string {
@@ -126,6 +164,13 @@ function cleanCount(value: unknown): number | null {
   if (value === "" || value == null) return null;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 0 || n > 20) return null;
+  return n;
+}
+
+function cleanYear(value: unknown): number | null | "bad" {
+  if (value === "" || value == null) return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1800 || n > 2100) return "bad";
   return n;
 }
 
@@ -164,6 +209,16 @@ export function sanitizeSavedSearch(
     return { ok: false, message: "Choose an email alert frequency." };
   }
   const leadEmail = cleanText(raw.leadEmail, 160).toLowerCase();
+  const sqftMin = cleanPrice(raw.sqftMin);
+  const sqftMax = cleanPrice(raw.sqftMax);
+  const yearMin = cleanYear(raw.yearMin);
+  const yearMax = cleanYear(raw.yearMax);
+  if (sqftMin === "bad" || sqftMax === "bad") return { ok: false, message: "Enter square feet as a number." };
+  if (yearMin === "bad" || yearMax === "bad") return { ok: false, message: "Enter a year between 1800 and 2100." };
+  const status = cleanText(raw.status, 40) || "Any";
+  if (!(SEARCH_STATUSES as readonly string[]).includes(status)) return { ok: false, message: "Choose a listing status." };
+  const garage = cleanText(raw.garage, 20) || "Any";
+  if (!(SEARCH_GARAGES as readonly string[]).includes(garage)) return { ok: false, message: "Choose a garage option." };
   return {
     ok: true,
     value: {
@@ -176,18 +231,31 @@ export function sanitizeSavedSearch(
       baths,
       propertyType,
       frequency: frequency as AlertFrequency,
+      criteria: {
+        county: cleanText(raw.county, 80),
+        sqftMin: sqftMin,
+        sqftMax: sqftMax,
+        yearMin,
+        yearMax,
+        status,
+        garage,
+        keywords: cleanText(raw.keywords, 120),
+      },
     },
   };
 }
 
-export function savedSearchSummary(search: Pick<LeadSavedSearch, "city" | "minPrice" | "maxPrice" | "beds" | "baths" | "propertyType" | "frequency">): string {
+export function savedSearchSummary(search: Pick<LeadSavedSearch, "city" | "minPrice" | "maxPrice" | "beds" | "baths" | "propertyType" | "frequency" | "criteria">): string {
   const parts: string[] = [];
   if (search.city) parts.push(search.city);
+  if (search.criteria?.county) parts.push(search.criteria.county);
   if (search.minPrice != null) parts.push(`from $${search.minPrice.toLocaleString("en-CA")}`);
   if (search.maxPrice != null) parts.push(`to $${search.maxPrice.toLocaleString("en-CA")}`);
   if (search.beds != null) parts.push(`${search.beds}+ beds`);
   if (search.baths != null) parts.push(`${search.baths}+ baths`);
   if (search.propertyType) parts.push(search.propertyType);
+  if (search.criteria?.status && search.criteria.status !== "Any") parts.push(search.criteria.status);
+  if (search.criteria?.sqftMin != null) parts.push(`${search.criteria.sqftMin}+ sqft`);
   parts.push(search.frequency === "Off" ? "alerts off" : `${search.frequency} email`);
   return parts.join(" · ");
 }

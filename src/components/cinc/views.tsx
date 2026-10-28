@@ -449,7 +449,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const composer = useComposer();
   const [group, setGroup] = useState("ISA");
   const [picked, setPicked] = useState<string[]>([]);
-  const [kindFilter, setKindFilter] = useState<"all" | "unread" | "email" | "text">("all");
+  const [kindFilter, setKindFilter] = useState<"all" | "unread" | "read" | "email" | "text">("all");
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"name" | "type" | "by">("name");
@@ -457,6 +457,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const messages = state.mail.filter((mail) => {
     if (mail.folder !== folder) return false;
     if (kindFilter === "unread" && !mail.unread) return false;
+    if (kindFilter === "read" && mail.unread) return false;
     if (kindFilter === "email" && mail.kind !== "email") return false;
     if (kindFilter === "text" && mail.kind !== "text") return false;
     return `${mail.subject} ${mail.body} ${mail.to} ${mail.from ?? ""}`.toLowerCase().includes(query.toLowerCase());
@@ -623,6 +624,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             items={[
               { label: "All messages", onClick: () => { setKindFilter("all"); setPage(0); } },
               { label: "Unread", onClick: () => { setKindFilter("unread"); setPage(0); } },
+              { label: "Read", onClick: () => { setKindFilter("read"); setPage(0); } },
               { label: "Email", onClick: () => { setKindFilter("email"); setPage(0); } },
               { label: "Text", onClick: () => { setKindFilter("text"); setPage(0); } },
             ]}
@@ -811,19 +813,45 @@ export function AutoTracksView() {
   );
 }
 
-function TrackModal({ onClose, onSaved, initial }: { onClose: () => void; onSaved?: (category: string) => void; initial?: { id: string; name: string; category: string; status: "active" | "paused" | "draft"; trigger: string } }) {
+function TrackModal({ onClose, onSaved, initial }: { onClose: () => void; onSaved?: (category: string) => void; initial?: { id: string; name: string; category: string; status: "active" | "paused" | "draft"; trigger: string; stopTrigger?: string; steps?: { id: string; waitDays: number; action: "email" | "text" | "task"; detail: string }[] } }) {
   const { update } = useCinc();
   const chrome = useChrome();
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "General");
-  const [trigger, setTrigger] = useState(initial?.trigger ?? "New lead");
+  const [trigger, setTrigger] = useState(initial?.trigger ?? "New lead registers");
+  const [stopTrigger, setStopTrigger] = useState(initial?.stopTrigger ?? "Lead replies");
+  const [steps, setSteps] = useState(initial?.steps ?? [{ id: uid("step"), waitDays: 0, action: "email" as const, detail: "Welcome email" }]);
   return (
-    <ModalFrame title="Start an AutoTrack" onClose={onClose}>
+    <ModalFrame title="Start/Edit an AutoTrack" onClose={onClose}>
       <Field label="Name"><input autoFocus className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
       <Field label="Category"><select className={inputCls} value={category} onChange={(event) => setCategory(event.target.value)}>{["General", "Buyer", "Listing", "Nurture", "Past Client", "My AutoTracks"].map((option) => <option key={option}>{option}</option>)}</select></Field>
-      <Field label="Start trigger"><input className={inputCls} value={trigger} onChange={(event) => setTrigger(event.target.value)} /></Field>
+      <Field label="Start trigger">
+        <select className={inputCls} value={trigger} onChange={(event) => setTrigger(event.target.value)}>
+          {["New lead registers", "Pipeline changes", "Label added", "Saved search created", "No contact for 7 days"].map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </Field>
+      <Field label="Stop trigger">
+        <select className={inputCls} value={stopTrigger} onChange={(event) => setStopTrigger(event.target.value)}>
+          {["Lead replies", "Appointment set", "Manual stop", "Unsubscribed"].map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </Field>
+      <p className="mb-1 text-[12px] font-bold">Steps</p>
+      {steps.map((step, index) => (
+        <div key={step.id} className="mb-2 grid grid-cols-[70px_90px_1fr_auto] gap-1">
+          <input className={inputCls} inputMode="numeric" value={step.waitDays} onChange={(event) => setSteps((current) => current.map((item) => item.id === step.id ? { ...item, waitDays: Number(event.target.value) || 0 } : item))} />
+          <select className={inputCls} value={step.action} onChange={(event) => setSteps((current) => current.map((item) => item.id === step.id ? { ...item, action: event.target.value as "email" | "text" | "task" } : item))}>
+            <option value="email">Email</option>
+            <option value="text">Text</option>
+            <option value="task">Task</option>
+          </select>
+          <input className={inputCls} value={step.detail} placeholder="What to send" onChange={(event) => setSteps((current) => current.map((item) => item.id === step.id ? { ...item, detail: event.target.value } : item))} />
+          <button type="button" className="text-[12px] text-[#d9363e]" onClick={() => setSteps((current) => current.filter((item) => item.id !== step.id))}>Remove</button>
+          <span className="col-span-4 text-[11px] text-[#888]">Wait {step.waitDays} day{step.waitDays === 1 ? "" : "s"}, then step {index + 1}</span>
+        </div>
+      ))}
+      <button type="button" className="mb-3 text-[12px] text-[#1c93b5]" onClick={() => setSteps((current) => [...current, { id: uid("step"), waitDays: 1, action: "text", detail: "" }])}>+ Add step</button>
       <div className="flex justify-end gap-2"><Btn onClick={onClose}>Cancel</Btn><Btn kind="teal" onClick={() => {
-        const next = { id: initial?.id ?? uid("track"), name: name.trim() || "New AutoTrack", category, status: initial?.status ?? "active" as const, trigger: trigger.trim() || "New lead" };
+        const next = { id: initial?.id ?? uid("track"), name: name.trim() || "New AutoTrack", category, status: initial?.status ?? "active" as const, trigger, stopTrigger, steps };
         update((current) => ({
           ...current,
           tracks: current.tracks.some((item) => item.id === next.id)
@@ -1236,16 +1264,25 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
   );
 }
 
+async function savePreferences(patch: Record<string, unknown>): Promise<string | null> {
+  const response = await fetch("/api/office/preferences", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  const data = (await response.json().catch(() => null)) as { message?: string } | null;
+  return response.ok ? null : data?.message || "Could not save those settings.";
+}
+
 export function SettingsTabs({ active }: { active: string }) {
-  const office = useOfficeSession();
   const tabs: [string, string, string][] = [
     ["profile", "Profile", href.profile],
     ["settings", "Settings", href.settings],
     ["integrations", "Integrations", href.integrations],
     ["notifications", "Notifications", href.notifications],
     ["customlinks", "Custom Links", href.customLinks],
+    ["advanced", "Advanced", href.advanced],
   ];
-  if (office.canManageUsers) tabs.push(["users", "Users", href.users]);
   return (
     <div className="mb-4 flex border border-[#c8c8c8] bg-[#f3f3f3] text-[13px]">
       {tabs.map(([id, label, link]) => (
@@ -1261,7 +1298,27 @@ export function SettingsTabs({ active }: { active: string }) {
   );
 }
 
-export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" }) {
+export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" | "advanced" }) {
+  const { update } = useCinc();
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    fetch("/api/office/preferences", { cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { preferences?: Record<string, unknown> } | null;
+        const prefs = data?.preferences;
+        if (!response.ok || !prefs) return;
+        update((current) => ({
+          ...current,
+          settings: { ...current.settings, ...((prefs.settings as object) || {}) },
+          notifications: { ...current.notifications, ...((prefs.notifications as object) || {}) },
+          customLinks: Array.isArray(prefs.customLinks) ? prefs.customLinks as typeof current.customLinks : current.customLinks,
+          advanced: { ...current.advanced, ...((prefs.advanced as object) || {}) },
+        }));
+      })
+      .catch(() => undefined);
+  }, [update]);
   return (
     <div className="p-4">
       <SettingsTabs active={tab} />
@@ -1270,6 +1327,7 @@ export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrati
       {tab === "integrations" ? <IntegrationsTab /> : null}
       {tab === "notifications" ? <NotificationsTab /> : null}
       {tab === "customlinks" ? <CustomLinksTab /> : null}
+      {tab === "advanced" ? <AdvancedTab /> : null}
     </div>
   );
 }
@@ -1345,11 +1403,12 @@ function ProfileTab() {
       }),
     });
     const data = (await response.json().catch(() => null)) as { message?: string } | null;
-    chrome.toast(response.ok ? okMessage : data?.message || "Could not save your profile.");
+    chrome.toast(response.ok ? `${okMessage} Saved in the office database.` : data?.message || "Could not save your profile.");
     if (response.ok) office.refresh();
   }
   const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
-  async function sendRecovery() {
+  const [recoveryNote, setRecoveryNote] = useState<string | null>(null);
+  async function sendRecovery(channel: "email" | "text") {
     if (!office.user || office.user.id === "bootstrap" || !office.database?.connected) {
       chrome.toast(office.database && !office.database.connected ? office.database.message : "Recovery links need the office database.");
       return;
@@ -1357,15 +1416,16 @@ function ProfileTab() {
     const response = await fetch(`/api/office/users/${office.user.id}/link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "reset" }),
+      body: JSON.stringify({ kind: "reset", channel }),
     });
-    const data = (await response.json().catch(() => null)) as { url?: string; emailed?: boolean; message?: string } | null;
+    const data = (await response.json().catch(() => null)) as { url?: string; message?: string } | null;
     if (!response.ok || !data?.url) {
       chrome.toast(data?.message || "Could not create a recovery link.");
       return;
     }
     setRecoveryUrl(data.url);
-    chrome.toast(data.emailed ? "Recovery link emailed and shown below." : "Copy the recovery link below. Email is not configured.");
+    setRecoveryNote(data.message || "Copy this link.");
+    chrome.toast(data.message || "Recovery link ready.");
   }
   const socials: [string, keyof typeof profile][] = [
     ["Facebook Page", "facebook"],
@@ -1383,11 +1443,14 @@ function ProfileTab() {
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
         <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell}</span></div>
         <div className="flex justify-end gap-2">
-          <Btn kind="blue" onClick={() => void sendRecovery()}>Send Email Recovery Link</Btn>
-          <Btn kind="blue" onClick={() => void sendRecovery()}>Send Text Recovery Link</Btn>
+          <Btn kind="blue" onClick={() => void sendRecovery("email")}>Send Email Recovery Link</Btn>
+          <Btn kind="blue" onClick={() => void sendRecovery("text")}>Send Text Recovery Link</Btn>
         </div>
         {recoveryUrl ? (
-          <p className="mt-3 break-all border border-[#d7eef4] bg-[#f3fafc] p-2 text-[12px] text-[#1c93b5]">{recoveryUrl}</p>
+          <div className="mt-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px]">
+            <p className="font-semibold text-[#243238]">{recoveryNote}</p>
+            <p className="mt-1 break-all text-[#1c93b5]">{recoveryUrl}</p>
+          </div>
         ) : null}
       </Card>
       <Card title="Site Subdomain">
@@ -1499,7 +1562,7 @@ function SettingsTab() {
           <p className="grid grid-cols-[1fr_300px] text-[13px]"><span className="text-right font-bold">Agent MDID</span><strong className="pl-3 font-mono text-[12px]">{MDID}</strong></p>
         </div>
       </div>
-      <div className="mt-4 text-right"><Btn kind="blue" onClick={() => chrome.toast("Settings updated on this device.")}>Update</Btn></div>
+      <div className="mt-4 text-right"><Btn kind="blue" onClick={() => { void savePreferences({ settings: form }).then((error) => chrome.toast(error || "Settings saved.")); }}>Update</Btn></div>
     </div>
   );
 }
@@ -1590,6 +1653,17 @@ function NotificationsTab() {
   const chrome = useChrome();
   return (
     <div className="bg-white p-4">
+      <section className="mb-4 flex flex-wrap items-center gap-4 border border-[#e5e5e5] p-4">
+        <div className="min-w-[220px] flex-1">
+          <h2 className="text-[13px] font-bold tracking-wide">CINC AGENT APP</h2>
+          <p className="mt-1 text-[13px] text-[#555]">Install the CINC Agent app to get these alerts on your phone. The store links below open a search for CINC Agent.</p>
+          <div className="mt-2 flex gap-2">
+            <a className="bg-[#1c93b5] px-3 py-1 text-[12px] text-white" href="https://apps.apple.com/us/search?term=CINC%20Agent" target="_blank" rel="noreferrer">App Store</a>
+            <a className="border border-[#1c93b5] px-3 py-1 text-[12px] text-[#1c93b5]" href="https://play.google.com/store/search?q=CINC%20Agent&c=apps" target="_blank" rel="noreferrer">Google Play</a>
+          </div>
+        </div>
+        <img alt="QR code for the CINC Agent app search" width={96} height={96} src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=https%3A%2F%2Fapps.apple.com%2Fus%2Fsearch%3Fterm%3DCINC%2520Agent" />
+      </section>
       <h2 className="text-[13px] font-bold tracking-wide">MANAGE POND AGENT NOTIFICATIONS</h2>
       <div className="my-3 bg-[#eee] p-3">
         <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => chrome.openModal(<PondModal onClose={chrome.closeModal} />)}>Manage Notifications for Pond Agents</button>
@@ -1600,19 +1674,22 @@ function NotificationsTab() {
           <div className="grid gap-3 md:grid-cols-3">
             {group.items.map((item) => {
               const pref = state.notifications[item.id] ?? { cinc: false, email: false, text: true };
-              const emailLocked = item.id !== "Inquiry" && item.id !== "Existing Lead Home Value Request";
-              const toggle = (key: "cinc" | "email" | "text") => update((current) => ({
-                ...current,
-                notifications: { ...current.notifications, [item.id]: { ...pref, [key]: !pref[key] } },
-              }));
+              const toggle = (key: "cinc" | "email" | "text") => {
+                const next = { ...pref, [key]: !pref[key] };
+                const notifications = { ...state.notifications, [item.id]: next };
+                update((current) => ({ ...current, notifications }));
+                void savePreferences({ notifications }).then((error) => {
+                  if (error) chrome.toast(error);
+                });
+              };
               return (
                 <article key={item.id} className="relative bg-[#f3f3f3] p-3">
-                  <button type="button" className="absolute top-2 right-2 bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ folder: "inbox", unread: true, kind: !emailLocked && pref.email ? "email" : "text", from: "System", to: CRM_AGENT.name, subject: `Test: ${item.id}`, body: `Test ${item.id} for ${CRM_AGENT.name}.` }), ...current.mail] })); chrome.toast(`Test ${item.id} is in the inbox.`); }}>TEST</button>
+                  <button type="button" className="absolute top-2 right-2 bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ folder: "inbox", unread: true, kind: pref.email ? "email" : "text", from: "System", to: CRM_AGENT.name, subject: `Test: ${item.id}`, body: `Test ${item.id} for ${CRM_AGENT.name}.` }), ...current.mail] })); chrome.toast(`Test ${item.id} is in the inbox.`); }}>TEST</button>
                   <p className="pr-10 text-[13px] font-bold">{item.id}</p>
                   <p className="mt-1 text-[12px] text-[#666]">{item.description}</p>
                   <div className="mt-2 flex gap-3 text-[11px]">
                     <label><input type="checkbox" checked={pref.cinc} onChange={() => toggle("cinc")} /> CINCAgent</label>
-                    <label className={emailLocked ? "text-[#aaa]" : ""}><input type="checkbox" disabled={emailLocked} checked={emailLocked ? false : pref.email} onChange={() => toggle("email")} /> Email</label>
+                    <label><input type="checkbox" checked={pref.email} onChange={() => toggle("email")} /> Email</label>
                     <label><input type="checkbox" checked={pref.text} onChange={() => toggle("text")} /> Text</label>
                   </div>
                 </article>
@@ -1621,6 +1698,41 @@ function NotificationsTab() {
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+function AdvancedTab() {
+  const { state, update } = useCinc();
+  const chrome = useChrome();
+  const form = state.advanced;
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => update((current) => ({ ...current, advanced: { ...current.advanced, [key]: value } }));
+  return (
+    <div className="border border-[#ddd] bg-white p-4">
+      <p className="mb-3 text-[13px] text-[#666]">Broker tools for how new leads are handled. These choices are saved on your office user.</p>
+      <label className="mb-3 grid grid-cols-[220px_1fr] items-center gap-3 text-[14px]">
+        <span className="text-right font-bold">Time zone</span>
+        <select className="h-10 border border-[#ccc] px-2" value={form.timeZone} onChange={(event) => set("timeZone", event.target.value)}>
+          {["America/Vancouver", "America/Los_Angeles", "America/Edmonton", "America/Toronto"].map((zone) => <option key={zone}>{zone}</option>)}
+        </select>
+      </label>
+      <label className="mb-3 grid grid-cols-[220px_1fr] items-center gap-3 text-[14px]">
+        <span className="text-right font-bold">Duplicate leads</span>
+        <select className="h-10 border border-[#ccc] px-2" value={form.duplicates} onChange={(event) => set("duplicates", event.target.value as typeof form.duplicates)}>
+          <option>Merge</option><option>Keep both</option><option>Reject</option>
+        </select>
+      </label>
+      <label className="mb-3 grid grid-cols-[220px_1fr] items-center gap-3 text-[14px]">
+        <span className="text-right font-bold">Default pipeline</span>
+        <select className="h-10 border border-[#ccc] px-2" value={form.defaultPipeline} onChange={(event) => set("defaultPipeline", event.target.value)}>
+          {["New Lead", "Attempted Contact", "Contacted", "Appointment Set"].map((stage) => <option key={stage}>{stage}</option>)}
+        </select>
+      </label>
+      <label className="mb-3 grid grid-cols-[220px_1fr] items-center gap-3 text-[14px]">
+        <span className="text-right font-bold">Lead forwarding email</span>
+        <input className="h-10 border border-[#ccc] px-2" value={form.forwardEmail} placeholder="optional@example.com" onChange={(event) => set("forwardEmail", event.target.value)} />
+      </label>
+      <div className="text-right"><Btn kind="blue" onClick={() => { void savePreferences({ advanced: state.advanced }).then((error) => chrome.toast(error || "Advanced settings saved.")); }}>Update</Btn></div>
     </div>
   );
 }
@@ -1637,7 +1749,16 @@ function CustomLinksTab() {
         <h2 className="text-[14px]">For my subdomain:</h2>
         <div className="flex gap-2">
           <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setCreating(true)}>✚ Create</button>
-          <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => { if (label.trim()) { update((current) => ({ ...current, customLinks: [...current.customLinks, { id: uid("link"), label, url }] })); setLabel(""); setUrl(""); setCreating(false); } chrome.toast("Custom links saved."); }}>Save</button>
+          <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => {
+            const customLinks = label.trim() ? [...state.customLinks, { id: uid("link"), label, url }] : state.customLinks;
+            if (label.trim()) {
+              update((current) => ({ ...current, customLinks }));
+              setLabel("");
+              setUrl("");
+              setCreating(false);
+            }
+            void savePreferences({ customLinks }).then((error) => chrome.toast(error || "Custom links saved."));
+          }}>Save</button>
         </div>
       </div>
       {creating ? (
@@ -1750,14 +1871,40 @@ export function TasksView() {
 
 export function MarketingView() {
   const chrome = useChrome();
-  const composer = useComposer();
-  const { update } = useCinc();
+  const { state, update } = useCinc();
+  const sent = state.mail.filter((mail) => mail.folder === "sent");
+  const emails = sent.filter((mail) => mail.kind === "email").length;
+  const texts = sent.filter((mail) => mail.kind === "text").length;
   return (
-    <div className="mx-auto max-w-xl p-6">
-      <div className="bg-white p-5">
-        <h2 className="mb-2 text-[16px] font-semibold">Send a campaign</h2>
-        <p className="mb-3 text-[13px] text-[#666]">Emails stay in the Sent folder. Nothing leaves this browser.</p>
-        <Btn kind="teal" onClick={() => composer.email("", (sent, value) => { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: sent ? "sent" as const : "drafts" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast(sent ? "Campaign saved in Sent." : "Campaign saved as a draft."); })}>New campaign email</Btn>
+    <div className="p-4">
+      <div className="mb-3 flex items-end justify-between">
+        <div className="flex divide-x divide-[#ddd]">
+          {[[String(sent.length), "Sent"], [String(emails), "Emails"], [String(texts), "Texts"], ["0", "Clicks"]].map(([value, label]) => (
+            <div key={label} className="min-w-[80px] px-4 text-center">
+              <p className="text-[28px] leading-none font-light text-[#1c93b5]">{value}</p>
+              <p className="mt-1 text-[12px] text-[#777]">{label}</p>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="h-8 bg-[#1c93b5] px-3 text-[13px] text-white" onClick={() => {
+          const name = window.prompt("Campaign name");
+          if (!name) return;
+          update((current) => ({ ...current, campaigns: [...current.campaigns, { id: uid("camp"), name, message: "Draft message", active: false }] }));
+          chrome.toast("Campaign draft saved on this device.");
+        }}>New campaign</button>
+      </div>
+      <div className="border border-[#e5e5e5] bg-white">
+        <div className="grid grid-cols-[1fr_120px_100px] bg-[#f6f6f6] px-3 py-2 text-[11px] tracking-wide text-[#666] uppercase">
+          <span>Campaign</span><span>Channel</span><span>Status</span>
+        </div>
+        {state.campaigns.map((campaign) => (
+          <div key={campaign.id} className="grid grid-cols-[1fr_120px_100px] items-center border-t border-[#eee] px-3 py-2 text-[13px]">
+            <span>{campaign.name}</span>
+            <span>Email</span>
+            <button type="button" className="text-left text-[#1c93b5]" onClick={() => update((current) => ({ ...current, campaigns: current.campaigns.map((item) => item.id === campaign.id ? { ...item, active: !item.active } : item) }))}>{campaign.active ? "Active" : "Draft"}</button>
+          </div>
+        ))}
+        {!state.campaigns.length ? <p className="px-3 py-8 text-center text-[13px] text-[#888]">No campaigns yet. New campaign creates a draft. Nothing is emailed from here.</p> : null}
       </div>
     </div>
   );

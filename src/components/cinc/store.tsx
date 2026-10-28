@@ -48,12 +48,16 @@ export type Template = {
   body: string;
 };
 
+export type TrackStep = { id: string; waitDays: number; action: "email" | "text" | "task"; detail: string };
+
 export type Track = {
   id: string;
   name: string;
   category: string;
   status: "active" | "paused" | "draft";
   trigger: string;
+  stopTrigger?: string;
+  steps?: TrackStep[];
 };
 
 export type Pocket = {
@@ -117,6 +121,13 @@ export type Profile = {
 
 export type NotifyPref = { cinc: boolean; email: boolean; text: boolean };
 
+export type AdvancedForm = {
+  timeZone: string;
+  duplicates: "Merge" | "Keep both" | "Reject";
+  defaultPipeline: string;
+  forwardEmail: string;
+};
+
 export type SettingsForm = {
   leadTextAlerts: "Disabled" | "Enabled";
   plainText: "No" | "Yes";
@@ -156,6 +167,7 @@ export type SpaState = {
   sites: { id: string; name: string }[];
   profile: Profile;
   settings: SettingsForm;
+  advanced: AdvancedForm;
   notifications: Record<string, NotifyPref>;
   integrations: Record<string, boolean>;
   customLinks: { id: string; label: string; url: string }[];
@@ -206,6 +218,13 @@ const SETTINGS: SettingsForm = {
   viewReport: "Off",
   viewCount: "5",
   viewNotes: "Off",
+};
+
+export const ADVANCED: AdvancedForm = {
+  timeZone: "America/Vancouver",
+  duplicates: "Merge",
+  defaultPipeline: "New Lead",
+  forwardEmail: "",
 };
 
 export const NOTIFY_GROUPS: { title: string; items: { id: string; description: string }[] }[] = [
@@ -371,6 +390,7 @@ const DEFAULT: SpaState = {
   sites: [],
   profile: PROFILE,
   settings: SETTINGS,
+  advanced: ADVANCED,
   notifications: defaultNotify(),
   integrations: {},
   customLinks: [],
@@ -396,6 +416,7 @@ function load(raw: string | null): SpaState {
       ...parsed,
       profile: fresh ? DEFAULT.profile : { ...DEFAULT.profile, ...parsed.profile },
       settings: fresh ? DEFAULT.settings : { ...DEFAULT.settings, ...parsed.settings },
+      advanced: fresh ? DEFAULT.advanced : { ...DEFAULT.advanced, ...parsed.advanced },
       notifications: fresh ? DEFAULT.notifications : { ...DEFAULT.notifications, ...parsed.notifications },
       behavioral: fresh ? DEFAULT.behavioral : { ...DEFAULT.behavioral, ...parsed.behavioral },
       labels: { ...DEFAULT.labels, ...parsed.labels },

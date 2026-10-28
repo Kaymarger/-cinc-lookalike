@@ -33,7 +33,10 @@ export const href = {
   integrations: `${SPA}#settings/profile/integrations/agent`,
   notifications: `${SPA}#settings/profile/notifications/agent`,
   customLinks: `${SPA}#settings/profile/customlinks/agent`,
-  users: `${SPA}#settings/users`,
+  advanced: `${SPA}#settings/profile/advanced/agent`,
+  contacts: `${SPA}#contacts`,
+  agents: `${SPA}#agents`,
+  users: `${SPA}#agents`,
   plans: `${SPA}#plans`,
   dialer: `${SPA}#dialer`,
   calendar: `${SPA}#calendar`,
@@ -59,7 +62,8 @@ export type CincRoute =
   | { view: "properties"; sub: "list" | "text" | "open" | "virtual" | "add" }
   | { view: "seller" }
   | { view: "landing"; category: "all" | "buyers" | "sellers" | "contact" }
-  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" }
+  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" | "advanced" }
+  | { view: "contacts" }
   | { view: "users" }
   | { view: "plans" }
   | { view: "dialer" }
@@ -68,7 +72,7 @@ export type CincRoute =
   | { view: "marketing" }
   | { view: "reports" };
 
-export type NavSection = "launchpad" | "leads" | "deals" | "comms" | "auto" | "props" | "web" | "other";
+export type NavSection = "launchpad" | "leads" | "contacts" | "deals" | "comms" | "auto" | "props" | "web" | "marketing" | "agents" | "settings" | "other";
 
 const LEAD_TABS: LeadTab[] = ["activity", "info", "plans", "appointments", "conversations", "plips"];
 
@@ -121,8 +125,10 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "properties", sub: "list" };
   }
   if (a === "settings" && b === "users") return { view: "users" };
+  if (a === "agents") return { view: "users" };
+  if (a === "contacts") return { view: "contacts" };
   if (a === "settings") {
-    const tab = c === "settings" || c === "integrations" || c === "notifications" || c === "customlinks" || c === "profile" ? c : "profile";
+    const tab = c === "settings" || c === "integrations" || c === "notifications" || c === "customlinks" || c === "advanced" || c === "profile" ? c : "profile";
     return { view: "settings", tab };
   }
   if (a === "plans") return { view: "plans" };
@@ -154,6 +160,14 @@ export function sectionOf(route: CincRoute): NavSection {
     case "seller":
     case "landing":
       return "web";
+    case "contacts":
+      return "contacts";
+    case "users":
+      return "agents";
+    case "marketing":
+      return "marketing";
+    case "settings":
+      return "settings";
     default:
       return "other";
   }
@@ -187,8 +201,10 @@ export function titleOf(route: CincRoute): string {
       return "Landing Pages";
     case "settings":
       return "Settings";
+    case "contacts":
+      return "Contacts";
     case "users":
-      return "Users";
+      return "Agents";
     case "plans":
       return "Plans";
     case "dialer":
@@ -198,7 +214,7 @@ export function titleOf(route: CincRoute): string {
     case "tasks":
       return "Tasks";
     case "marketing":
-      return "Marketing";
+      return "Marketing Dashboard";
     case "reports":
       return "Reports";
     default:
@@ -298,12 +314,14 @@ export function agentPathToCinc(pathname: string): string {
     "/agent/settings/notifications": href.notifications,
     "/agent/settings/customlinks": href.customLinks,
     "/agent/settings/users": href.users,
-    "/agent/users": href.users,
+    "/agent/users": href.agents,
+    "/agent/agents": href.agents,
+    "/agent/contacts": href.contacts,
+    "/agent/marketing": href.marketing,
     "/agent/plans": href.plans,
     "/agent/dialer": href.dialer,
     "/agent/calendar": href.calendar,
     "/agent/tasks": href.tasks,
-    "/agent/marketing": href.marketing,
     "/agent/reports": href.reports,
     "/agent/listings": href.dealsListings,
     "/agent/clients": href.leads,

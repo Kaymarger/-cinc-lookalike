@@ -100,6 +100,7 @@ const SCHEMA_STATEMENTS = [
   updated_at timestamptz NOT NULL DEFAULT now()
 )`,
   `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS must_set_password boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb`,
   `CREATE TABLE IF NOT EXISTS office_access_tokens (
   id text PRIMARY KEY,
   user_id text NOT NULL,
@@ -130,9 +131,11 @@ const SCHEMA_STATEMENTS = [
   baths integer,
   property_type text NOT NULL DEFAULT '',
   frequency text NOT NULL DEFAULT 'Daily',
+  criteria jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 )`,
+  `ALTER TABLE lead_saved_searches ADD COLUMN IF NOT EXISTS criteria jsonb NOT NULL DEFAULT '{}'::jsonb`,
   `CREATE INDEX IF NOT EXISTS lead_saved_searches_email_idx ON lead_saved_searches (lower(lead_email))`,
   `CREATE INDEX IF NOT EXISTS lead_saved_searches_lead_idx ON lead_saved_searches (lead_id)`,
 ];

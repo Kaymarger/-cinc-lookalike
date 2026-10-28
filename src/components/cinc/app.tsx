@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { ContactsView } from "./contacts-view";
 import { LeadsView } from "./leads-view";
 import { UsersView } from "./users-view";
 import { parseRoute } from "./route";
@@ -53,6 +54,7 @@ function View() {
   if (route.view === "launchpad") return <LaunchpadView />;
   if (route.view === "callsummary") return <CallSummaryView />;
   if (route.view === "leads") return <LeadsView mode={route.mode} leadId={route.leadId} tab={route.tab} />;
+  if (route.view === "contacts") return <ContactsView />;
   if (route.view === "deals") return <DealsView board={route.board} />;
   if (route.view === "inbox") return <InboxView folder={route.folder} />;
   if (route.view === "autotracks") return <AutoTracksView />;

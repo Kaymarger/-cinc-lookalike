@@ -1,7 +1,9 @@
 import { officeDb } from "@/lib/leads-db";
 import {
+  EMPTY_CRITERIA,
   type AlertFrequency,
   type LeadSavedSearch,
+  type SearchCriteria,
 } from "@/lib/office-access";
 
 type SearchRow = {
@@ -16,9 +18,22 @@ type SearchRow = {
   baths: number | null;
   property_type: string;
   frequency: string;
+  criteria: unknown;
   created_at: Date | string;
   updated_at: Date | string;
 };
+
+function asCriteria(value: unknown): SearchCriteria {
+  const raw = value && typeof value === "object" ? (value as Partial<SearchCriteria>) : {};
+  return {
+    ...EMPTY_CRITERIA,
+    ...raw,
+    county: typeof raw.county === "string" ? raw.county : "",
+    keywords: typeof raw.keywords === "string" ? raw.keywords : "",
+    status: typeof raw.status === "string" ? raw.status : "Any",
+    garage: typeof raw.garage === "string" ? raw.garage : "Any",
+  };
+}
 
 function iso(value: Date | string): string {
   if (value instanceof Date) return value.toISOString();
@@ -44,6 +59,7 @@ function fromRow(row: SearchRow): LeadSavedSearch {
     baths: row.baths,
     propertyType: row.property_type || "",
     frequency,
+    criteria: asCriteria(row.criteria),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -78,7 +94,7 @@ export async function insertSearch(
   const rows = await sql<SearchRow[]>`
     INSERT INTO lead_saved_searches (
       id, lead_id, lead_email, name, city, min_price, max_price, beds, baths,
-      property_type, frequency
+      property_type, frequency, criteria
     ) VALUES (
       ${crypto.randomUUID()},
       ${leadId},
@@ -90,7 +106,8 @@ export async function insertSearch(
       ${value.beds},
       ${value.baths},
       ${value.propertyType},
-      ${value.frequency}
+      ${value.frequency},
+      ${sql.json(value.criteria)}
     )
     RETURNING *
   `;
@@ -115,6 +132,7 @@ export async function updateSearch(
       baths = ${value.baths},
       property_type = ${value.propertyType},
       frequency = ${value.frequency},
+      criteria = ${sql.json(value.criteria)},
       updated_at = now()
     WHERE id = ${searchId} AND lead_id = ${leadId}
     RETURNING *

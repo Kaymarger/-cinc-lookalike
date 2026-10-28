@@ -22,6 +22,7 @@ const NAV: {
     ],
   },
   { id: "leads", label: "Leads", href: href.leads, badge: true },
+  { id: "contacts", label: "Contacts", href: href.contacts },
   { id: "deals", label: "Deals", href: href.dealsPurchases },
   {
     id: "comms",
@@ -70,6 +71,9 @@ const NAV: {
       { label: "Add Landing Page", href: "/dashboard/landing/#add" },
     ],
   },
+  { id: "marketing", label: "Marketing Dashboard", href: href.marketing },
+  { id: "agents", label: "Agents", href: href.agents },
+  { id: "settings", label: "Settings", href: href.profile },
 ];
 
 function childOn(label: string, route: CincRoute) {
@@ -173,6 +177,41 @@ function NavIcon({ id }: { id: NavSection }) {
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
         <rect x="2" y="3" width="12" height="10" rx="1" />
         <path d="M2 6h12M6 6v7" />
+      </svg>
+    );
+  }
+  if (id === "contacts") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <circle cx="6" cy="6" r="2" />
+        <path d="M2.5 13c.5-2 1.8-3 3.5-3s3 1 3.5 3" />
+        <circle cx="11" cy="6.5" r="1.5" />
+        <path d="M10 13c.3-1.3 1-2 2-2" />
+      </svg>
+    );
+  }
+  if (id === "agents") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <circle cx="8" cy="5" r="2" />
+        <path d="M3.5 13c.6-2.2 2.2-3.2 4.5-3.2S12 10.8 12.5 13" />
+        <path d="M11 3.2h3M12.5 1.7v3" />
+      </svg>
+    );
+  }
+  if (id === "marketing") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M2 10V6l9-3v10L2 10z" />
+        <path d="M11 6.5c1.2.4 2 1.2 2 2s-.8 1.6-2 2" />
+      </svg>
+    );
+  }
+  if (id === "settings") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <circle cx="8" cy="8" r="2" />
+        <path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" />
       </svg>
     );
   }
@@ -327,7 +366,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   return (
     <ChromeContext.Provider value={api}>
       <div className={`cinc-root relative flex overflow-hidden bg-[#f4f4f4] font-[Arial,Helvetica,sans-serif] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
-        <aside className="flex w-[210px] shrink-0 flex-col bg-[#2d3c4b] text-white">
+        <aside className="flex w-[228px] shrink-0 flex-col bg-[#2d3c4b] text-white">
           <div className="flex h-[58px] items-center bg-[#2d3c4b] px-4">
             <Logo />
           </div>
@@ -470,7 +509,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     <a href={href.plans} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Plans</a>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
                     {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
-                      <a href={href.users} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Users</a>
+                      <a href={href.agents} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Agents</a>
                     ) : null}
                     <a href={href.publicSite} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
                     <form action="/api/agent/logout" method="post">

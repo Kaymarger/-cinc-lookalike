@@ -331,7 +331,7 @@ export async function updateUser(id: string, draft: Partial<UserDraft>): Promise
       youtube = ${draft.youtube != null ? clean(draft.youtube, 240) : current.youtube},
       linkedin = ${draft.linkedin != null ? clean(draft.linkedin, 240) : current.linkedin},
       active = ${nextActive},
-      must_set_password = CASE WHEN ${hash} IS NOT NULL THEN false ELSE must_set_password END,
+      must_set_password = COALESCE(${hash ? false : null}::boolean, must_set_password),
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

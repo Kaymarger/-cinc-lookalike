@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CITIES, PROPERTY_TYPES } from "@/lib/properties";
+import { CITIES } from "@/lib/properties";
 import {
   ALERT_FREQUENCIES,
+  SEARCH_GARAGES,
+  SEARCH_PROPERTY_TYPES,
+  SEARCH_STATUSES,
   savedSearchSummary,
   type AlertFrequency,
   type LeadSavedSearch,
@@ -14,27 +17,47 @@ import { Btn, Field, inputCls, ModalFrame } from "./ui";
 type Draft = {
   name: string;
   city: string;
+  county: string;
   minPrice: string;
   maxPrice: string;
   beds: string;
   baths: string;
   propertyType: string;
+  sqftMin: string;
+  sqftMax: string;
+  yearMin: string;
+  yearMax: string;
+  status: string;
+  garage: string;
+  keywords: string;
   frequency: AlertFrequency;
 };
 
 function emptyDraft(): Draft {
-  return { name: "", city: "", minPrice: "", maxPrice: "", beds: "", baths: "", propertyType: "", frequency: "Daily" };
+  return {
+    name: "", city: "", county: "", minPrice: "", maxPrice: "", beds: "", baths: "", propertyType: "",
+    sqftMin: "", sqftMax: "", yearMin: "", yearMax: "", status: "Any", garage: "Any", keywords: "", frequency: "Daily",
+  };
 }
 
 function fromSearch(search: LeadSavedSearch): Draft {
+  const criteria = search.criteria;
   return {
     name: search.name,
     city: search.city,
+    county: criteria?.county || "",
     minPrice: search.minPrice == null ? "" : String(search.minPrice),
     maxPrice: search.maxPrice == null ? "" : String(search.maxPrice),
     beds: search.beds == null ? "" : String(search.beds),
     baths: search.baths == null ? "" : String(search.baths),
     propertyType: search.propertyType,
+    sqftMin: criteria?.sqftMin == null ? "" : String(criteria.sqftMin),
+    sqftMax: criteria?.sqftMax == null ? "" : String(criteria.sqftMax),
+    yearMin: criteria?.yearMin == null ? "" : String(criteria.yearMin),
+    yearMax: criteria?.yearMax == null ? "" : String(criteria.yearMax),
+    status: criteria?.status || "Any",
+    garage: criteria?.garage || "Any",
+    keywords: criteria?.keywords || "",
     frequency: search.frequency,
   };
 }
@@ -192,13 +215,35 @@ function SearchModal({
           </select>
         </Field>
       </div>
+      <Field label="County">
+        <input className={inputCls} value={draft.county} onChange={(event) => set("county", event.target.value)} />
+      </Field>
       <Field label="Property type">
         <select className={inputCls} value={draft.propertyType} onChange={(event) => set("propertyType", event.target.value)}>
           <option value="">Any</option>
-          {PROPERTY_TYPES.map((type) => (
+          {SEARCH_PROPERTY_TYPES.map((type) => (
             <option key={type}>{type}</option>
           ))}
         </select>
+      </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Min sqft"><input className={inputCls} inputMode="numeric" value={draft.sqftMin} onChange={(event) => set("sqftMin", event.target.value)} /></Field>
+        <Field label="Max sqft"><input className={inputCls} inputMode="numeric" value={draft.sqftMax} onChange={(event) => set("sqftMax", event.target.value)} /></Field>
+        <Field label="Year built from"><input className={inputCls} inputMode="numeric" value={draft.yearMin} onChange={(event) => set("yearMin", event.target.value)} /></Field>
+        <Field label="Year built to"><input className={inputCls} inputMode="numeric" value={draft.yearMax} onChange={(event) => set("yearMax", event.target.value)} /></Field>
+      </div>
+      <Field label="Status">
+        <select className={inputCls} value={draft.status} onChange={(event) => set("status", event.target.value)}>
+          {SEARCH_STATUSES.map((status) => <option key={status}>{status}</option>)}
+        </select>
+      </Field>
+      <Field label="Garage">
+        <select className={inputCls} value={draft.garage} onChange={(event) => set("garage", event.target.value)}>
+          {SEARCH_GARAGES.map((garage) => <option key={garage}>{garage}</option>)}
+        </select>
+      </Field>
+      <Field label="Keywords">
+        <input className={inputCls} value={draft.keywords} onChange={(event) => set("keywords", event.target.value)} />
       </Field>
       <Field label="Email alert frequency">
         <select className={inputCls} value={draft.frequency} onChange={(event) => set("frequency", event.target.value)}>
