@@ -16,8 +16,9 @@ export default async function AgentLoginPage({
 }) {
   const params = await searchParams;
   const next = safeNext(typeof params.next === "string" ? params.next : "/agent");
-  const error = params.error === "1" || params.error === "db";
+  const error = params.error === "1" || params.error === "db" || params.error === "invite";
   const dbError = params.error === "db";
+  const inviteError = params.error === "invite";
   const locked = !agentPassword();
   const jar = await cookies();
   if (!locked && (await verifySession(jar.get(COOKIE_NAME)?.value))) {
@@ -69,9 +70,16 @@ export default async function AgentLoginPage({
                 <p className="text-sm text-[#c62828]" role="alert">
                   {dbError
                     ? "Team logins need a database. Leave email blank and use the office password, or connect Neon in Vercel."
-                    : "That email or password is not right."}
+                    : inviteError
+                      ? "This account still needs a password. Open the invite link from your admin."
+                      : "That email or password is not right."}
                 </p>
               ) : null}
+              <div className="text-right">
+                <a href="/agent/forgot" className="text-sm text-[#1976d2] underline">
+                  Forgot password
+                </a>
+              </div>
               <button
                 type="submit"
                 className="h-12 w-full bg-[#1976d2] text-sm font-bold tracking-[1px] text-white uppercase hover:bg-[#145ca4]"

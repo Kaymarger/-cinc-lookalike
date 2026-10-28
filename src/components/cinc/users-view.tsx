@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
+import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { Btn, Field, inputCls } from "./ui";
 
@@ -16,6 +17,8 @@ type Draft = {
   password: string;
   active: boolean;
 };
+
+type LinkBox = { title: string; url: string; emailed: boolean };
 
 const blank = (): Draft => ({
   firstName: "",
@@ -34,6 +37,7 @@ export function UsersView() {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<Draft>(blank());
   const [message, setMessage] = useState<string | null>(null);
+  const [linkBox, setLinkBox] = useState<LinkBox | null>(null);
 
   async function load() {
     const response = await fetch("/api/office/users", { cache: "no-store" });
@@ -66,6 +70,7 @@ export function UsersView() {
     setDraft(blank());
     setCreating(true);
     setMessage(null);
+    setLinkBox(null);
   }
 
   function startEdit(user: OfficeProfile) {
@@ -100,16 +105,75 @@ export function UsersView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    const data = (await response.json().catch(() => null)) as {
+      message?: string;
+      inviteUrl?: string;
+      emailed?: boolean;
+    } | null;
     if (!response.ok) {
       setMessage(data?.message || "Could not save that user.");
       return;
     }
     setCreating(false);
     setEditing(null);
-    setMessage(editing ? "User saved." : "User added. Share the email and password with them.");
+    if (!editing && data?.inviteUrl) {
+      setLinkBox({
+        title: "Invite link",
+        url: data.inviteUrl,
+        emailed: Boolean(data.emailed),
+      });
+      setMessage(data.emailed ? "User added. The invite was emailed and is below." : "User added. Copy the invite link and send it yourself.");
+    } else {
+      setMessage(editing ? "User saved." : "User added.");
+    }
     office.refresh();
     await load();
+  }
+
+  async function makeLink(user: OfficeProfile, kind: "reset" | "invite") {
+    setMessage(null);
+    const response = await fetch(`/api/office/users/${user.id}/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    const data = (await response.json().catch(() => null)) as { url?: string; emailed?: boolean; message?: string } | null;
+    if (!response.ok || !data?.url) {
+      setMessage(data?.message || "Could not create that link.");
+      return;
+    }
+    setLinkBox({
+      title: kind === "reset" ? `Reset link for ${user.name}` : `Invite link for ${user.name}`,
+      url: data.url,
+      emailed: Boolean(data.emailed),
+    });
+    setMessage(data.message || "Link ready.");
+  }
+
+  async function become(user: OfficeProfile) {
+    const response = await fetch("/api/office/become", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    if (!response.ok) {
+      setMessage(data?.message || "Could not switch to that user.");
+      return;
+    }
+    // Full load so the become cookie is applied before the lead list renders.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/agent/leads";
+  }
+
+  async function copyLink() {
+    if (!linkBox) return;
+    try {
+      await navigator.clipboard.writeText(linkBox.url);
+      setMessage("Link copied.");
+    } catch {
+      setMessage("Select the link and copy it.");
+    }
   }
 
   const dbOff = office.ready && office.database && !office.database.connected;
@@ -131,6 +195,21 @@ export function UsersView() {
         <p className="mb-3 text-[13px] text-[#666]">Only an admin or broker can add users.</p>
       ) : null}
       {message ? <p className="mb-3 text-[13px] text-[#1c93b5]">{message}</p> : null}
+      {linkBox ? (
+        <div className="mb-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px]">
+          <p className="font-semibold text-[#243238]">{linkBox.title}</p>
+          <p className="mt-1 text-[#555]">
+            {linkBox.emailed
+              ? "Resend sent this link. It is also here if you want to copy it."
+              : "No email provider is configured. Copy this link and send it yourself. Add RESEND_API_KEY or SENDGRID_API_KEY later and new links will email automatically."}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <input readOnly className={`${inputCls} min-w-0 flex-1`} value={linkBox.url} onFocus={(event) => event.currentTarget.select()} />
+            <Btn kind="teal" onClick={() => void copyLink()}>Copy</Btn>
+          </div>
+        </div>
+      ) : null}
+      {office.canManageUsers && !dbOff ? <RoutingPanel users={users} /> : null}
       <div className="overflow-auto border border-[#e5e5e5] bg-white">
         <table className="w-full text-left text-[13px]">
           <thead className="bg-[#f6f6f6] text-[11px] tracking-wide text-[#666] uppercase">
@@ -150,11 +229,21 @@ export function UsersView() {
                 <td className="px-3 py-2">{user.email}</td>
                 <td className="px-3 py-2">{user.roleLabel || roleLabel(user.role)}</td>
                 <td className="px-3 py-2">{user.cell || "—"}</td>
-                <td className="px-3 py-2">{user.active ? "Active" : "Inactive"}</td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2">
+                  {user.active ? "Active" : "Inactive"}
+                  {user.mustSetPassword ? " · invite pending" : ""}
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
                   {office.canManageUsers ? (
-                    <button type="button" className="text-[#1c93b5]" onClick={() => startEdit(user)}>
-                      Edit
+                    <span className="inline-flex gap-2">
+                      <button type="button" className="text-[#1c93b5]" onClick={() => startEdit(user)}>Edit</button>
+                      <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "reset")}>Reset link</button>
+                      <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "invite")}>Invite link</button>
+                    </span>
+                  ) : null}
+                  {office.canBecome && user.id !== office.user?.id && user.active ? (
+                    <button type="button" className="ml-2 text-[#d9363e]" onClick={() => void become(user)}>
+                      Become
                     </button>
                   ) : null}
                 </td>
@@ -204,13 +293,17 @@ export function UsersView() {
                 className={inputCls}
                 type="text"
                 autoComplete="new-password"
-                required={!editing}
-                placeholder={editing ? "Leave blank to keep" : "At least 8 characters"}
+                placeholder={editing ? "Leave blank to keep" : "Blank sends an invite instead"}
                 value={draft.password}
                 onChange={(event) => setDraft({ ...draft, password: event.target.value })}
               />
             </Field>
           </div>
+          {!editing ? (
+            <p className="mt-2 text-[12px] text-[#666]">
+              Leave the password blank and they set their own from the invite link. A password of at least 8 characters lets them sign in immediately, and an invite link is still created.
+            </p>
+          ) : null}
           <label className="mt-3 flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={draft.active} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} />
             Active

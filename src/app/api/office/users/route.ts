@@ -1,5 +1,7 @@
+import { publicOrigin } from "@/lib/office-mail";
 import { isOfficeRole } from "@/lib/office-access";
 import { currentActor } from "@/lib/office-actor";
+import { deliverAccessLink } from "@/lib/office-tokens";
 import { createUser, listUsers, toPublic, type UserDraft } from "@/lib/office-users";
 
 export const runtime = "nodejs";
@@ -10,7 +12,7 @@ function draftFrom(body: Record<string, unknown>): UserDraft | { error: string }
   if (!isOfficeRole(role)) return { error: "Choose Admin, Broker, Agent, ISA, or Lender." };
   return {
     email: String(body.email ?? ""),
-    password: body.password == null ? undefined : String(body.password),
+    password: body.password == null || body.password === "" ? undefined : String(body.password),
     role,
     firstName: String(body.firstName ?? ""),
     lastName: String(body.lastName ?? ""),
@@ -75,7 +77,16 @@ export async function POST(request: Request) {
   }
   try {
     const user = await createUser(draft);
-    return Response.json({ ok: true, user: toPublic(user) });
+    let inviteUrl = "";
+    let emailed = false;
+    try {
+      const link = await deliverAccessLink(user, "invite", publicOrigin(request));
+      inviteUrl = link.url;
+      emailed = link.emailed;
+    } catch (error) {
+      console.error("[office] invite", error instanceof Error ? error.name : "error");
+    }
+    return Response.json({ ok: true, user: toPublic(user), inviteUrl, emailed });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "password_short") {

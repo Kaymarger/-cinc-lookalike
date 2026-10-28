@@ -326,7 +326,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
 
   return (
     <ChromeContext.Provider value={api}>
-      <div className="cinc-root relative flex h-screen overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333]">
+      <div className={`cinc-root relative flex overflow-hidden bg-[#f5f5f5] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
         <aside className="flex w-[147px] shrink-0 flex-col bg-[#2b3a4a] text-white">
           <div className="flex h-[58px] items-center bg-[#1a2833] px-3">
             <Logo />
@@ -429,18 +429,29 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               />
             ) : null}
             <div className="ml-auto flex items-center gap-3">
-              <a
-                href={href.publicSite}
-                className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
-                title="End the demo impersonation and return to the public site"
-              >
-                <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
-                  <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
-                  <path d="M4.5 1.5V4h4" />
-                  <path d="M4.5 6.5h4M4.5 8.2h3" />
-                </svg>
-                End Become User
-              </a>
+              {office.impersonating ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
+                  title="Stop viewing the office as this user"
+                  onClick={office.endImpersonation}
+                >
+                  End Become User
+                </button>
+              ) : (
+                <a
+                  href={href.publicSite}
+                  className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
+                  title="End the demo impersonation and return to the public site"
+                >
+                  <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
+                    <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
+                    <path d="M4.5 1.5V4h4" />
+                    <path d="M4.5 6.5h4M4.5 8.2h3" />
+                  </svg>
+                  End Become User
+                </a>
+              )}
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>

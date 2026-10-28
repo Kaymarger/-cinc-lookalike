@@ -32,7 +32,7 @@ try {
   for (const statement of statements(schema)) {
     await sql.unsafe(statement);
   }
-  console.log("[leads] captured_leads, office_users, and lead_saved_searches are ready.");
+  console.log("[leads] captured_leads, office_users, saved searches, access tokens, and lead routing are ready.");
 } catch (error) {
   console.warn(
     "[leads] Could not create the table during build. It will be created on first use.",

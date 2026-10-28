@@ -1,7 +1,9 @@
 /** Password gate for the agent office. Uses Web Crypto so middleware can verify the cookie. */
 
 export const COOKIE_NAME = "gvhs_agent";
+export const BECOME_COOKIE = "gvhs_become";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 14;
+export const BECOME_MAX_AGE = 60 * 60 * 8;
 
 const encoder = new TextEncoder();
 
@@ -110,6 +112,31 @@ export async function readSession(
 
 export async function verifySession(token: string | undefined | null): Promise<boolean> {
   return (await readSession(token)) !== null;
+}
+
+export async function signBecome(targetId: string, now = Date.now()): Promise<string> {
+  const id = USER_ID.test(targetId) ? targetId : "";
+  if (!id) throw new Error("bad_user");
+  const secret = await sessionSecret();
+  const payload = `b1.${now + BECOME_MAX_AGE * 1000}.${id}`;
+  const signature = await sign(secret, payload);
+  return `${payload}.${signature}`;
+}
+
+export async function readBecome(
+  token: string | undefined | null
+): Promise<{ userId: string } | null> {
+  if (!agentPassword() || !token) return null;
+  const secret = await sessionSecret();
+  if (!secret) return null;
+  const parts = token.split(".");
+  if (parts.length !== 4 || parts[0] !== "b1") return null;
+  const [, exp, userId, signature] = parts;
+  if (!exp || !userId || !signature || !USER_ID.test(userId)) return null;
+  const expires = Number(exp);
+  if (!Number.isFinite(expires) || expires < Date.now()) return null;
+  const expected = await sign(secret, `b1.${exp}.${userId}`);
+  return safeEqual(signature, expected) ? { userId } : null;
 }
 
 export function cookieBase(secure: boolean, maxAge = SESSION_MAX_AGE) {

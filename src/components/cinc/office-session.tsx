@@ -37,6 +37,7 @@ export type OfficeProfile = {
   linkedin: string;
   active: boolean;
   bootstrap: boolean;
+  mustSetPassword?: boolean;
 };
 
 export type RosterUser = {
@@ -56,10 +57,27 @@ type Ctx = {
   seesAll: boolean;
   canManageUsers: boolean;
   canReassign: boolean;
+  canBecome: boolean;
+  impersonating: boolean;
   refresh: () => void;
+  endImpersonation: () => void;
 };
 
 const OfficeContext = createContext<Ctx | null>(null);
+
+const empty: Ctx = {
+  ready: true,
+  user: null,
+  roster: [],
+  database: null,
+  seesAll: false,
+  canManageUsers: false,
+  canReassign: false,
+  canBecome: false,
+  impersonating: false,
+  refresh: () => undefined,
+  endImpersonation: () => undefined,
+};
 
 export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OfficeProfile | null>(null);
@@ -68,10 +86,19 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   const [seesAll, setSeesAll] = useState(false);
   const [canManageUsers, setCanManageUsers] = useState(false);
   const [canReassign, setCanReassign] = useState(false);
+  const [canBecome, setCanBecome] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
   const [ready, setReady] = useState(false);
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((value) => value + 1), []);
+
+  const endImpersonation = useCallback(() => {
+    void fetch("/api/office/become", { method: "DELETE" }).finally(() => {
+      // Reload the current screen. A hash-only URL change would keep the old banner.
+      window.location.reload();
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +111,8 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
           seesAll?: boolean;
           canManageUsers?: boolean;
           canReassign?: boolean;
+          canBecome?: boolean;
+          impersonating?: boolean;
         };
       })
       .then(async (data) => {
@@ -93,6 +122,8 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
         setSeesAll(Boolean(data?.seesAll));
         setCanManageUsers(Boolean(data?.canManageUsers));
         setCanReassign(Boolean(data?.canReassign));
+        setCanBecome(Boolean(data?.canBecome));
+        setImpersonating(Boolean(data?.impersonating));
         if (!data?.user) {
           setRoster([]);
           setReady(true);
@@ -115,26 +146,43 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   }, [tick]);
 
   const value = useMemo(
-    () => ({ ready, user, roster, database, seesAll, canManageUsers, canReassign, refresh }),
-    [ready, user, roster, database, seesAll, canManageUsers, canReassign, refresh]
+    () => ({
+      ready,
+      user,
+      roster,
+      database,
+      seesAll,
+      canManageUsers,
+      canReassign,
+      canBecome,
+      impersonating,
+      refresh,
+      endImpersonation,
+    }),
+    [ready, user, roster, database, seesAll, canManageUsers, canReassign, canBecome, impersonating, refresh, endImpersonation]
   );
 
-  return <OfficeContext.Provider value={value}>{children}</OfficeContext.Provider>;
+  return (
+    <OfficeContext.Provider value={value}>
+      {impersonating && user ? (
+        <div className="fixed inset-x-0 top-0 z-[90] flex items-center justify-between gap-3 bg-[#d9363e] px-4 py-2 text-[13px] text-white shadow">
+          <p>
+            Viewing the office as <strong>{user.name}</strong>. Leads and menus match that user.
+          </p>
+          <button
+            type="button"
+            className="shrink-0 border border-white px-2 py-1 text-[12px] font-semibold uppercase"
+            onClick={endImpersonation}
+          >
+            Switch back
+          </button>
+        </div>
+      ) : null}
+      {children}
+    </OfficeContext.Provider>
+  );
 }
 
 export function useOfficeSession() {
-  const ctx = useContext(OfficeContext);
-  if (!ctx) {
-    return {
-      ready: true,
-      user: null,
-      roster: [],
-      database: null,
-      seesAll: false,
-      canManageUsers: false,
-      canReassign: false,
-      refresh: () => undefined,
-    } satisfies Ctx;
-  }
-  return ctx;
+  return useContext(OfficeContext) ?? empty;
 }

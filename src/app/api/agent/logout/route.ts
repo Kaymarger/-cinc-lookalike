@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, cookieBase } from "@/lib/agent-auth";
+import { BECOME_COOKIE, COOKIE_NAME, cookieBase } from "@/lib/agent-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,5 +17,6 @@ export async function POST(request: Request) {
     ? new NextResponse(null, { status: 303, headers: { Location: next } })
     : NextResponse.json({ ok: true });
   response.cookies.set(COOKIE_NAME, "", cookieBase(secure, 0));
+  response.cookies.set(BECOME_COOKIE, "", cookieBase(secure, 0));
   return response;
 }

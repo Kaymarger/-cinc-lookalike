@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { COOKIE_NAME, agentPassword, passwordMatches, readSession } from "@/lib/agent-auth";
+import { BECOME_COOKIE, COOKIE_NAME, agentPassword, passwordMatches, readBecome, readSession } from "@/lib/agent-auth";
 import { databaseStatus, leadsDatabaseConfigured, type DatabaseStatus } from "@/lib/leads-db";
 import {
   canManageUsers,
@@ -23,20 +23,32 @@ import {
 export type Actor = {
   user: OfficeUser;
   publicUser: PublicOfficeUser;
+  realUser: PublicOfficeUser;
   database: DatabaseStatus;
   seesAll: boolean;
   canManageUsers: boolean;
   canReassign: boolean;
+  canBecome: boolean;
+  impersonating: boolean;
 };
 
-function actorFrom(user: OfficeUser, database: DatabaseStatus, manageOverride?: boolean): Actor {
+function actorFrom(
+  user: OfficeUser,
+  real: OfficeUser,
+  database: DatabaseStatus,
+  manageOverride?: boolean
+): Actor {
+  const impersonating = user.id !== real.id;
   return {
     user,
     publicUser: toPublic(user),
+    realUser: toPublic(real),
     database,
     seesAll: seesAllLeads(user.role),
-    canManageUsers: manageOverride ?? (canManageUsers(user.role) && database.connected),
+    canManageUsers: manageOverride ?? (canManageUsers(user.role) && database.connected && !impersonating),
     canReassign: canReassignLeads(user.role),
+    canBecome: real.role === "admin" && real.active && database.connected && !impersonating,
+    impersonating,
   };
 }
 
@@ -54,24 +66,35 @@ export async function currentActor(): Promise<Actor | null> {
           "Database is not connected. In Vercel, open Storage, create a Neon database, then redeploy. Team logins, user profiles, and saved searches need DATABASE_URL or POSTGRES_URL. The office password still signs in the owner.",
       };
 
+  let real: OfficeUser;
   if (session.userId === BOOTSTRAP_ID) {
     if (database.connected) {
       const owner = await ensureBootstrapAdmin(agentPassword()).catch(() => null);
-      if (owner) return actorFrom(owner, database);
+      real = owner ?? syntheticBootstrap();
+    } else {
+      real = syntheticBootstrap();
     }
-    return actorFrom(syntheticBootstrap(), database, false);
+  } else if (!database.connected) {
+    real = syntheticBootstrap();
+  } else {
+    const user = await findUserById(session.userId);
+    if (!user || !user.active) return null;
+    real = user;
   }
 
-  if (!database.connected) return actorFrom(syntheticBootstrap(), database, false);
-  const user = await findUserById(session.userId);
-  if (!user || !user.active) return null;
-  return actorFrom(user, database);
+  const manageLocked = real.id === BOOTSTRAP_ID || !database.connected;
+  const become = await readBecome(jar.get(BECOME_COOKIE)?.value);
+  if (become && database.connected && real.role === "admin" && real.active && become.userId !== real.id) {
+    const target = await findUserById(become.userId);
+    if (target?.active) return actorFrom(target, real, database, false);
+  }
+  return actorFrom(real, real, database, manageLocked ? false : undefined);
 }
 
 export async function loginOffice(
   email: string,
   password: string
-): Promise<{ ok: true; userId: string } | { ok: false; reason: "locked" | "bad" | "db" }> {
+): Promise<{ ok: true; userId: string } | { ok: false; reason: "locked" | "bad" | "db" | "invite" }> {
   if (!agentPassword()) return { ok: false, reason: "locked" };
   const trimmed = email.trim().toLowerCase();
   const bootstrapPassword = await passwordMatches(password);
@@ -94,6 +117,7 @@ export async function loginOffice(
   try {
     const user = await findUserByEmail(trimmed);
     if (!user || !user.active) return { ok: false, reason: "bad" };
+    if (user.mustSetPassword) return { ok: false, reason: "invite" };
     if (!(await passwordMatchesUser(password, user.passwordHash))) return { ok: false, reason: "bad" };
     return { ok: true, userId: user.id };
   } catch (error) {

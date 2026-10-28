@@ -7,10 +7,9 @@ import {
 import { cookies } from "next/headers";
 import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
 import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
+import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { assignedAgentName, notifyAssignedAgent } from "@/lib/notify-lead";
 import { currentActor } from "@/lib/office-actor";
-import { findUserByName } from "@/lib/office-users";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -220,7 +219,9 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, message: parsed.message }, { status: 400 });
   }
 
-  const alerts = await notifyAssignedAgent(parsed.lead);
+  const assignee = await resolveNewLeadAssignee();
+  const lead = { ...parsed.lead, assignedTo: assignee.name };
+  const alerts = await notifyAssignedAgent(lead);
 
   if (!leadsDatabaseConfigured()) {
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
@@ -229,13 +230,12 @@ export async function POST(request: Request) {
       persisted: false,
       storage: "unconfigured",
       alerts,
-      lead: publicLead(parsed.lead),
+      lead: publicLead(lead),
     });
   }
 
   try {
-    const owner = await findUserByName(parsed.lead.assignedTo).catch(() => null);
-    const saved = await insertLead({ ...parsed.lead, assignedUserId: owner?.id ?? null });
+    const saved = await insertLead({ ...lead, assignedUserId: assignee.userId });
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
     return Response.json({
       ok: true,

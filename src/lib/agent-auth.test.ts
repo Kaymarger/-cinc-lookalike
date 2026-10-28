@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { passwordMatches, readSession, safeNext, signSession, verifySession } from "./agent-auth.ts";
+import { passwordMatches, readBecome, readSession, safeNext, signBecome, signSession, verifySession } from "./agent-auth.ts";
 
 test("safeNext only allows agent office paths", () => {
   assert.equal(safeNext("/agent/leads"), "/agent/leads");
@@ -23,7 +23,12 @@ test("password check and session cookie", async () => {
   const legacy = `v1.${Date.now() + 60_000}`;
   assert.equal(await readSession(legacy), null);
 
+  const become = await signBecome("agent_2");
+  assert.equal((await readBecome(become))?.userId, "agent_2");
+  assert.equal(await readBecome(`${become}x`), null);
+
   delete process.env.AGENT_PASSWORD;
   assert.equal(await verifySession(token), false);
   assert.equal(await passwordMatches("office-secret"), false);
+  assert.equal(await readBecome(become), null);
 });

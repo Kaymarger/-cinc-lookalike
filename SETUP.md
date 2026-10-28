@@ -31,7 +31,13 @@ On **Leads**, a banner says whether the database is connected.
 
 The office password is the owner login. Leave the email blank on `/agent/login` and use `AGENT_PASSWORD`. The first time the database is connected, that sign-in creates the owner admin (Casey Archibald, `agent@example.com`).
 
-An admin or broker then opens **Users** in the account menu and adds people. Each person gets an email and a password of at least 8 characters. Passwords are stored as a hash. Roles are Admin, Broker, Agent, ISA, and Lender.
+An admin or broker then opens **Users** in the account menu and adds people. Leave the password blank to create an invite link they use to set their own password, or type a password of at least 8 characters so they can sign in right away. Passwords are stored as a hash. Roles are Admin, Broker, Agent, ISA, and Lender.
+
+**Forgot password** on the sign-in page creates a link that works for one hour. **Reset link** and **Invite link** on a user row do the same for an admin to copy. Invite links work for 7 days. If `RESEND_API_KEY` or `SENDGRID_API_KEY` is set, along with a from-address (`RESEND_FROM_EMAIL`, `SENDGRID_FROM_EMAIL`, or `LEAD_ALERT_FROM_EMAIL`), those links are emailed. Resend is used when its key is present. If neither provider is set, copy the link from Users and send it yourself.
+
+An admin can click **Become** on another user. A red bar says whose office they are viewing, and **Switch back** or **End Become User** returns them to their own account. Agents still only see their own leads while an admin is viewing as them.
+
+**New lead assignment** on the Users screen sends each new registration to one chosen person, or round-robin across the people you check. Until you save a rule, new leads still go to `AGENT_ALERT_NAME` or Casey Archibald.
 
 - Admins and brokers see every lead and can reassign them.
 - Agents see only leads assigned to them.

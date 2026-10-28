@@ -15,7 +15,9 @@ function isOfficePath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/agent/login") return NextResponse.next();
+  if (pathname === "/agent/login" || pathname === "/agent/forgot" || pathname === "/agent/reset") {
+    return NextResponse.next();
+  }
 
   if (pathname.startsWith("/api/office") || pathname.startsWith("/api/leads/")) {
     const ok = await verifySession(request.cookies.get(COOKIE_NAME)?.value);

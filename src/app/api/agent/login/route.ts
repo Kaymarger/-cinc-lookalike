@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  BECOME_COOKIE,
   COOKIE_NAME,
   cookieBase,
   safeNext,
@@ -82,16 +83,20 @@ export async function POST(request: Request) {
 
   const result = await loginOffice(email, password);
   if (!result.ok) {
-    const error = result.reason === "db" ? "db" : "1";
+    const error = result.reason === "db" ? "db" : result.reason === "invite" ? "invite" : "1";
     if (html) return redirectTo(loginPath({ error, next }));
     const message =
       result.reason === "db"
         ? "Team logins need a database. Leave the email blank and use the office password, or connect Neon."
-        : "That email or password is not right.";
-    return NextResponse.json({ ok: false, message }, { status: result.reason === "db" ? 503 : 401 });
+        : result.reason === "invite"
+          ? "This account still needs a password. Open the invite link from your admin."
+          : "That email or password is not right.";
+    const status = result.reason === "db" ? 503 : 401;
+    return NextResponse.json({ ok: false, message }, { status });
   }
 
   const response = html ? redirectTo(next) : NextResponse.json({ ok: true, userId: result.userId });
   response.cookies.set(COOKIE_NAME, await signSession(result.userId), cookieBase(secure));
+  response.cookies.set(BECOME_COOKIE, "", cookieBase(secure, 0));
   return response;
 }

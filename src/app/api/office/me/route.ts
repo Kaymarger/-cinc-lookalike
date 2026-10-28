@@ -15,5 +15,7 @@ export async function GET() {
     seesAll: actor.seesAll,
     canManageUsers: actor.canManageUsers,
     canReassign: actor.canReassign,
+    canBecome: actor.canBecome,
+    impersonating: actor.impersonating,
   });
 }

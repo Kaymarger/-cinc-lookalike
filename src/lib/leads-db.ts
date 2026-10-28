@@ -95,7 +95,27 @@ const SCHEMA_STATEMENTS = [
   linkedin text NOT NULL DEFAULT '',
   active boolean NOT NULL DEFAULT true,
   bootstrap boolean NOT NULL DEFAULT false,
+  must_set_password boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS must_set_password boolean NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS office_access_tokens (
+  id text PRIMARY KEY,
+  user_id text NOT NULL,
+  token_hash text NOT NULL UNIQUE,
+  kind text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  used_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE INDEX IF NOT EXISTS office_access_tokens_user_idx ON office_access_tokens (user_id)`,
+  `CREATE TABLE IF NOT EXISTS lead_routing (
+  id text PRIMARY KEY,
+  mode text NOT NULL,
+  fixed_user_id text,
+  pool_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+  rr_cursor integer NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now()
 )`,
   `CREATE TABLE IF NOT EXISTS lead_saved_searches (

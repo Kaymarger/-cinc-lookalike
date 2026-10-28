@@ -36,6 +36,7 @@ export type OfficeUser = {
   linkedin: string;
   active: boolean;
   bootstrap: boolean;
+  mustSetPassword: boolean;
 };
 
 type UserRow = {
@@ -63,6 +64,7 @@ type UserRow = {
   linkedin: string;
   active: boolean;
   bootstrap: boolean;
+  must_set_password: boolean;
 };
 
 export type PublicOfficeUser = Omit<OfficeUser, never> & { roleLabel: string };
@@ -103,6 +105,7 @@ function fromRow(row: UserRow): OfficeUser {
     linkedin: row.linkedin || "",
     active: Boolean(row.active),
     bootstrap: Boolean(row.bootstrap),
+    mustSetPassword: Boolean(row.must_set_password),
   };
 }
 
@@ -132,6 +135,7 @@ export function syntheticBootstrap(): OfficeUser {
     linkedin: "",
     active: true,
     bootstrap: true,
+    mustSetPassword: false,
   };
 }
 
@@ -243,15 +247,16 @@ function clean(value: string | undefined, max = 240): string {
 export async function createUser(draft: UserDraft): Promise<OfficeUser> {
   const sql = await officeDb();
   if (!sql) throw new Error("database_unconfigured");
-  if (!draft.password || draft.password.length < 8) throw new Error("password_short");
+  const inviteOnly = !draft.password;
+  if (draft.password && draft.password.length < 8) throw new Error("password_short");
   const email = draft.email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("email_invalid");
-  const hash = await hashPassword(draft.password);
+  const hash = await hashPassword(draft.password || crypto.randomUUID() + crypto.randomUUID());
   const rows = await sql<UserRow[]>`
     INSERT INTO office_users (
       id, email, password_hash, role, first_name, last_name, cell, home_phone, office_phone,
       title, license_number, loan_url, bio, signature, subdomain, facebook, google, pinterest,
-      twitter, instagram, youtube, linkedin, active, bootstrap
+      twitter, instagram, youtube, linkedin, active, bootstrap, must_set_password
     ) VALUES (
       ${crypto.randomUUID()},
       ${email},
@@ -276,7 +281,8 @@ export async function createUser(draft: UserDraft): Promise<OfficeUser> {
       ${clean(draft.youtube, 240)},
       ${clean(draft.linkedin, 240)},
       ${draft.active !== false},
-      false
+      false,
+      ${inviteOnly}
     )
     RETURNING *
   `;
@@ -325,6 +331,7 @@ export async function updateUser(id: string, draft: Partial<UserDraft>): Promise
       youtube = ${draft.youtube != null ? clean(draft.youtube, 240) : current.youtube},
       linkedin = ${draft.linkedin != null ? clean(draft.linkedin, 240) : current.linkedin},
       active = ${nextActive},
+      must_set_password = CASE WHEN ${hash} IS NOT NULL THEN false ELSE must_set_password END,
       updated_at = now()
     WHERE id = ${id}
     RETURNING *
@@ -334,4 +341,18 @@ export async function updateUser(id: string, draft: Partial<UserDraft>): Promise
 
 export async function passwordMatchesUser(password: string, hash: string): Promise<boolean> {
   return verifyPassword(password, hash);
+}
+
+export async function setUserPassword(id: string, password: string): Promise<OfficeUser | null> {
+  const sql = await officeDb();
+  if (!sql) throw new Error("database_unconfigured");
+  if (password.length < 8) throw new Error("password_short");
+  const hash = await hashPassword(password);
+  const rows = await sql<UserRow[]>`
+    UPDATE office_users
+    SET password_hash = ${hash}, must_set_password = false, updated_at = now()
+    WHERE id = ${id} AND active = true
+    RETURNING *
+  `;
+  return rows[0] ? fromRow(rows[0]) : null;
 }

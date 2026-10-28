@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useOfficeSession } from "@/components/cinc/office-session";
 import { AuthModalProvider } from "@/components/auth-modal";
 import { CompareTray } from "@/components/compare-tray";
 import { CookieBanner } from "@/components/cookie-banner";
@@ -9,6 +10,7 @@ import { SiteHeader } from "@/components/site-header";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const office = useOfficeSession();
   const isAgent =
     pathname.startsWith("/agent") ||
     pathname.startsWith("/dashboard/spa") ||
@@ -21,7 +23,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthModalProvider>
-      <SiteHeader />
+      <div className={office.impersonating ? "pt-10" : undefined}>
+        <SiteHeader />
+      </div>
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CompareTray />
