@@ -37,6 +37,7 @@ export type OfficeUser = {
   active: boolean;
   bootstrap: boolean;
   mustSetPassword: boolean;
+  routingHidden: boolean;
 };
 
 type UserRow = {
@@ -65,6 +66,7 @@ type UserRow = {
   active: boolean;
   bootstrap: boolean;
   must_set_password: boolean;
+  routing_hidden?: boolean;
 };
 
 export type PublicOfficeUser = Omit<OfficeUser, never> & { roleLabel: string };
@@ -106,6 +108,7 @@ function fromRow(row: UserRow): OfficeUser {
     active: Boolean(row.active),
     bootstrap: Boolean(row.bootstrap),
     mustSetPassword: Boolean(row.must_set_password),
+    routingHidden: Boolean(row.routing_hidden),
   };
 }
 
@@ -136,6 +139,7 @@ export function syntheticBootstrap(): OfficeUser {
     active: true,
     bootstrap: true,
     mustSetPassword: false,
+    routingHidden: false,
   };
 }
 

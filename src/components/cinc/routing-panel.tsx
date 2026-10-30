@@ -9,8 +9,8 @@ const ROUTABLE: OfficeRole[] = ["admin", "broker", "agent", "isa"];
 
 type Mode = "default" | "fixed" | "round_robin";
 
-export function RoutingPanel({ users }: { users: OfficeProfile[] }) {
-  const eligible = users.filter((user) => user.active && ROUTABLE.includes(user.role));
+export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidden?: boolean })[] }) {
+  const eligible = users.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
   const [mode, setMode] = useState<Mode>("default");
   const [fixedUserId, setFixedUserId] = useState("");
   const [poolIds, setPoolIds] = useState<string[]>([]);

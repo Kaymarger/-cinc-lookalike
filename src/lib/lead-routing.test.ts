@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nextPoolUser } from "./lead-routing-pick.ts";
+import { isRoutingCandidate, nextPoolUser } from "./lead-routing-pick.ts";
 
 test("round robin walks the active pool in order", () => {
   const pool = ["a", "b", "c"];
@@ -19,4 +19,10 @@ test("round robin skips inactive agents", () => {
   assert.equal(nextPoolUser(pool, 3, active), "a");
   assert.equal(nextPoolUser([], 1, active), null);
   assert.equal(nextPoolUser(pool, 0, active), null);
+});
+
+test("a hidden admin is not a routing candidate", () => {
+  assert.equal(isRoutingCandidate({ active: true, role: "admin", routingHidden: true }), false);
+  assert.equal(isRoutingCandidate({ active: true, role: "admin", routingHidden: false }), true);
+  assert.equal(isRoutingCandidate({ active: false, role: "agent" }), false);
 });

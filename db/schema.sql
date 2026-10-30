@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS office_users (
 
 ALTER TABLE office_users ADD COLUMN IF NOT EXISTS must_set_password boolean NOT NULL DEFAULT false;
 ALTER TABLE office_users ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE office_users ADD COLUMN IF NOT EXISTS routing_hidden boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS office_access_tokens (
   id text PRIMARY KEY,

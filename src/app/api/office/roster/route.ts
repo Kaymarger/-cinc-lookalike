@@ -17,7 +17,7 @@ export async function GET() {
     ok: true,
     database: actor.database,
     users: users
-      .filter((user) => user.active)
+      .filter((user) => user.active && !user.routingHidden)
       .map((user) => ({ id: user.id, name: user.name, role: user.role, email: user.email })),
   });
 }

@@ -1,5 +1,5 @@
 import { officeDb } from "@/lib/leads-db";
-import { nextPoolUser } from "@/lib/lead-routing-pick";
+import { isRoutingCandidate, nextPoolUser } from "@/lib/lead-routing-pick";
 import { assignedAgentName } from "@/lib/notify-lead";
 import type { OfficeRole } from "@/lib/office-access";
 import { findUserById, findUserByName, listUsers, type OfficeUser } from "@/lib/office-users";
@@ -33,7 +33,7 @@ function asPool(value: unknown): string[] {
 }
 
 function eligible(user: OfficeUser): boolean {
-  return user.active && isRoutableRole(user.role);
+  return isRoutingCandidate(user);
 }
 
 export async function getLeadRouting(): Promise<RoutingSettings> {
