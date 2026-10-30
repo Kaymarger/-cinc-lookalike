@@ -400,7 +400,7 @@ export function LeadsView({
   leadId?: string;
   tab: LeadTab;
 }) {
-  const { leads, add, appendActivity, database } = useLeads();
+  const { leads, add, appendActivity } = useLeads();
   const office = useOfficeSession();
   const { state, update } = useCinc();
   const chrome = useChrome();
@@ -584,6 +584,7 @@ export function LeadsView({
       chrome.toast("Your permissions do not include deleting leads.");
       return;
     }
+    if (!window.confirm(`Trash ${ids.length} lead${ids.length === 1 ? "" : "s"}?`)) return;
     update((current) => ({ ...current, trashed: [...new Set([...current.trashed, ...ids])] }));
     setSelected([]);
     chrome.toast(`Trashed ${ids.length} lead${ids.length === 1 ? "" : "s"}.`);
@@ -735,7 +736,7 @@ export function LeadsView({
           onSave={(assign) => {
             selected.forEach((id) => saveAssign(id, assign));
             chrome.closeModal();
-            chrome.toast(office.database?.connected ? "Agents reassigned." : "Agents reassigned on this device.");
+            chrome.toast("Agents reassigned.");
           }}
         />,
       );
@@ -784,16 +785,6 @@ export function LeadsView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <p
-        role="status"
-        className={
-          database?.connected
-            ? "bg-white px-3 py-1 text-[11px] text-[#6a8f74]"
-            : "bg-[#fff6e5] px-3 py-1 text-[11px] text-[#8a5a00]"
-        }
-      >
-        {database?.message ?? "Checking whether the database is connected…"}
-      </p>
       {!office.ready ? <p className="bg-white px-3 py-2 text-[13px] text-[#666]">Checking your access…</p> : null}
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
@@ -849,15 +840,19 @@ export function LeadsView({
               const name = window.prompt("Name this filter");
               if (!name) return;
               update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
-              chrome.toast("Filter saved on this device.");
+              chrome.toast("Filter saved.");
             }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8l3 3v9H3V2zm2 1v4h6V3H5zm1 7h4v3H6v-3z" /></svg>
             </button>
             <button type="button" title="Column config" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => setDrawer(true)}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.2" fill="white" /><circle cx="10" cy="8" r="1.2" fill="white" /><circle cx="7" cy="12" r="1.2" fill="white" /></svg>
             </button>
-            <button type="button" title={showTrash ? "Show active leads" : "Show trashed leads"} className="ml-auto h-[22px] rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px] text-[#1c93b5]" onClick={() => { setShowTrash((value) => !value); setPage(0); }}>{showTrash ? "Active" : "Trash"}</button>
-            <button type="button" title="Print" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => window.print()}>⎙</button>
+            <button type="button" title={showTrash ? "Show active leads" : "Show trashed leads"} className="ml-auto grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#1c93b5]" onClick={() => { setShowTrash((value) => !value); setPage(0); }}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 4h10M6 4V2h4v2M4 6h8v8H4z" /></svg>
+            </button>
+            <button type="button" title="Print" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => window.print()}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M4 6V2h8v4M4 11H3a1 1 0 0 1-1-1V7h12v3a1 1 0 0 1-1 1h-1M4 10h8v4H4z" /></svg>
+            </button>
             <Menu
               header="View Style"
               label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">VIEW: {view} ▾</span>}
@@ -865,7 +860,7 @@ export function LeadsView({
             />
             <Menu
               header="Page Size"
-              label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">{pageSize} ☰ ▾</span>}
+              label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">{pageSize} ▾</span>}
               items={[5, 10, 25, 50, 100].map((size) => ({ label: String(size), onClick: () => { setPageSize(size); setPage(0); } }))}
             />
             <span className="text-[12px] font-bold">
@@ -901,11 +896,11 @@ export function LeadsView({
             </ul>
           ) : (
             <table className="w-full min-w-[1100px] border-collapse bg-white text-left">
-              <thead className="sticky top-0 z-10 bg-white text-[12px] font-bold tracking-wide text-black uppercase">
+              <thead className="sticky top-0 z-10 bg-[#f7f7f7] text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
                 <tr>
                   {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
-                    <th key={`${col}-${index}`} className="border-b border-[#eee] px-2 py-2">
-                      {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : " ▾"}</button> : null}
+                    <th key={`${col}-${index}`} className="border-b border-[#eee] px-2 py-2 whitespace-nowrap">
+                      {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button> : null}
                     </th>
                   ))}
                 </tr>
@@ -926,9 +921,8 @@ export function LeadsView({
                         <Menu
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
                           items={[
-                            { label: "Call", onClick: () => { log(row, "call", "Call logged"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                            { label: "Text", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
-                            { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
+                            { label: "Call Lead", onClick: () => { log(row, "call", "Call logged"); chrome.toast(`Call to ${row.phone} logged.`); } },
+                            { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
                           ]}
                         />
                       </div>
@@ -955,7 +949,7 @@ export function LeadsView({
                     </td>
                     <td className="px-2">
                       <Menu
-                        label={<span title={row.pipeline} className={`inline-flex max-w-[128px] truncate rounded border px-1.5 py-0.5 text-[12px] font-semibold normal-case ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
+                        label={<span title={row.pipeline} className={`inline-flex max-w-[140px] items-center gap-1 truncate rounded border border-[#bbb] bg-white px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
                         items={PIPELINES.map((stage) => ({ label: stage, onClick: () => setPipeline(row.id, stage) }))}
                       />
                       <div className="mt-1">
@@ -993,13 +987,13 @@ export function LeadsView({
                       <span title="Text">✎ {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
                     </td>
                     <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>{row.nextReminder}</td>
-                    <td className="px-2 text-[12px] leading-5">
-                      <span className="text-[#2e9e5b]">👁 {row.views}</span><br />
-                      <span className="text-[#e39b2b]">🔖 {row.saved}</span><br />
-                      <span className="text-[#d9363e]">♥ {row.fav}</span><br />
-                      <span className="text-[#1c93b5]">? {row.inq}</span>
+                    <td className="px-2 text-[11px] leading-5">
+                      <span className="text-[#2e9e5b]">{row.views} Views</span><br />
+                      <span className="text-[#e39b2b]">{row.saved} Saved</span><br />
+                      <span className="text-[#d9363e]">{row.fav} Fav</span><br />
+                      <span className="text-[#1c93b5]">{row.inq} Inq</span>
                     </td>
-                    <td className="px-2 text-[12px] leading-5 normal-case">
+                    <td className="px-2 text-[12px] leading-5 uppercase">
                       {(["agent", "partner", "listing"] as const).map((slot) => (
                         <Menu
                           key={slot}
@@ -1048,7 +1042,7 @@ export function LeadsView({
             const name = window.prompt("Name this filter");
             if (!name) return;
             update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
-            chrome.toast("Filter saved on this device.");
+            chrome.toast("Filter saved.");
           }}
           stage={drawerStage}
           setStage={setDrawerStage}
@@ -1159,15 +1153,6 @@ function LeadDetail({
     ); }],
     ["Text", "💬", () => composer.text(row.phone, (value) => sendLead("sms", value))],
     ["Email", "✉", () => composer.email(row.email, (sent, value) => { if (!sent) { onLog(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", value); })],
-    ["Etta", "✦", () => chrome.openModal(
-      <ModalFrame title="Etta" onClose={chrome.closeModal}>
-        <p className="text-[13px]">Suggested for {row.name}: follow up on {row.city} and ask about {row.timeframe}.</p>
-        <div className="mt-3 flex justify-end gap-2">
-          <Btn onClick={() => { onLog(row, "note", "Etta note", `Etta suggested a follow-up for ${row.name}.`); chrome.closeModal(); chrome.toast("Etta note saved."); }}>Save note</Btn>
-          <Btn kind="teal" onClick={() => { onLog(row, "text", "Etta text", `Hi ${row.name.split(" ")[0]}, just checking in on your search.`); chrome.closeModal(); go(href.lead(row.id, "conversations")); chrome.toast("Etta text added to the thread."); }}>Send text</Btn>
-        </div>
-      </ModalFrame>,
-    )],
   ] as const;
   return (
     <div className="relative flex min-w-0 flex-1 bg-[#f5f5f5]">
@@ -1200,8 +1185,8 @@ function LeadDetail({
                   }}
                 />,
               ) },
-              { label: "Refer Lead to PROLINC", disabled: true, onClick: () => chrome.toast("PROLINC referral is not enabled on this demo account.") },
-              { label: "SkySlope Forms", onClick: () => chrome.openModal(<ModalFrame title="SkySlope Forms" onClose={chrome.closeModal}><p className="text-[13px]">A SkySlope packet would open for {row.name}. This demo stored the request locally.</p><div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>) },
+              { label: "Refer Lead to PROLINC", onClick: () => chrome.openModal(<ModalFrame title="Refer Lead to PROLINC" onClose={chrome.closeModal}><p className="text-[13px]">Send {row.name} to a PROLINC partner. The referral is saved on this lead.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { onLog(row, "note", "PROLINC referral", `Referred ${row.name}.`); chrome.closeModal(); chrome.toast("Referral saved."); }}>Refer</Btn></div></ModalFrame>) },
+              { label: "SkySlope Forms", onClick: () => chrome.openModal(<ModalFrame title="SkySlope Forms" onClose={chrome.closeModal}><p className="text-[13px]">Open a SkySlope packet for {row.name}.</p><div className="mt-3 text-right"><Btn onClick={() => { onLog(row, "note", "SkySlope", `Packet requested for ${row.name}.`); chrome.closeModal(); }}>Close</Btn></div></ModalFrame>) },
             ]}
           />
         </div>
@@ -1253,7 +1238,7 @@ function LeadDetail({
             <div className="mt-2">
               <Menu
                 className="w-full"
-                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} (10/20/26) ▾</span>}
+                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} ({state.pipeline[row.id] ? new Intl.DateTimeFormat("en-US", { timeZone: "America/Vancouver", month: "2-digit", day: "2-digit", year: "2-digit" }).format(new Date()) : "10/20/26"}) ▾</span>}
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
@@ -1309,6 +1294,7 @@ function LeadDetail({
           <div>
             <div className="relative mb-2 flex items-center gap-3">
               <button type="button" className="text-[12px] font-bold" onClick={() => setFiltersOpen((value) => !value)}>Filters</button>
+              <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.toast("Subscriptions follow the office notification settings.")}>Subscriptions</button>
               {filtersOpen ? (
                 <div className="absolute top-full left-0 z-20 mt-1 max-h-[560px] w-72 overflow-auto border border-[#ddd] bg-white p-2 text-[12px] shadow">
                   <div className="mb-1 flex justify-between">
@@ -1381,8 +1367,8 @@ function LeadDetail({
               <article key={item.id} className="mb-2 flex border border-[#eee] border-l-4 border-l-[#e39b2b] bg-white p-3 shadow-sm">
                 <div className="flex-1">
                   <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
-                  <p className="text-[11px] text-[#888]">Assigned to {CRM_AGENT.name}</p>
-                  <p className="text-[11px] text-[#888]">Created {item.due}</p>
+                  <p className="text-[11px] text-[#888]">Assigned to {item.title.match(/\(([^,]+),/)?.[1] || "the agent you chose"}</p>
+                  <p className="text-[11px] text-[#888]">Due {item.due}</p>
                   <p className="text-[13px]">{item.title}</p>
                   <label className="mt-1 flex items-center gap-2 text-[12px]">
                     <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
@@ -1531,7 +1517,7 @@ function InfoTab({
               body: JSON.stringify({ fields: form }),
             }).then(async (response) => {
               const data = (await response.json().catch(() => null)) as { message?: string } | null;
-              chrome.toast(response.ok ? "Lead info saved." : data?.message || "Lead info stayed on this device.");
+              chrome.toast(response.ok ? "Lead info saved." : data?.message || "Lead info was not saved.");
             });
           }
           setEdit((value) => !value);
@@ -1622,7 +1608,7 @@ function Conversation({
         <textarea ref={box} className="h-16 w-full border border-[#eee] px-2 py-2 text-[13px] outline-none focus:border-[#1c93b5]" placeholder="Enter message" maxLength={320} value={body} onChange={(event) => setBody(event.target.value)} />
         <div className="mt-2 flex items-center gap-2 bg-[#f6f6f6] p-2">
           <span className="text-[12px] text-[#888]">{body.length}/320</span>
-          <button type="button" className={`ml-auto px-3 py-1 text-[12px] ${muted ? "bg-[#1c93b5] text-white" : "bg-[#ddd] text-[#555]"}`} onClick={() => { setMuted((value) => !value); chrome.toast(muted ? "Unmuted." : "Muted. Replies stay on this device until you unmute."); }}>Mute</button>
+          <button type="button" className={`ml-auto px-3 py-1 text-[12px] ${muted ? "bg-[#1c93b5] text-white" : "bg-[#ddd] text-[#555]"}`} onClick={() => { setMuted((value) => !value); chrome.toast(muted ? "Unmuted." : "Muted."); }}>Mute</button>
           <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => {
             if (!body.trim()) return;
             if (muted) { chrome.toast("This conversation is muted."); return; }
@@ -1633,7 +1619,7 @@ function Conversation({
         </div>
       </div>
       <p className="mt-2 text-[11px] text-[#999]">Images shown below were sent directly by a lead via SMS/MMS. <button type="button" className="text-[#1c93b5]" onClick={() => setMore((value) => !value)}>{more ? "See less" : "See more"}</button></p>
-      {more ? <p className="text-[11px] text-[#888]">MMS pictures stay on this device. This demo does not download carrier media.</p> : null}
+      {more ? <p className="text-[11px] text-[#888]">Picture messages are not downloaded.</p> : null}
       {texts.length ? texts.map((text) => (
         <article key={text.id} className="mt-2 border border-[#eee] bg-white p-3">
           <p className="text-[12px] text-[#888]">{text.at.replace(", ", " at ")}</p>
@@ -1994,8 +1980,9 @@ function ApptModal({ leadId, request, onClose }: { leadId: string; request?: boo
       <div className="flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          if (!title.trim()) return;
-          update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId, title, when: when || "Unscheduled", request }] }));
+          if (!title.trim() || !when) { chrome.toast("Enter a title and a date."); return; }
+          const formatted = new Date(when).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+          update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId, title, when: formatted, request }] }));
           chrome.toast("Appointment saved.");
           onClose();
         }}>Save</Btn>

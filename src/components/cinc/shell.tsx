@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CRM_AGENT } from "@/lib/cinc-crm";
 import { ChromeContext } from "./chrome-context";
 import { useOfficeSession } from "./office-session";
 import { href, sectionOf, titleMenu, titleOf, type CincRoute, type NavSection } from "./route";
@@ -63,6 +62,7 @@ const NAV: {
     label: "Properties",
     href: href.properties,
     children: [
+      { label: "Listings Dashboard", href: `${"/dashboard/spa"}#properties/listings` },
       { label: "Properties", href: href.properties },
       { label: "Text Responder", href: href.textResponder },
       { label: "Upcoming Open Houses", href: href.openHouses },
@@ -72,7 +72,7 @@ const NAV: {
   {
     id: "web",
     label: "Website",
-    href: "/dashboard/spa#website/pages/home",
+    href: "/dashboard/pages/home",
     children: [
       { label: "Home", href: "/dashboard/spa#website/pages/home" },
       { label: "About", href: "/dashboard/spa#website/pages/about" },
@@ -296,13 +296,6 @@ function NavIcon({ id }: { id: NavSection }) {
   );
 }
 
-const ACTIVITY = [
-  { icon: "✉", color: "#2e9e5b", text: "Morgan Ellis opened a property alert Kayla Gerak sent on 10/18/2026", time: "Oct 21, 2026 at 9:17 PM" },
-  { icon: "↗", color: "#2e9e5b", text: "Jordan Blake clicked a listing link from Kayla Gerak", time: "Oct 21, 2026 at 8:42 PM" },
-  { icon: "◉", color: "#e39b2b", text: "Avery Quinn viewed a property ($2,149,000, 810 235 Keith Road)", time: "Oct 21, 2026 at 7:05 PM" },
-  { icon: "✉", color: "#1c93b5", text: "Kayla Gerak sent Priya Sharma a message with subject 'New listings in Kitsilano'", time: "Oct 20, 2026 at 11:02 AM" },
-];
-
 function TitleIcon({ label }: { label: string }) {
   const common = "h-4 w-4 shrink-0 text-[#1c93b5]";
   if (label.includes("Export")) {
@@ -358,9 +351,6 @@ const ROSTER = [
 export function Shell({ route, children }: { route: CincRoute; children: ReactNode }) {
   const office = useOfficeSession();
   const section = sectionOf(route);
-  const initials = office.user
-    ? office.user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()
-    : CRM_AGENT.initials;
   const menu = titleMenu(route);
   const [titleOpen, setTitleOpen] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -446,7 +436,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                         }
                         const on = childOn(child.label, route);
                         return (
-                          <a key={child.label} href={child.href} className={`flex h-[26px] items-center gap-2 pr-1 pl-5 text-[12px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`}>
+                          <a key={child.label} href={child.href} className={`flex h-[26px] items-center gap-2 pr-1 pl-5 text-[12px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`} onClick={() => { if (child.label === "Agent") window.dispatchEvent(new Event("cinc-launchpad-home")); }}>
                             {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${on ? "bg-[#1b9cb8]" : "border border-[#8aa] bg-transparent"}`} />}
                             {child.label}
                           </a>
@@ -491,8 +481,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 </div>
               ) : null}
             </div>
-            {showSearch ? (
-              <button
+            <button
                 type="button"
                 title="Search"
                 className="grid h-7 w-7 place-items-center text-[#333]"
@@ -503,8 +492,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   <path d="M10.5 10.5 14 14" />
                 </svg>
               </button>
-            ) : null}
-            {showSearch && searchOpen ? (
+            {searchOpen ? (
               <input
                 autoFocus
                 value={leadSearch}
@@ -521,39 +509,25 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   title="Stop viewing the office as this user"
                   onClick={office.endImpersonation}
                 >
-                  <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
-                    <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
-                    <path d="M4.5 1.5V4h4" />
-                    <path d="M4.5 6.5h4M4.5 8.2h3" />
-                  </svg>
                   End Become User
                 </button>
-              ) : (
-                <a
-                  href={href.publicSite}
-                  className="inline-flex items-center gap-1 rounded-[2px] bg-[#d9363e] px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
-                  title="Leave the agent office and return to the public site"
-                >
-                  <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden fill="none" stroke="white" strokeWidth="1.3">
-                    <path d="M3 1.5h5.2L10 3.2V10.5H3z" />
-                    <path d="M4.5 1.5V4h4" />
-                    <path d="M4.5 6.5h4M4.5 8.2h3" />
-                  </svg>
-                  End Become User
-                </a>
-              )}
+              ) : null}
               <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#d9363e] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
               <div className="relative">
-                <button type="button" className="flex items-center gap-0.5 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)}>
-                  <span>{initials}</span>
+                <button type="button" className="flex items-center gap-1 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)} title="Region">
+                  <span>CA</span>
                   <svg width="7" height="5" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                    <circle cx="8" cy="8" r="5.2" />
+                    <path d="M3 8h10M8 3c1.6 1.6 1.6 8.4 0 10M8 3c-1.6 1.6-1.6 8.4 0 10" />
+                  </svg>
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
-                    <a href={href.plans} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Plans</a>
+                    <p className="px-3 py-2 text-[13px] text-[#1c93b5]">Canada</p>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
                     {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
                       <a href={href.agents} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Agents</a>
@@ -582,7 +556,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           </header>
           <div className="flex min-h-0 flex-1">
             <main className="min-w-0 flex-1 overflow-auto">{children}</main>
-            {rail ? (
+            {rail && route.view !== "website" && route.view !== "settings" && route.view !== "seller" && route.view !== "landing" ? (
               <aside className="flex w-[220px] shrink-0 flex-col border-l border-[#e5e5e5] bg-[#f4f4f4]">
                 <div className="border-b-2 border-[#1c93b5] bg-white px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">Activity</div>
                 <label className="px-2 py-2">
@@ -593,15 +567,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   </select>
                 </label>
                 <div className="min-h-0 flex-1 overflow-auto px-2 [scrollbar-color:#c5c5c5_transparent]">
-                  {ACTIVITY.filter((item) => feed === "All" || (feed === "Communications" ? item.icon === "✉" : feed === "Views & Favorites" ? item.icon !== "✉" : feed === "Agent Actions" ? item.text.includes("Kayla") : item.icon === "◉")).map((item) => (
-                    <article key={item.time} className="mb-2 flex gap-2 bg-white p-2 shadow-sm">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] text-white" style={{ background: item.color }}>{item.icon}</span>
-                      <div className="min-w-0">
-                        <p className="text-[12px] leading-snug text-[#333]">{item.text}</p>
-                        <p className="mt-1 text-[11px] text-[#888]">{item.time}</p>
-                      </div>
-                    </article>
-                  ))}
+                  <p className="px-1 py-6 text-center text-[12px] text-[#888]">No new activities</p>
                 </div>
                 <div className="border-t border-[#e5e5e5] bg-white">
                   <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-[#888] uppercase">Online</p>

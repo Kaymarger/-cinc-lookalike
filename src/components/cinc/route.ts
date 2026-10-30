@@ -19,7 +19,7 @@ export const href = {
   trashed: `${SPA}#inbox/trashed`,
   templates: `${SPA}#inbox/templates`,
   gmail: `${SPA}#inbox/gmail`,
-  autotracks: `${SPA}#automations/autotracks`,
+  autotracks: `${SPA}#automations`,
   behavioral: `${SPA}#automations/behavioralcomms`,
   ai: `${SPA}#automations/ai`,
   properties: `${SPA}#properties`,
@@ -36,12 +36,12 @@ export const href = {
   notifications: `${SPA}#settings/profile/notifications/agent`,
   customLinks: `${SPA}#settings/profile/customlinks/agent`,
   advanced: `${SPA}#settings/profile/advanced/agent`,
-  contacts: `${SPA}#contacts/vendors`,
-  contactList: `${SPA}#contacts/people`,
+  contacts: `${SPA}#contacts/vendor`,
+  contactList: `${SPA}#contacts/contact`,
   agents: `${SPA}#agents`,
   leadRouting: `${SPA}#agents/routing`,
   users: `${SPA}#agents`,
-  officeGeneral: `${SPA}#settings/office/general`,
+  officeGeneral: "/dashboard/settings",
   officeSearch: `${SPA}#settings/office/search`,
   officeDialer: `${SPA}#settings/office/dialer`,
   officeFields: `${SPA}#settings/office/fields`,
@@ -96,6 +96,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "deals", board: hash.includes("listings") ? "listings" : "purchases" };
   }
   if (pathname.startsWith("/dashboard/sellersuite")) return { view: "seller" };
+  if (pathname === "/dashboard/settings" || pathname.startsWith("/dashboard/settings/")) return { view: "settings", tab: "general" };
   if (pathname.startsWith("/dashboard/landing")) {
     if (hash.includes("buyers")) return { view: "landing", category: "buyers" };
     if (hash.includes("sellers")) return { view: "landing", category: "sellers" };
@@ -140,7 +141,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   }
   if (a === "settings" && b === "users") return { view: "users", mode: "manage" };
   if (a === "agents") return { view: "users", mode: b === "routing" ? "routing" : "manage" };
-  if (a === "contacts") return { view: "contacts", mode: b === "people" ? "people" : "vendors" };
+  if (a === "contacts") return { view: "contacts", mode: b === "people" || b === "contact" ? "people" : "vendors" };
   if (a === "settings" && b === "office") {
     if (c === "search") return { view: "settings", tab: "searchpage" };
     if (c === "dialer") return { view: "settings", tab: "dialer" };
@@ -156,6 +157,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   if (a === "calendar") return { view: "calendar" };
   if (a === "tasks") return { view: "tasks" };
   if (a === "website") return { view: "website", page: b === "theme" ? "theme" : (c || b || "home") };
+  if (a === "marketing") return { view: "marketing" };
   if (a === "reports") return { view: "reports" };
   return { view: "launchpad" };
 }
@@ -232,7 +234,7 @@ export function titleOf(route: CincRoute): string {
     case "landing":
       return "Landing Pages";
     case "settings":
-      return "Settings";
+      return route.tab === "general" ? "General Settings" : "Settings";
     case "users":
       return route.mode === "routing" ? "Lead Routing" : "Agents";
     case "plans":

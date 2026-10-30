@@ -202,11 +202,6 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={startCreate}>+ Add Agent</button>
           </div>
         </div>
-        {office.canManageUsers ? (
-          <button type="button" className="h-[26px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={startCreate}>
-            Add User
-          </button>
-        ) : null}
       </div>
       {dbOff ? (
         <p className="mb-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">{office.database?.message}</p>
@@ -237,14 +232,14 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                   <div>
                     <p className="font-semibold">{user.name}</p>
                     <p className="text-[#666]">{user.email}</p>
-                    <p>{user.roleLabel || roleLabel(user.role)}{user.active ? "" : " · Disabled"}</p>
+                    <p>{user.role === "isa" ? "(Pond Account) Agent" : user.role === "broker" || user.role === "admin" ? "Broker" : "Agent"}{user.active ? "" : " · Disabled"}</p>
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
-                  {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => void become(user)}>Become User</button> : null}
-                  {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
+                  {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user)}>Become User</button> : null}
+                  {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                   {office.canManageUsers ? <label className="border border-[#ccc] px-2 py-1">Photo<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";

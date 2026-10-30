@@ -26,6 +26,7 @@ export type Deal = {
   potential: string;
   status: "Active" | "Archived";
   createdAt: number;
+  agent?: string;
 };
 
 export type Mail = {
@@ -364,7 +365,7 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
-const DATA_VERSION = 7;
+const DATA_VERSION = 8;
 
 function buildTemplates(): Template[] {
   const rows: Template[] = [];
@@ -386,37 +387,7 @@ function buildTemplates(): Template[] {
 }
 
 function buildMail(): Mail[] {
-  const inbox: Mail[] = Array.from({ length: 100 }, (_, i) => ({
-    id: `mail-in-${i + 1}`,
-    folder: "inbox" as const,
-    kind: (i % 8 === 0 ? "email" : "text") as Mail["kind"],
-    from: "System",
-    to: "Kayla Gerak",
-    subject: "Lead assigned",
-    body: `Lead sample ${i + 1} registered. View https://greatervancouverhomesearch.com/search/sample-${i + 1} STOP=EndMsgs`,
-    at: `${(i % 12) || 12}:${String((i * 7) % 60).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}`,
-    unread: i < 8,
-  }));
-  const sent: Mail[] = [
-    { id: "sent-1", folder: "sent", kind: "email", from: "CC", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
-    { id: "sent-2", folder: "sent", kind: "email", from: "SS", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
-    { id: "sent-3", folder: "sent", kind: "text", from: "CC", to: "Some Agent", subject: "Some subject", body: "Some Agent / Some subject", at: "5 days ago" },
-  ];
-  const drafts: Mail[] = [
-    { id: "draft-1", folder: "drafts", kind: "email", to: "", subject: "", body: "", at: "Sep 16, 2026" },
-    { id: "draft-2", folder: "drafts", kind: "email", to: "Morgan Ellis", subject: "Re: Saturday showing", body: "Following up on the sample showing request.", at: "Sep 16, 2026" },
-  ];
-  const trashed: Mail[] = Array.from({ length: 80 }, (_, i) => ({
-    id: `trash-${i + 1}`,
-    folder: "trashed" as const,
-    kind: "text" as const,
-    from: "System",
-    to: "Kayla Gerak",
-    subject: "Lead assigned",
-    body: `Archived notice ${i + 1} for a sample lead. https://greatervancouverhomesearch.com/search/sample-${i + 1} STOP=EndMsgs`,
-    at: `${(i % 12) || 12}:${String((i * 3) % 60).padStart(2, "0")} ${i % 2 ? "AM" : "PM"}`,
-  }));
-  return [...inbox, ...sent, ...drafts, ...trashed];
+  return [];
 }
 
 const DEFAULT: SpaState = {

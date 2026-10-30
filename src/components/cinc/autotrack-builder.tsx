@@ -30,11 +30,12 @@ import {
   OFFICE_ROSTER,
   clockTimes,
 } from "@/lib/cinc-options";
+import { LEAD_SOURCES, TEMPLATE_GROUPS } from "@/lib/cinc-lists";
 import { useChrome } from "./chrome-context";
 import { uid, useCinc, type Track } from "./store";
 import { Btn, Field, Menu, ModalFrame, inputCls } from "./ui";
 
-const EMOJI = ["😀", "😊", "😉", "👍", "🙏", "👋", "🎉", "⭐", "❤️", "🏠", "🔑", "📞", "✉️", "📅", "✅", "📍"];
+const EMOJI = ["😀", "😁", "😂", "🤣", "😊", "😍", "😉", "😎", "🤔", "😴", "👍", "👎", "🙏", "👋", "👏", "🎉", "⭐", "🔥", "❤️", "💙", "🏠", "🏡", "🔑", "🚪", "📞", "✉️", "📅", "✅", "📍", "💬", "📌", "🌟", "🤝"];
 
 const RECIPIENTS = ["Lead", "Buyer's Agent", "Listing Agent", "Partner", ...OFFICE_ROSTER];
 const SENDERS = ["Buyer's Agent", "Listing Agent", "Partner", ...OFFICE_ROSTER];
@@ -164,7 +165,7 @@ function MessageStepEditor({
             });
           }}
         >
-          {EMAIL_TEMPLATES.map((item) => <option key={item}>{item}</option>)}
+          {[...EMAIL_TEMPLATES, ...TEMPLATE_GROUPS["CINC Templates"], ...TEMPLATE_GROUPS["Shared Templates"]].map((item) => <option key={item}>{item}</option>)}
         </select>
       </Field>
       <Field label="To">
@@ -312,7 +313,15 @@ export function AutoTrackWizard({
   const [draft, setDraft] = useState<AutoTrackStep | null>(null);
   const [stepMenu, setStepMenu] = useState(false);
   const [saving, setSaving] = useState(false);
-  const templates = BLANK_TEMPLATES.filter((item) => item.toLowerCase().includes(keyword.toLowerCase()));
+  const [alert, setAlert] = useState("");
+  const [sourceQuery, setSourceQuery] = useState("");
+  const templateGroups: Record<string, readonly string[]> = {
+    "Blank Templates": BLANK_TEMPLATES,
+    "My Templates": ["My Follow Up", "My Listing Update", "My Past Client Note"],
+    "CINC Templates": TEMPLATE_GROUPS["CINC Templates"],
+    General: TEMPLATE_GROUPS["CINC Templates"].slice(0, 12),
+  };
+  const activeGroups = filter === "Type" ? templateGroups : { [filter]: templateGroups[filter] ?? BLANK_TEMPLATES };
   const labels = LABEL_GROUPS.flatMap((group) => group.labels);
 
   useEffect(() => {
@@ -366,9 +375,10 @@ export function AutoTrackWizard({
 
   async function finish(status: TrackStatus) {
     if (!doc.steps.length) {
-      chrome.toast("There must be at least 1 step before you can continue to settings.");
+      setAlert("There must be at least 1 step before you can continue to settings.");
       return;
     }
+    setAlert("");
     setSaving(true);
     try {
       const track = await putTrack({ ...doc, status, userEdited: true, name: doc.name.trim() || "Blank Template Copy" });
@@ -402,10 +412,19 @@ export function AutoTrackWizard({
               <button key={item} type="button" className={`border px-2 py-1 text-[12px] ${filter === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ddd]"}`} onClick={() => setFilter(item)}>{item}</button>
             ))}
           </div>
-          <p className="mb-1 text-[12px] font-bold">Blank (3)</p>
-          {templates.map((item) => (
-            <button key={item} type="button" className={`mb-1 block w-full border px-2 py-2 text-left ${picked === item ? "border-[#1c93b5]" : "border-[#eee]"}`} onClick={() => setPicked(item)}>{item}</button>
-          ))}
+          {Object.entries(activeGroups).map(([group, items]) => {
+            const shown = items.filter((item) => item.toLowerCase().includes(keyword.toLowerCase()));
+            if (!shown.length) return null;
+            return (
+              <div key={group}>
+                <p className="mb-1 text-[12px] font-bold">{group.replace(" Templates", "")} ({shown.length})</p>
+                {shown.map((item) => (
+                  <button key={`${group}-${item}`} type="button" className={`mb-1 block w-full border px-2 py-2 text-left ${picked === item ? "border-[#1c93b5]" : "border-[#eee]"}`} onClick={() => setPicked(item)}>{item}</button>
+                ))}
+              </div>
+            );
+          })}
+          <button type="button" className="mt-1 text-[12px] text-[#1c93b5]" onClick={() => setFilter("CINC Templates")}>Browse more Templates</button>
           <div className="mt-2 flex justify-end gap-2">
             <Btn onClick={onClose}>Exit Wizard</Btn>
             <Btn kind="teal" onClick={() => { setDoc((current) => ({ ...current, name: `${picked} Copy` })); setWizard(2); }}>Copy this Template</Btn>
@@ -427,7 +446,7 @@ export function AutoTrackWizard({
             </label>
           ))}
           <p className="font-bold">2. Select Communication Time</p>
-          {AUTOTRACK_HOURS.map((item) => (
+          {AUTOTRACK_HOURS.slice(0, 2).map((item) => (
             <label key={item} className="mr-3"><input type="radio" checked={doc.hours === item} onChange={() => setDoc({ ...doc, hours: item })} /> {item}</label>
           ))}
           <label className="block"><input type="checkbox" checked={doc.includeWeekend} onChange={(event) => setDoc({ ...doc, includeWeekend: event.target.checked })} /> Include Saturday and Sunday</label>
@@ -499,39 +518,47 @@ export function AutoTrackWizard({
             <Btn onClick={() => setWizard(1)}>Back</Btn>
             <Btn kind="teal" onClick={() => {
               if (!doc.steps.length) {
-                chrome.toast("There must be at least 1 step before you can continue to settings.");
+                setAlert("There must be at least 1 step before you can continue to settings.");
                 return;
               }
+              setAlert("");
               setWizard(3);
             }}>Continue</Btn>
+            {alert ? <p className="bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{alert}</p> : null}
           </div>
         </div>
       ) : null}
       {wizard === 3 ? (
         <div className="space-y-2 text-[13px]">
           <p className="font-bold">I want to start my AutoTrack...</p>
-          <label className="block"><input type="checkbox" checked={doc.startNewLead} onChange={(event) => setDoc({ ...doc, startNewLead: event.target.checked })} /> With a New Lead — New Lead</label>
+          <label className="block"><input type="checkbox" checked disabled /> With a New Lead — New Lead</label>
           <label className="block">Or, with a Label <select className="ml-2 border border-[#ccc]" value={doc.startLabel} onChange={(event) => setDoc({ ...doc, startLabel: event.target.value })}><option value="">Select Label</option>{labels.map((label) => <option key={label}>{label}</option>)}</select></label>
           <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={doc.startStage} onChange={(event) => setDoc({ ...doc, startStage: event.target.value })}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label className="block">Or, with a Landing Page <select className="ml-2 border border-[#ccc]" value={doc.landing} onChange={(event) => setDoc({ ...doc, landing: event.target.value })}><option value="">Select Landing Page</option>{AUTOTRACK_LANDING_PAGES.map((item) => <option key={item}>{item}</option>)}</select></label>
           <p>Or, with a Custom Field <select className="ml-2 border border-[#ccc]" value={doc.customField} onChange={(event) => setDoc({ ...doc, customField: event.target.value })}><option value="">Select Custom Field</option><option>Birthdate</option></select></p>
           <label className="block">And, with a Source
-            <textarea className="mt-1 h-16 w-full border border-[#ccc] px-2 py-1" placeholder="One lead source per line" value={doc.sources.length ? doc.sources.join("\n") : doc.source} onChange={(event) => {
-              const sources = event.target.value.split("\n").map((item) => item.trim()).filter(Boolean);
-              setDoc({ ...doc, sources, source: sources.join("; ") });
-            }} />
+            <input className={`${inputCls} mt-1`} placeholder="Type a lead source" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} />
+            {sourceQuery ? (
+              <div className="max-h-32 overflow-auto border border-[#ddd] bg-white">
+                {LEAD_SOURCES.filter((item) => item !== "(Select a Source)" && item.toLowerCase().includes(sourceQuery.toLowerCase())).slice(0, 8).map((item) => (
+                  <button key={item} type="button" className="block w-full px-2 py-1 text-left hover:bg-[#f3fafc]" onClick={() => { setDoc({ ...doc, sources: doc.sources.includes(item) ? doc.sources : [...doc.sources, item], source: [...doc.sources, item].join("; ") }); setSourceQuery(""); }}>{item}</button>
+                ))}
+              </div>
+            ) : null}
+            <p className="mt-1 text-[12px] text-[#666]">{doc.sources.join(", ")}</p>
           </label>
           <p className="font-bold">I want to stop my AutoTrack...</p>
           <label className="block">with a Label <select className="ml-2 border border-[#ccc]" value={doc.stopLabel} onChange={(event) => setDoc({ ...doc, stopLabel: event.target.value })}><option value="">Select Label</option>{labels.map((label) => <option key={`stop-${label}`}>{label}</option>)}</select></label>
           <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={doc.stopStage} onChange={(event) => setDoc({ ...doc, stopStage: event.target.value })}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={`stop-${item}`}>{item}</option>)}</select></label>
           <label className="block"><input type="checkbox" checked={doc.stopReply} onChange={(event) => setDoc({ ...doc, stopReply: event.target.checked })} /> When Lead Replies/Reaches Out</label>
+          <p className="font-bold">Apply a Label on complete</p>
+          <select className="border border-[#ccc]" value={doc.completeLabel} onChange={(event) => setDoc({ ...doc, complete: "Apply a Label", completeLabel: event.target.value })}><option value="">Select Label</option>{labels.map((label) => <option key={`done-${label}`}>{label}</option>)}</select>
           <p className="font-bold">Select what happens when your AutoTrack COMPLETES</p>
           {COMPLETION_ACTIONS.map((item) => (
             <label key={item} className="mr-3"><input type="radio" checked={doc.complete === item} onChange={() => setDoc({ ...doc, complete: item })} /> {item}</label>
           ))}
           <label className="block"><input type="checkbox" checked={doc.share} onChange={(event) => setDoc({ ...doc, share: event.target.checked })} /> Allow team members to access this template</label>
-          {doc.share ? (
-            <div className="max-h-40 overflow-auto border border-[#eee] p-2 text-[12px]">
+          <div className="max-h-40 overflow-auto border border-[#eee] p-2 text-[12px]">
               {OFFICE_ROSTER.map((agent) => {
                 const grant = doc.permissions.find((item) => item.name === agent) ?? { name: agent, copy: false, edit: false, owner: false };
                 const setGrant = (key: "copy" | "edit" | "owner", checked: boolean) => {
@@ -553,7 +580,6 @@ export function AutoTrackWizard({
                 );
               })}
             </div>
-          ) : null}
           <div className="flex justify-end gap-2">
             <Btn onClick={onClose}>Exit Wizard</Btn>
             <Btn onClick={() => setWizard(2)}>Back</Btn>

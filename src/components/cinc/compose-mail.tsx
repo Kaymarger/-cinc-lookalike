@@ -9,7 +9,7 @@ import { useCinc, uid } from "./store";
 
 export type MailDraft = { to: string; cc: string; bcc: string; subject: string; body: string; attachments: string[] };
 
-const EMOJIS = ["😀", "😁", "😂", "😊", "😍", "👍", "🙏", "🎉", "🏠", "🔑", "📞", "✉️", "✅", "⭐", "🔥", "💬"];
+const EMOJIS = ["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊", "😋", "😎", "😍", "😘", "😗", "😙", "😚", "🙂", "🤗", "🤩", "🤔", "🤨", "😐", "😑", "😶", "🙄", "😏", "😣", "😥", "😮", "🤐", "😯", "😪", "😫", "😴", "😌", "😛", "😜", "😝", "🤤", "😒", "😓", "😔", "😕", "🙃", "🤑", "😲", "☹️", "🙁", "😖", "😞", "😟", "😤", "😢", "😭", "😦", "😧", "😨", "😩", "🤯", "😬", "😰", "😱", "😳", "🤪", "😵", "😡", "😠", "🤬", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "😇", "🤠", "🤡", "🥳", "🥴", "🥺", "🤥", "🤫", "🤭", "🧐", "🤓", "😈", "👿", "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👋", "🙏", "💪", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "🎉", "🎊", "🎁", "🏠", "🏡", "🔑", "🚪", "📞", "✉️", "✅", "⭐", "🔥", "💬", "📌", "📍", "🗓️", "⏰"];
 const MERGE_COLUMNS = [
   ["[FIRSTNAME]", "[LASTNAME]", "[FULLNAME]", "[CELLPHONE]", "[EMAIL]", "[FAVORITE CITY]", "[ADDRESS]", "[SECONDARY CONTACT]", "[WEBSITE]", "[TIMEOFDAY]"],
   ["[AGENT FIRSTNAME]", "[AGENT LASTNAME]", "[AGENT CELLPHONE]", "[AGENT CINC NUMBER]", "[AGENT EMAIL]", "[AGENT LICENSENUMBER]", "[LISTINGAGENT FIRSTNAME]", "[LISTINGAGENT LASTNAME]", "[LISTINGAGENT CELLPHONE]", "[LISTINGAGENT EMAIL]"],
@@ -151,6 +151,8 @@ export function EmailComposer({
   const [property, setProperty] = useState("");
   const [video, setVideo] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [listMenu, setListMenu] = useState<"none" | "bullet" | "number">("none");
   const [emojiQuery, setEmojiQuery] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const templates = state.templates.filter((item) => item.type === "Email");
@@ -246,8 +248,15 @@ export function EmailComposer({
             </div>
           ) : null}
         </span>
-        <button type="button" title="Video" onClick={() => { const url = window.prompt("Video link"); if (url) { setVideo(url); insert(url); } }}>🎥</button>
+        <button type="button" title="Video" onClick={() => setVideoOpen(true)}>🎥</button>
       </div>
+      {videoOpen ? (
+        <div className="mb-2 flex gap-2 border border-[#ddd] bg-[#f8fbfc] p-2">
+          <input className="h-8 flex-1 border border-[#ccc] px-2 text-[13px]" placeholder="Video URL" value={video} onChange={(event) => setVideo(event.target.value)} />
+          <button type="button" className="bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => { if (video.trim()) insert(video.trim()); setVideoOpen(false); }}>Insert</button>
+          <button type="button" className="px-2 text-[12px]" onClick={() => setVideoOpen(false)}>Cancel</button>
+        </div>
+      ) : null}
       {mode !== "Plain Text Email" && mode !== "Text Message" ? (
         <div className="flex flex-wrap items-center border border-[#ddd] bg-[#fafafa] text-[#444]">
           <ToolButton title="Undo" onClick={() => format("undo")}>↺</ToolButton>
@@ -269,8 +278,16 @@ export function EmailComposer({
           <ToolButton title="Align center" onClick={() => format("justifyCenter")}>↔</ToolButton>
           <ToolButton title="Align right" onClick={() => format("justifyRight")}>➡</ToolButton>
           <ToolButton title="Justify" onClick={() => format("justifyFull")}>☰</ToolButton>
-          <ToolButton title="Bullet list" onClick={() => format("insertHTML", "<ul><li>List item</li></ul>")}>•</ToolButton>
-          <ToolButton title="Numbered list" onClick={() => format("insertHTML", "<ol><li>List item</li></ol>")}>1.</ToolButton>
+          <span className="relative inline-flex">
+            <ToolButton title="Bullet list" onClick={() => format("insertHTML", "<ul><li>List item</li></ul>")}>•</ToolButton>
+            <button type="button" className="px-0.5 text-[10px]" onClick={() => setListMenu(listMenu === "bullet" ? "none" : "bullet")}>▾</button>
+            {listMenu === "bullet" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul><li>List item</li></ul>"); setListMenu("none"); }}>Disc</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul style='list-style:circle'><li>List item</li></ul>"); setListMenu("none"); }}>Circle</button></span> : null}
+          </span>
+          <span className="relative inline-flex">
+            <ToolButton title="Numbered list" onClick={() => format("insertHTML", "<ol><li>List item</li></ol>")}>1.</ToolButton>
+            <button type="button" className="px-0.5 text-[10px]" onClick={() => setListMenu(listMenu === "number" ? "none" : "number")}>▾</button>
+            {listMenu === "number" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol><li>List item</li></ol>"); setListMenu("none"); }}>1. 2. 3.</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol type='a'><li>List item</li></ol>"); setListMenu("none"); }}>a. b. c.</button></span> : null}
+          </span>
           <ToolButton title="Decrease indent" onClick={() => format("outdent")}>⇤</ToolButton>
           <ToolButton title="Increase indent" onClick={() => format("indent")}>⇥</ToolButton>
           <ToolButton title="Insert/edit link" onClick={() => { const href = window.prompt("Link"); if (href) format("createLink", href); }}>🔗</ToolButton>
@@ -303,7 +320,7 @@ export function TextComposer({
   const chrome = useChrome();
   const { state, update } = useCinc();
   const box = useRef<HTMLTextAreaElement>(null);
-  const [dest] = useState(to);
+  const [dest, setDest] = useState(to);
   const [body, setBody] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [menu, setMenu] = useState<"gear" | "merge" | "emoji" | null>(null);
@@ -314,6 +331,7 @@ export function TextComposer({
   const [unbranded, setUnbranded] = useState(false);
   const [property, setProperty] = useState("");
   const [video, setVideo] = useState("");
+  const [videoOpen, setVideoOpen] = useState(false);
   const [preview, setPreview] = useState(false);
   const texts = state.templates.filter((item) => item.type === "Text");
   function insert(value: string) {
@@ -338,7 +356,7 @@ export function TextComposer({
     >
       <div className="mb-2 flex items-center gap-2">
         <span className="w-16">To *</span>
-        <span className="bg-[#e7f4f8] px-2 py-0.5">{leadName || dest || "Lead"} (lead)</span>
+        {to ? <span className="bg-[#e7f4f8] px-2 py-0.5">{leadName || dest} (lead)</span> : <input className="h-7 flex-1 border border-[#ccc] px-2" placeholder="Recipient email or phone" value={dest} onChange={(event) => setDest(event.target.value)} />}
         <button type="button" className="text-[#1c93b5]">+ People ▾</button>
       </div>
       <label className="mb-2 flex items-center gap-2">Template
@@ -361,11 +379,17 @@ export function TextComposer({
         <button type="button" title="Merge tags" onClick={() => insert("[FIRSTNAME]")}>🏷</button>
         <button type="button" title="Emoji" onClick={() => insert("😊")}>🙂</button>
         <button type="button" title="Insert listing" onClick={() => { const listing = DEMO_LISTINGS[0]; setProperty(listing.address); insert(`${listing.address}, ${listing.city}`); }}>🏠</button>
-        <button type="button" title="Video" onClick={() => { const url = window.prompt("Video link"); if (url) { setVideo(url); insert(url); } }}>🎥</button>
+        <button type="button" title="Video" onClick={() => setVideoOpen(true)}>🎥</button>
       </div>
       <textarea ref={box} className="h-28 w-full border border-[#ddd] p-2 outline-none" maxLength={320} value={body} onChange={(event) => setBody(event.target.value)} />
       <p className="text-right text-[11px] text-[#888]">{body.length}/320</p>
       {preview ? <p className="mt-2 border border-[#ddd] bg-[#fafafa] p-2">{fillMergeTags(body, SAMPLE_MERGE)}</p> : null}
+      {videoOpen ? (
+        <div className="mt-2 flex gap-2 border border-[#ddd] bg-[#f8fbfc] p-2">
+          <input className="h-8 flex-1 border border-[#ccc] px-2 text-[13px]" placeholder="Video URL" value={video} onChange={(event) => setVideo(event.target.value)} />
+          <button type="button" className="bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => { if (video.trim()) insert(video.trim()); setVideoOpen(false); }}>Insert</button>
+        </div>
+      ) : null}
       <p>🏠 Properties: ({property || "none"})</p>
       <p>🎥 Video: ({video || "none"})</p>
     </Frame>

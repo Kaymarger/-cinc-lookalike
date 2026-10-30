@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { statusLabel } from "@/lib/autotrack";
 import { useLeads } from "@/lib/leads";
@@ -44,11 +44,9 @@ export function LaunchpadView() {
   const chrome = useChrome();
   const [tab, setTab] = useState("Contact Requested");
   useEffect(() => {
-    const reset = () => {
-      if (window.location.hash.includes("launchpad/agent")) setTab("Contact Requested");
-    };
-    window.addEventListener("hashchange", reset);
-    return () => window.removeEventListener("hashchange", reset);
+    const reset = () => setTab("Contact Requested");
+    window.addEventListener("cinc-launchpad-home", reset);
+    return () => window.removeEventListener("cinc-launchpad-home", reset);
   }, []);
   const [types, setTypes] = useState<string[]>(["All"]);
   const [statuses, setStatuses] = useState<string[]>(["Awaiting Response"]);
@@ -108,7 +106,7 @@ export function LaunchpadView() {
       <h1 className="text-[15px] font-bold text-[#243238]">Welcome back, {CRM_AGENT.greetingName}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
-        <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.length} appointments</a> scheduled today.
+        <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
       </p>
       <section className="mt-4 border border-[#e5e5e5] bg-white shadow-sm">
         <header className="flex items-center gap-2 border-b border-[#eee] px-4 py-2 text-[12px] font-bold">
@@ -180,7 +178,7 @@ export function LaunchpadView() {
                   </div>
                 </article>
               )) : <EmptyArt title="Congrats! All caught up on requests." body="Keep up the good work." />}
-              {visible.length > shownRequests.length ? <p className="text-center text-[12px] text-[#888]">Showing {shownRequests.length} of {visible.length} sample requests.</p> : null}
+              {visible.length > shownRequests.length ? <p className="text-center text-[12px] text-[#888]">Showing {shownRequests.length} of {visible.length}.</p> : null}
             </>
           ) : null}
           {tab === "Prospecting" ? (
@@ -232,7 +230,7 @@ export function LaunchpadView() {
               {!openReminders.length ? <p className="text-[13px] text-[#888]">No reminders for this range.</p> : null}
             </div>
           ) : null}
-          {tab === "Deal Reminders" ? <p className="text-[13px] text-[#888]">No deal reminders. <a className="text-[#1c93b5]" href={href.dealsPurchases}>Open deals</a></p> : null}
+          {tab === "Deal Reminders" ? <p className="text-[13px] text-[#555]">You&apos;re all caught up on your Reminders! Keep up the good work.</p> : null}
           {tab === "Trending Leads" ? (
             <div>
               <div className="mb-3 flex gap-2 text-[12px]">
@@ -357,8 +355,11 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
   const [status, setStatus] = useState("Active");
   const [created, setCreated] = useState("Anytime");
   const [sort, setSort] = useState("Reminder Due Date");
+  const [agent, setAgent] = useState("All");
+  const agents = ["All", "Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"];
   const deals = state.deals
     .filter((deal) => deal.board === board && (status === "All" || deal.status === status))
+    .filter((deal) => agent === "All" || (deal.agent || "Unassigned") === agent)
     .filter((deal) => created === "Anytime" || Date.now() - deal.createdAt < (created === "Last 7 Days" ? 7 : 30) * 86400000)
     .sort((a, b) => sort === "Price" ? a.price.localeCompare(b.price) : b.createdAt - a.createdAt);
 
@@ -380,6 +381,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
       <div className="mb-3 flex w-full items-center gap-2 text-[12px]">
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
         <Menu className="w-[150px]" label={<span className={`${toolBtn} w-[150px] justify-between`}>Created: <b>{created}</b> ▾</span>} items={["Anytime", "Last 7 Days", "Last 30 Days"].map((label) => ({ label, onClick: () => setCreated(label) }))} />
+        <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
         <Menu className="ml-auto" label={<span className={`${toolBtn} min-w-[180px] justify-between`}>↑↓ Sort By: <b>{sort}</b> ▾</span>} items={["Reminder Due Date", "Newest", "Price"].map((label) => ({ label, onClick: () => setSort(label) }))} />
       </div>
       <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-3">
@@ -626,38 +628,14 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             { label: "Unread", onClick: () => setPicked(slice.filter((mail) => mail.unread).map((mail) => mail.id)) },
           ]} />
         </span>
-        {folder !== "drafts" ? (
-          <button type="button" title="Mark read" className={toolBtn} onClick={() => {
-            if (needPick()) return;
-            update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, unread: false } : mail) }));
-            chrome.toast(`Marked ${picked.length} read.`);
-            setPicked([]);
-          }}>✉</button>
-        ) : null}
-        {folder === "inbox" ? (
-          <button type="button" title="Mark unread" className={toolBtn} onClick={() => {
-            if (needPick()) return;
-            update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, unread: true } : mail) }));
-            chrome.toast(`Marked ${picked.length} unread.`);
-            setPicked([]);
-          }}>●</button>
-        ) : null}
         {folder === "trashed" ? (
-          <button type="button" title="Restore" className={`${toolBtn} text-[#1c93b5]`} onClick={() => {
+          <button type="button" className={`${toolBtn} text-[#1c93b5]`} onClick={() => {
             if (needPick()) return;
             update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, folder: "inbox" } : mail) }));
             chrome.toast(`Restored ${picked.length}.`);
             setPicked([]);
-          }}>↶</button>
-        ) : (
-          <button type="button" title="Trash" className={`${toolBtn} text-[#1c93b5]`} onClick={() => {
-            if (needPick()) return;
-            update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, folder: "trashed" } : mail) }));
-            chrome.toast(`Moved ${picked.length} to trash.`);
-            setPicked([]);
-          }}>🗑</button>
-        )}
-        <button type="button" title="Refresh" className={`${toolBtn} text-[#1c93b5]`} onClick={() => { setPicked([]); setCommType("Any"); setMessageType("Both"); setUnreadOnly(false); setPage(0); setOpenId(null); chrome.toast("Mailbox refreshed."); }}>↻</button>
+          }}>Undo</button>
+        ) : null}
         {showFilters ? (
           <div className="relative">
             <button type="button" className={`${toolBtn} text-[#1c93b5]`} onClick={() => setFiltersOpen((value) => !value)}>Filters</button>
@@ -693,6 +671,10 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             <h2 className="font-bold">{opened.subject || "(no subject)"}</h2>
             <p className="text-[12px] text-[#888]">{opened.from || opened.to || "(no recipient)"} · {opened.at}</p>
             <p className="mt-3 text-[13px]">{opened.body || "Empty message."}</p>
+            <form className="mt-4 border-t border-[#eee] pt-3" onSubmit={(event) => { event.preventDefault(); const body = new FormData(event.currentTarget).get("reply"); if (!body) return; chrome.toast("Reply saved in Sent."); update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "sent", kind: opened.kind, from: CRM_AGENT.name, to: opened.from || opened.to, subject: `Re: ${opened.subject || ""}`, body: String(body), at: "Just now", unread: false }, ...current.mail] })); }}>
+              <textarea name="reply" className="h-20 w-full border border-[#ccc] p-2 text-[13px]" placeholder="Write a reply" />
+              <button type="submit" className="mt-2 bg-[#1c93b5] px-3 py-1 text-[12px] text-white">Send</button>
+            </form>
           </article>
         ) : (
           <div className="bg-white shadow-sm">
@@ -1069,21 +1051,28 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const query = chrome.leadSearch.trim().toLowerCase();
   const listings = (mode === "pocket"
     ? state.pocket.map((item) => ({ ...item, updated: "Just now", image: CRM_PROPERTIES[0].image }))
-    : CRM_PROPERTIES.filter((item) => office === "My Office/Agents Listings" || Number(item.mls.slice(-1)) % 2 === 0)
+    : CRM_PROPERTIES.filter((item) => {
+        if (office === "Featured Listings") return /feature/i.test(item.feature);
+        if (office === "Listed in the past 24 hours") return item.status === "Active";
+        if (office === "My Listings" || office === "Kayla Gerak") return Number(item.mls.slice(-1)) % 2 === 0;
+        if (office === "Casey Archibald") return Number(item.mls.slice(-1)) % 2 === 1;
+        return true;
+      })
   ).filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query));
   return (
     <div className="p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2 bg-white p-3 shadow-sm">
         <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("mls")}>Show MLS Listings</button>
         <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("pocket")}>Show Pocket Listings</button>
-        <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["My Office/Agents Listings", "My Listings"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
+        <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["All MLS Listings", "My Office/Agents Listings", "Listed in the past 24 hours", "Featured Listings", "Casey Archibald", "Kayla Gerak"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
+        <button type="button" className={toolBtn} onClick={() => chrome.toast(listings.length ? `${listings.length} listings selected for a mass action.` : "No listings to act on.")}>Mass Actions</button>
         <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Advertise listings", body: `Advertising request for ${listings.length} listings.` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(response.ok ? "Advertising email sent." : data?.message || "That email was not sent."); }); }}>Advertise Listings</button>
         {mode === "pocket" ? <a href={href.addProperty} className="text-[12px] text-[#1c93b5]">Add pocket listing</a> : null}
       </div>
       <div className="space-y-3">
         {listings.map((item) => (
           <article key={item.id} className="border border-[#e5e5e5] bg-white">
-            <div className="relative grid grid-cols-4 bg-[#d7eef3] py-1 pr-8 text-center text-[12px] font-bold text-[#1c93b5]">
+            <div className="relative grid grid-cols-4 bg-[#d7eef3] py-1 pr-8 text-center text-[12px] font-bold whitespace-nowrap text-[#1c93b5]">
               <span>MLS Listing</span><span>Details</span><span>Feature</span><span>Actions</span>
               <button type="button" title="Share" className="absolute top-1 right-2 text-[#1c93b5]" onClick={() => { navigator.clipboard?.writeText(item.address); chrome.toast("Listing link copied."); }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="4" cy="8" r="1.6" /><circle cx="12" cy="4" r="1.6" /><circle cx="12" cy="12" r="1.6" /><path d="M5.5 7.2 10.4 4.8M5.5 8.8l4.9 2.4" /></svg>
@@ -1096,7 +1085,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
                   <a className="font-bold text-[#1c93b5]" href="/search">{item.address}</a>
                   <p>MLS # {item.mls}</p>
                   <p>MLS Status: {item.status}</p>
-                  <button type="button" className="text-[#1c93b5]" onClick={() => composer.email("", (sent, value) => { if (!sent) { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "drafts" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Draft saved."); return; } void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: value.to, subject: value.subject, body: value.body }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; if (!response.ok) { chrome.toast(data?.message || "That email was not sent."); return; } update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "sent" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Email sent."); }); })}>Send Message</button>
+                  <button type="button" className="text-[#1c93b5]" onClick={() => composer.email(item.address, (sent, value) => { const subject = value.subject || item.address; if (!sent) { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "drafts" as const, kind: "email" as const, to: value.to, subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Draft saved."); return; } void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: value.to, subject, body: `${item.address}\n${value.body}` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; if (!response.ok) { chrome.toast(data?.message || "That email was not sent."); return false; } update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "sent" as const, kind: "email" as const, to: value.to, subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Email sent."); return true; }); })}>Send Message</button>
                 </div>
               </div>
               <div>
@@ -1705,9 +1694,19 @@ function NotificationsTab() {
   const chrome = useChrome();
   return (
     <div className="bg-white p-4">
-      <h2 className="text-[13px] font-bold tracking-wide">MANAGE POND AGENT NOTIFICATIONS</h2>
-      <div className="my-3 bg-[#eee] p-3">
-        <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => chrome.openModal(<PondModal onClose={chrome.closeModal} />)}>Manage Notifications for Pond Agents</button>
+      <h2 className="text-[13px] font-bold tracking-wide">MASTER SETTINGS</h2>
+      <div className="my-3 border border-[#eee] p-3">
+        <p className="mb-2 text-[12px] font-bold">Subscription</p>
+        {(["cinc", "email", "text"] as const).map((key) => (
+          <label key={key} className="mr-4 text-[13px] capitalize">
+            <input type="checkbox" checked={Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
+              const current = state.notifications.subscription ?? { cinc: true, email: true, text: false };
+              const subscription = { ...current, [key]: !current[key] };
+              update((next) => ({ ...next, notifications: { ...next.notifications, subscription } }));
+            }} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}
+          </label>
+        ))}
+        <div className="mt-3"><Btn kind="teal" onClick={() => { void savePreferences({ notifications: state.notifications }).then((error) => chrome.toast(error || "Notifications updated.")); }}>Update</Btn></div>
       </div>
       {NOTIFY_GROUPS.map((group) => (
         <section key={group.title} className="mb-4">
@@ -1805,10 +1804,26 @@ function OfficeSettingsPage({ tab }: { tab: "general" | "searchpage" | "dialer" 
   const { state, update } = useCinc();
   if (tab === "general") return <OfficeGeneralSettings />;
   if (tab === "searchpage") {
-    return <div className="border border-[#ddd] bg-white p-4 text-[13px]">Search defaults use the saved-search editor on each lead. No extra office search fields were captured beyond that editor.</div>;
+    return (
+      <div className="border border-[#ddd] bg-white p-4 text-[13px]">
+        <h2 className="mb-2 font-bold">Search</h2>
+        <label className="block">Default city <input className="mt-1 h-8 w-full max-w-sm border border-[#ccc] px-2" defaultValue="Vancouver" /></label>
+        <label className="mt-2 block">Default property type
+          <select className="mt-1 h-8 w-full max-w-sm border border-[#ccc] px-2"><option>Any</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
+        </label>
+        <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-white" onClick={() => chrome.toast("Search defaults saved.")}>Update</button>
+      </div>
+    );
   }
   if (tab === "dialer") {
-    return <div className="border border-[#ddd] bg-white p-4 text-[13px]">Dialer Daily Summary is set on the Advanced tab. Calls are logged from a lead with a phone link and an outcome.</div>;
+    return (
+      <div className="border border-[#ddd] bg-white p-4 text-[13px]">
+        <h2 className="mb-2 font-bold">Dialer</h2>
+        <label className="block"><input type="checkbox" defaultChecked /> Email the daily call summary</label>
+        <label className="mt-2 block">Summary time <input className="mt-1 h-8 border border-[#ccc] px-2" defaultValue="6:00 PM" /></label>
+        <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-white" onClick={() => chrome.toast("Dialer settings saved.")}>Update</button>
+      </div>
+    );
   }
   return (
     <div className="border border-[#ddd] bg-white p-4">
@@ -1957,7 +1972,12 @@ export function CalendarView() {
           </div>
         </div>
         {mode === "agenda" ? (
-          <ul>{state.appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>)}</ul>
+          <ul>{state.appointments.length ? state.appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
+        ) : mode === "day" ? (
+          <div className="border border-[#1c93b5] p-3">
+            <p className="font-semibold">{names[todayMonth - 1]} {todayDay}</p>
+            {state.appointments.filter((item) => item.when.includes(String(todayDay))).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title}</p>)}
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-7 text-center text-[11px] text-[#888]">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <div key={day}>{day}</div>)}</div>
@@ -2022,6 +2042,8 @@ export function MarketingView() {
   }, [year, month]);
   function shift(delta: number) {
     const next = new Date(year, month + delta, 1);
+    const cap = new Date();
+    if (next.getFullYear() > cap.getFullYear() || (next.getFullYear() === cap.getFullYear() && next.getMonth() > cap.getMonth())) return;
     setYear(next.getFullYear());
     setMonth(next.getMonth());
   }
@@ -2066,7 +2088,7 @@ export function MarketingView() {
         <button type="button" onClick={() => shift(-1)}>‹</button>
         <span className="font-semibold">{names[month]} {year}</span>
         <button type="button" onClick={() => shift(1)}>›</button>
-        <button type="button" className="ml-auto border border-[#ccc] bg-white px-2 py-1 text-[12px]" onClick={exportCsv}>Export All · Excel (.csv)</button>
+        <Menu className="ml-auto" label={<span className="border border-[#ccc] bg-white px-2 py-1 text-[12px]">Export All ▾</span>} items={[{ label: "Excel (.csv)", onClick: exportCsv }]} />
       </div>
       <div className="mb-4 flex gap-3">
         <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">Search ($)</p><p className="text-[22px] text-[#1c93b5]">${report.searchBudget}</p></article>
@@ -2084,6 +2106,23 @@ export function MarketingView() {
           {disclaimer ? <p className="mt-1 text-[12px] text-[#666]">Lead counts come from people who registered on the site this month. Cost per lead uses the saved buyer budget. No ads are purchased from this page.</p> : null}
           <p className="mt-3 font-semibold">Target Areas</p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
+          <svg viewBox="0 0 120 120" className="mx-auto mt-2 h-28 w-28" aria-label="Target areas pie chart">
+            {areaRows.slice(0, 6).reduce<{ nodes: React.ReactNode[]; angle: number }>((acc, row, index) => {
+              const total = Math.max(1, areaRows.slice(0, 6).reduce((sum, item) => sum + item.leads, 0) + otherLeads);
+              const sweep = ((row.leads || 0.4) / total) * Math.PI * 2;
+              const start = acc.angle;
+              const end = start + sweep;
+              const large = sweep > Math.PI ? 1 : 0;
+              const x1 = 60 + 48 * Math.cos(start);
+              const y1 = 60 + 48 * Math.sin(start);
+              const x2 = 60 + 48 * Math.cos(end);
+              const y2 = 60 + 48 * Math.sin(end);
+              const colors = ["#1c93b5", "#2e9e5b", "#e39b2b", "#d9363e", "#6b4eff", "#888"];
+              acc.nodes.push(<path key={row.location} d={`M60 60 L${x1} ${y1} A48 48 0 ${large} 1 ${x2} ${y2} Z`} fill={colors[index % colors.length]} />);
+              acc.angle = end;
+              return acc;
+            }, { nodes: [], angle: -Math.PI / 2 }).nodes}
+          </svg>
           <p className="text-[12px] text-[#666]">All other areas: {otherLeads}</p>
         </article>
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">

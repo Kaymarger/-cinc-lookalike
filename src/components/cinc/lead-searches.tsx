@@ -343,7 +343,18 @@ function SearchModal({
             </select>
           </Field>
           <Field label="Location + Keyword Search">
-            <input className={inputCls} value={placeQuery} placeholder="City, neighbourhood, postal code, MLS#, address, or keyword" onChange={(event) => setPlaceQuery(event.target.value)} />
+            <div className="flex gap-1">
+              <input className={inputCls} value={placeQuery} placeholder="City, neighbourhood, postal code, MLS#, address, or keyword" onChange={(event) => setPlaceQuery(event.target.value)} onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                const typed = placeQuery.trim();
+                if (!typed) return;
+                if (suggestions[0]) addPlace(suggestions[0]);
+                else setDraft((current) => ({ ...current, places: current.places.includes(`Keyword: ${typed}`) ? current.places : [...current.places, `Keyword: ${typed}`] }));
+                setPlaceQuery("");
+              }} />
+              <button type="button" className="border border-[#ccc] px-2 text-[12px]" title="Draw on the map" onClick={() => chrome.toast("Draw a shape on the map, then save the search.")}>Map</button>
+            </div>
             {suggestions.length ? (
               <div className="max-h-36 overflow-auto border border-[#ddd] bg-white">
                 {suggestions.map((hit) => (

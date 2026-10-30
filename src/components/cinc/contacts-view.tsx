@@ -86,14 +86,16 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
           </select>
         </label>
       </div>
-      <h1 className="mb-3 text-[16px] font-bold">ALL VENDORS</h1>
+      <input className="mb-3 w-full max-w-sm border border-transparent bg-transparent text-[16px] font-bold outline-none placeholder:font-normal placeholder:text-[#bbb]" placeholder="Replace with title" defaultValue="" />
+      <h2 className="mb-3 text-[16px] font-bold">ALL VENDORS</h2>
       <div className="flex flex-wrap gap-3">
-        <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>+<br />ADD VENDOR</button>
+        <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>• {vendors.length}<br />ADD VENDOR</button>
         {shown.map((vendor) => (
           <article key={vendor.id} className="w-48 border border-[#e5e5e5] bg-white p-2 text-[13px]">
             <p className="font-semibold">{vendor.name}</p>
             <p className="text-[12px] text-[#666]">{vendor.type}</p>
             <p className="truncate text-[12px]">{vendor.email}</p>
+            {vendor.cell || vendor.phone ? <p className="text-[12px]">{vendor.cell || vendor.phone}</p> : null}
             <button type="button" className="mt-1 text-[#1c93b5]" onClick={() => void save({ ...vendor, preferred: !vendor.preferred })}>{vendor.preferred ? "★ Preferred" : "Mark preferred"}</button>
             <div className="mt-1 flex gap-2">
               <button type="button" className="text-[#1c93b5]" onClick={() => setDraft(vendor)}>Edit</button>
