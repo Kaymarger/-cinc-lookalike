@@ -32,6 +32,49 @@ function toE164(phone: string): string | null {
   return null;
 }
 
+export function channelStatus(): { email: boolean; sms: boolean; voice: boolean } {
+  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const fromNumber = process.env.TWILIO_FROM_NUMBER?.trim();
+  const twilio = Boolean(sid && token && fromNumber);
+  const email = Boolean(fromAddress() && (process.env.RESEND_API_KEY?.trim() || process.env.SENDGRID_API_KEY?.trim()));
+  return { email, sms: twilio, voice: twilio };
+}
+
+export function channelMessage(channel: "email" | "sms" | "voice"): string {
+  if (channel === "email") return "Email is not connected. Add RESEND_API_KEY or SENDGRID_API_KEY, plus RESEND_FROM_EMAIL or SENDGRID_FROM_EMAIL.";
+  if (channel === "sms") return "Texting is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.";
+  return "Calling is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.";
+}
+
+export async function startOfficeCall(toRaw: string): Promise<"sent" | "skipped" | "failed"> {
+  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const fromRaw = process.env.TWILIO_FROM_NUMBER?.trim() || "";
+  if (!sid || !token || !fromRaw || !toRaw) return "skipped";
+  const to = toE164(toRaw);
+  const from = toE164(fromRaw);
+  if (!to || !from) return "failed";
+  try {
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const payload = new URLSearchParams({
+      To: to,
+      From: from,
+      Twiml: "<Response><Say>This is a call from your real estate office.</Say></Response>",
+    });
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: payload,
+      signal: AbortSignal.timeout(8000),
+    });
+    return response.ok ? "sent" : "failed";
+  } catch {
+    console.error("[office] call failed");
+    return "failed";
+  }
+}
+
 export async function sendOfficeSms(toRaw: string, body: string): Promise<"sent" | "skipped" | "failed"> {
   const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const token = process.env.TWILIO_AUTH_TOKEN?.trim();

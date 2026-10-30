@@ -1,5 +1,6 @@
 import { currentActor } from "@/lib/office-actor";
 import { listAutoTracks, saveAutoTrack } from "@/lib/autotracks-db";
+import { statsByTrack } from "@/lib/office-live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export async function GET() {
   const blocked = dbDown(actor);
   if (blocked) return blocked;
   const data = await listAutoTracks();
-  return Response.json({ ok: true, ...data });
+  const stats = await statsByTrack();
+  return Response.json({ ok: true, ...data, stats });
 }
 
 export async function POST(request: Request) {

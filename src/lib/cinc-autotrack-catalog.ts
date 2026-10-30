@@ -71,6 +71,7 @@ function parseTrack(chunk: string): AutoTrackDocument {
     captured: true,
     seedRevision: 1,
     userEdited: false,
+    permissions: [],
     steps,
   };
 }

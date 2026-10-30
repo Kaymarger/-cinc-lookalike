@@ -161,6 +161,45 @@ const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS autotrack_hidden (
   id text PRIMARY KEY
 )`,
+  `CREATE TABLE IF NOT EXISTS office_settings (
+  id text PRIMARY KEY,
+  document jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS office_vendors (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  vendor_type text NOT NULL DEFAULT '',
+  preferred boolean NOT NULL DEFAULT false,
+  phone text NOT NULL DEFAULT '',
+  notes text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS office_user_photos (
+  user_id text PRIMARY KEY,
+  content_type text NOT NULL,
+  bytes bytea NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS office_sends (
+  id text PRIMARY KEY,
+  channel text NOT NULL,
+  status text NOT NULL,
+  provider text NOT NULL DEFAULT '',
+  to_address text NOT NULL DEFAULT '',
+  subject text NOT NULL DEFAULT '',
+  autotrack_id text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE INDEX IF NOT EXISTS office_sends_track_idx ON office_sends (autotrack_id)`,
+  `CREATE TABLE IF NOT EXISTS office_send_events (
+  id text PRIMARY KEY,
+  send_id text NOT NULL,
+  kind text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+)`,
+  `CREATE INDEX IF NOT EXISTS office_send_events_send_idx ON office_send_events (send_id)`,
 ];
 
 const globalSql = globalThis as unknown as {

@@ -7,8 +7,9 @@ import { useLeads } from "@/lib/leads";
 import { AutoTrackWizard, duplicateTrack, loadAutoTracks, persistTrackStatus, removeTrack } from "./autotrack-builder";
 import { useChrome } from "./chrome-context";
 import { useOfficeSession } from "./office-session";
+import { OfficeGeneralSettings } from "./office-general";
 import { href } from "./route";
-import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template, type Track } from "./store";
+import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template } from "./store";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const AGENT_NUMBER = "4829103344556677";
@@ -361,7 +362,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
           <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Listings</a>
         </div>
         <div className="flex gap-2">
-          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><p className="text-[13px]">Listings would be sent to CINC advertising. Saving writes a copy in Sent. Nothing leaves this browser.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ kind: "email", to: "advertising@example.com", subject: "Advertise listings", body: "Advertising request for the current deal board." }), ...current.mail] })); chrome.closeModal(); chrome.toast("Advertising request saved in Sent."); }}>OK</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><p className="text-[13px]">This sends an email through Resend or SendGrid. If those keys are missing, nothing is sent and nothing is marked sent.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Advertise listings", body: "Advertising request for the current deal board." }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(response.ok ? "Advertising email sent." : data?.message || "That email was not sent."); chrome.closeModal(); }); }}>OK</Btn></div></ModalFrame>)}>Advertise Listings</button>
           <button type="button" className="inline-flex h-[22px] items-center gap-1 rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
             <span className="grid h-3.5 w-3.5 place-items-center rounded-full border border-white text-[11px] leading-none">+</span>
             Add Deal
@@ -476,11 +477,30 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const opened = messages.find((mail) => mail.id === openId);
 
   function send(kind: "email" | "text", value: { to: string; subject?: string; body: string }, target: "sent" | "drafts") {
-    update((current) => ({
-      ...current,
-      mail: [{ id: uid("mail"), folder: target, kind, to: value.to, subject: value.subject || kind, body: value.body, at: nowLabel() }, ...current.mail],
-    }));
-    chrome.toast(target === "sent" ? "Sent. It is in the Sent folder." : "Draft saved.");
+    if (target === "drafts") {
+      update((current) => ({
+        ...current,
+        mail: [{ id: uid("mail"), folder: "drafts", kind, to: value.to, subject: value.subject || kind, body: value.body, at: nowLabel() }, ...current.mail],
+      }));
+      chrome.toast("Draft saved.");
+      return;
+    }
+    void fetch("/api/office/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: kind === "email" ? "email" : "sms", to: value.to, subject: value.subject, body: value.body }),
+    }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        chrome.toast(data?.message || "That message was not sent.");
+        return;
+      }
+      update((current) => ({
+        ...current,
+        mail: [{ id: uid("mail"), folder: "sent", kind, to: value.to, subject: value.subject || kind, body: value.body, at: nowLabel() }, ...current.mail],
+      }));
+      chrome.toast(kind === "email" ? "Email sent." : "Text sent.");
+    });
   }
 
   if (folder === "templates") {
@@ -728,10 +748,12 @@ export function AutoTracksView() {
   const chrome = useChrome();
   const [cat, setCat] = useState("General");
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [stats, setStats] = useState<Record<string, { openRate: number | null; clickRate: number | null; leads: number; touches: number }>>({});
   useEffect(() => {
     void loadAutoTracks().then((data) => {
       if (!data) return;
       setHiddenIds(data.hiddenIds);
+      setStats(data.stats);
       update((current) => ({ ...current, tracks: data.tracks }));
     });
   }, [update]);
@@ -767,16 +789,17 @@ export function AutoTracksView() {
       </div>
       <div className="border border-[#e5e5e5] bg-white shadow-sm">
         {shown.map((track) => {
+          const counted = Boolean(track.captured || track.steps?.length);
+          const stat = stats[track.id];
           const seed = track.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
           const days = track.steps?.length ? Math.max(...track.steps.map((step) => step.day)) : [7, 14, 21, 30, 45, 60][seed % 6];
-          const real = Boolean(track.captured || track.steps?.length);
-          const stats = real
+          const statsRow = counted
             ? [
-                ["% Open Rate", "—"],
-                ["% Click Rate", "—"],
-                ["Leads", "0"],
+                ["% Open Rate", stat?.openRate == null ? "—" : String(stat.openRate)],
+                ["% Click Rate", stat?.clickRate == null ? "—" : String(stat.clickRate)],
+                ["Leads", String(stat?.leads ?? 0)],
                 ["Completed", "0"],
-                ["Touches", "0"],
+                ["Touches", String(stat?.touches ?? 0)],
                 ["Steps", String(track.steps?.length ?? 0)],
               ]
             : [
@@ -785,7 +808,7 @@ export function AutoTracksView() {
                 ["Leads", String((seed % 80) + 3)],
                 ["Completed", String((seed % 400) + 4)],
                 ["Touches", String((seed % 6) + 1)],
-                ["Steps", String(track.steps?.length || (seed % 6) + 1)],
+                ["Steps", String((seed % 6) + 1)],
               ];
           return (
             <article key={track.id} className="border-t border-[#eee]">
@@ -807,7 +830,7 @@ export function AutoTracksView() {
                 <div>
                   <p className="mb-1 text-center text-[11px] text-[#888]">Email</p>
                   <div className="flex gap-3">
-                    {stats.map(([label, value]) => (
+                    {statsRow.map(([label, value]) => (
                       <div key={label} className="w-14 text-center">
                         <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#d5e8ee] text-[12px] text-[#7aa]">{value}</div>
                         <p className="mt-1 text-[10px] leading-tight text-[#888]">{label}</p>
@@ -1040,7 +1063,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("mls")}>Show MLS Listings</button>
         <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("pocket")}>Show Pocket Listings</button>
         <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["My Office/Agents Listings", "My Listings"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
-        <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ kind: "email", to: "advertising@example.com", subject: "Advertise listings", body: `Advertising request for ${listings.length} listings.` }), ...current.mail] })); chrome.toast("Advertising request saved in Sent."); }}>Advertise Listings</button>
+        <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Advertise listings", body: `Advertising request for ${listings.length} listings.` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(response.ok ? "Advertising email sent." : data?.message || "That email was not sent."); }); }}>Advertise Listings</button>
         {mode === "pocket" ? <a href={href.addProperty} className="text-[12px] text-[#1c93b5]">Add pocket listing</a> : null}
       </div>
       <div className="space-y-3">
@@ -1059,7 +1082,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
                   <a className="font-bold text-[#1c93b5]" href="/search">{item.address}</a>
                   <p>MLS # {item.mls}</p>
                   <p>MLS Status: {item.status}</p>
-                  <button type="button" className="text-[#1c93b5]" onClick={() => composer.email("", (sent, value) => { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: sent ? "sent" as const : "drafts" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast(sent ? "Message queued in Sent." : "Draft saved."); })}>Send Message</button>
+                  <button type="button" className="text-[#1c93b5]" onClick={() => composer.email("", (sent, value) => { if (!sent) { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "drafts" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Draft saved."); return; } void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: value.to, subject: value.subject, body: value.body }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; if (!response.ok) { chrome.toast(data?.message || "That email was not sent."); return; } update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "sent" as const, kind: "email" as const, to: value.to, subject: value.subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Email sent."); }); })}>Send Message</button>
                 </div>
               </div>
               <div>
@@ -1742,23 +1765,7 @@ function AdvancedTab() {
 function OfficeSettingsPage({ tab }: { tab: "general" | "searchpage" | "dialer" | "fields" }) {
   const chrome = useChrome();
   const { state, update } = useCinc();
-  if (tab === "general") {
-    return (
-      <div className="space-y-4">
-        {["Seller", "CRM Connect", "Website"].map((section) => (
-          <section key={section} className="border border-[#ddd] bg-white p-4">
-            <h2 className="mb-2 text-[16px] font-bold">{section}</h2>
-            <div className="text-right"><Btn kind="blue" onClick={() => chrome.toast(`${section} updated.`)}>Update</Btn></div>
-          </section>
-        ))}
-        <section className="border border-[#ddd] bg-white p-4">
-          <h2 className="mb-2 text-[16px] font-bold">Auto-Apply Label</h2>
-          <h2 className="mb-2 text-[16px] font-bold">Auto-Saved Searches</h2>
-          <h2 className="text-[16px] font-bold">Welcome Email</h2>
-        </section>
-      </div>
-    );
-  }
+  if (tab === "general") return <OfficeGeneralSettings />;
   if (tab === "searchpage") {
     return <div className="border border-[#ddd] bg-white p-4 text-[13px]">Search defaults use the saved-search editor on each lead. No extra office search fields were captured beyond that editor.</div>;
   }
@@ -1835,29 +1842,37 @@ export function PlansView() {
 
 export function DialerView() {
   const { leads } = useLeads();
-  const { update } = useCinc();
   const chrome = useChrome();
   const [index, setIndex] = useState(0);
+  const [voice, setVoice] = useState<boolean | null>(null);
   const people = [...leads.map((lead) => ({ id: lead.id, name: lead.name, phone: lead.phone })), ...[{ id: "crm-1", name: "Morgan Ellis", phone: "(604) 555-0188" }]];
   const current = people[index];
+  useEffect(() => {
+    void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { channels?: { voice?: boolean } } | null;
+      setVoice(Boolean(data?.channels?.voice));
+    });
+  }, []);
+  async function call() {
+    if (!current?.phone) return;
+    const response = await fetch("/api/office/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: "voice", to: current.phone, body: `Call ${current.name}` }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    chrome.toast(response.ok ? `Twilio is calling ${current.phone}.` : data?.message || "That call was not placed.");
+    if (response.ok) setIndex((value) => (value + 1) % people.length);
+  }
   return (
     <div className="mx-auto max-w-lg p-6">
       <div className="bg-white p-5 text-center">
         <p className="text-[12px] uppercase text-[#888]">Dialer</p>
+        {voice === false ? <p className="mt-2 bg-[#fff6e5] px-3 py-2 text-left text-[13px] text-[#8a5a00]">Calling is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.</p> : null}
         <p className="mt-2 text-[20px] font-semibold">{current?.name}</p>
         <p className="text-[#1c93b5]">{current?.phone}</p>
         <div className="mt-4 flex justify-center gap-2">
-          <Btn kind="teal" onClick={() => {
-            if (!current) return;
-            update((s) => ({ ...s, calls: [{ id: uid("call"), leadId: current.id, name: current.name, at: nowLabel(), kind: "call" }, ...s.calls] }));
-            chrome.toast("Call logged.");
-            setIndex((value) => (value + 1) % people.length);
-          }}>Log call</Btn>
-          <Btn onClick={() => {
-            if (!current) return;
-            update((s) => ({ ...s, calls: [{ id: uid("call"), leadId: current.id, name: current.name, at: nowLabel(), kind: "voicemail" }, ...s.calls] }));
-            chrome.toast("Voicemail logged.");
-          }}>Voicemail</Btn>
+          <Btn kind="teal" disabled={voice === false} onClick={() => void call()}>Call with Twilio</Btn>
           <Btn onClick={() => setIndex((value) => (value + 1) % people.length)}>Skip</Btn>
         </div>
       </div>
@@ -1909,20 +1924,25 @@ export function TasksView() {
 
 export function MarketingView() {
   const chrome = useChrome();
-  const areas = [
-    ["Vancouver", 4, 80],
-    ["Burnaby", 2, 120],
-    ["Richmond", 1, 150],
-    ["Surrey", 3, 90],
-    ["North Vancouver", 1, 200],
-    ["Coquitlam", 0, 0],
-  ] as const;
-  const [month, setMonth] = useState(9);
-  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [report, setReport] = useState<{ locations: { location: string; leads: number; cost: number | null }[]; totalLeads: number; searchBudget: number; listcastBudget: number }>({ locations: [], totalLeads: 0, searchBudget: 0, listcastBudget: 0 });
   const [disclaimer, setDisclaimer] = useState(false);
-  const totalLeads = areas.reduce((sum, row) => sum + row[1], 0);
+  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  useEffect(() => {
+    void fetch(`/api/office/marketing?year=${year}&month=${month + 1}`, { cache: "no-store" }).then(async (response) => {
+      const data = await response.json().catch(() => null);
+      if (data?.ok) setReport(data);
+    });
+  }, [year, month]);
+  function shift(delta: number) {
+    const next = new Date(year, month + delta, 1);
+    setYear(next.getFullYear());
+    setMonth(next.getMonth());
+  }
   function exportCsv() {
-    const lines = ["LOCATION,LEADS,COST PER LEAD", ...areas.map((row) => `${row[0]},${row[1]},${row[2]}`), `Total,${totalLeads},`];
+    const lines = ["LOCATION,LEADS,COST PER LEAD", ...report.locations.map((row) => `${row.location},${row.leads},${row.cost ?? ""}`), `Total,${report.totalLeads},`];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -1930,37 +1950,56 @@ export function MarketingView() {
     link.download = "search-marketing.csv";
     link.click();
     URL.revokeObjectURL(url);
-    chrome.toast("Excel (.csv) downloaded.");
+  }
+  async function contact() {
+    const response = await fetch("/api/office/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Campaign question", body: "Need to discuss the search campaign." }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    chrome.toast(response.ok ? "Contact email sent." : data?.message || "That email was not sent.");
+  }
+  async function saveBudget(key: "searchBudget" | "listcastBudget", value: number) {
+    const current = await fetch("/api/office/settings", { cache: "no-store" }).then((response) => response.json());
+    const settings = { ...(current.settings ?? {}), [key]: value };
+    const response = await fetch("/api/office/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) });
+    if (response.ok) {
+      setReport((row) => ({ ...row, [key]: value }));
+      chrome.toast("Budget saved.");
+    }
   }
   return (
     <div className="p-4">
       <div className="mb-3 flex items-center gap-3">
-        <button type="button" onClick={() => setMonth((value) => (value + 11) % 12)}>‹</button>
-        <span className="font-semibold">{names[month]} 2026</span>
-        <button type="button" onClick={() => setMonth((value) => (value + 1) % 12)}>›</button>
+        <button type="button" onClick={() => shift(-1)}>‹</button>
+        <span className="font-semibold">{names[month]} {year}</span>
+        <button type="button" onClick={() => shift(1)}>›</button>
         <button type="button" className="ml-auto border border-[#ccc] bg-white px-2 py-1 text-[12px]" onClick={exportCsv}>Export All · Excel (.csv)</button>
       </div>
       <div className="mb-4 flex gap-3">
-        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">Search ($)</p><p className="text-[22px] text-[#1c93b5]">$1,200</p></article>
-        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">ListCast ($)</p><p className="text-[22px] text-[#1c93b5]">$0</p></article>
+        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">Search ($)</p><p className="text-[22px] text-[#1c93b5]">${report.searchBudget}</p></article>
+        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">ListCast ($)</p><p className="text-[22px] text-[#1c93b5]">${report.listcastBudget}</p></article>
       </div>
       <h2 className="mb-2 font-bold">Search Marketing</h2>
       <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
         <article className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
           <p className="font-semibold">Budget</p>
-          <p className="mt-1">BUYER $1,200</p>
+          <label className="mt-1 block">BUYER $<input className="ml-1 w-20 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
+          <label className="mt-1 block">ListCast $<input className="ml-1 w-20 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
           <p className="mt-2">Need to discuss your campaign?</p>
-          <button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Contact request noted. Nothing was emailed.")}>Contact Us</button>
+          <button type="button" className="text-[#1c93b5]" onClick={() => void contact()}>Contact Us</button>
           <button type="button" className="mt-2 block text-[12px] uppercase" onClick={() => setDisclaimer((value) => !value)}>Disclaimer</button>
-          {disclaimer ? <p className="mt-1 text-[12px] text-[#666]">Sample figures only. No ads are purchased from this page.</p> : null}
+          {disclaimer ? <p className="mt-1 text-[12px] text-[#666]">Lead counts come from people who registered on the site this month. Cost per lead uses the saved buyer budget. No ads are purchased from this page.</p> : null}
           <p className="mt-3 font-semibold">Target Areas</p>
           <p className="text-[12px] text-[#666]">Top 6 areas</p>
         </article>
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">
           <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>Cost per lead</th></tr></thead>
           <tbody>
-            {areas.map((row) => <tr key={row[0]} className="border-t border-[#eee]"><td className="px-3 py-2">{row[0]}</td><td>{row[1]}</td><td>{row[2] ? `$${row[2]}` : "—"}</td></tr>)}
-            <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{totalLeads}</td><td /></tr>
+            {report.locations.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
+            {!report.locations.length ? <tr><td className="px-3 py-4 text-[#888]" colSpan={3}>No leads recorded for this month.</td></tr> : null}
+            <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{report.totalLeads}</td><td /></tr>
           </tbody>
         </table>
       </div>

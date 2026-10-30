@@ -55,6 +55,8 @@ export type AutoTrackStep = {
   blocking: boolean;
 };
 
+export type ShareGrant = { name: string; copy: boolean; edit: boolean; owner: boolean };
+
 export type AutoTrackDocument = {
   id: string;
   name: string;
@@ -85,6 +87,7 @@ export type AutoTrackDocument = {
   captured: boolean;
   seedRevision: number;
   userEdited: boolean;
+  permissions: ShareGrant[];
   steps: AutoTrackStep[];
 };
 
@@ -326,6 +329,17 @@ export function sanitizeStep(input: unknown, index: number): AutoTrackStep | nul
   };
 }
 
+function sanitizePermissions(value: unknown): ShareGrant[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 40).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Partial<ShareGrant>;
+    const name = clip(row.name, 80).trim();
+    if (!name) return [];
+    return [{ name, copy: Boolean(row.copy), edit: Boolean(row.edit), owner: Boolean(row.owner) }];
+  });
+}
+
 export function triggerLabel(doc: Pick<AutoTrackDocument, "startStage" | "startLabel" | "landing" | "source" | "customField">): string {
   return doc.startStage || doc.startLabel || doc.landing || doc.source || doc.customField || "New Lead";
 }
@@ -376,6 +390,7 @@ export function sanitizeTrack(input: unknown): { ok: true; value: AutoTrackDocum
     captured: Boolean(raw.captured),
     seedRevision: Math.max(0, Math.round(Number(raw.seedRevision) || 0)),
     userEdited: Boolean(raw.userEdited),
+    permissions: sanitizePermissions(raw.permissions),
     steps,
     trigger: "",
     stopTrigger: "",

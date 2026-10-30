@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AutoTrackStep } from "@/lib/autotrack";
+import { PLACEHOLDER_AI_ALERTS, PLACEHOLDER_BEHAVIORAL_ALERTS, PLACEHOLDER_COMMUNICATION_ALERTS } from "@/lib/placeholders";
 
 const KEY = "gvhs-cinc-spa";
 
@@ -304,9 +305,9 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
       { id: "Direct Mail Activity", description: "When a lead scans a direct-mail piece." },
     ],
   },
-  { title: "AI ALERTS", items: [] },
-  { title: "COMMUNICATION ALERTS", items: [] },
-  { title: "BEHAVIORAL MESSAGE ALERTS", items: [] },
+  { title: "AI ALERTS", items: [...PLACEHOLDER_AI_ALERTS] },
+  { title: "COMMUNICATION ALERTS", items: [...PLACEHOLDER_COMMUNICATION_ALERTS] },
+  { title: "BEHAVIORAL MESSAGE ALERTS", items: [...PLACEHOLDER_BEHAVIORAL_ALERTS] },
   {
     title: "MASTER SETTINGS",
     items: [{ id: "Subscription", description: "CINCAgent, Email, Text" }],

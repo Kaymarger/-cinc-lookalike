@@ -230,13 +230,30 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       <div className="grid gap-3 sm:grid-cols-2">
             {users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).map((user) => (
               <article key={user.id} className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
-                <p className="font-semibold">{user.name}</p>
-                <p className="text-[#666]">{user.email}</p>
-                <p>{user.roleLabel || roleLabel(user.role)}{user.active ? "" : " · Disabled"}</p>
+                <div className="flex gap-2">
+                  <img alt="" className="h-12 w-12 bg-[#eee] object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
+                  <div>
+                    <p className="font-semibold">{user.name}</p>
+                    <p className="text-[#666]">{user.email}</p>
+                    <p>{user.roleLabel || roleLabel(user.role)}{user.active ? "" : " · Disabled"}</p>
+                  </div>
+                </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => startEdit(user)}>Edit Permissions</button> : null}
                   {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => void become(user)}>Become User</button> : null}
                   {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
+                  {office.canManageUsers ? <label className="border border-[#ccc] px-2 py-1">Photo<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    const body = new FormData();
+                    body.set("file", file);
+                    void fetch(`/api/office/users/${user.id}/photo`, { method: "POST", body }).then(async (response) => {
+                      const data = (await response.json().catch(() => null)) as { message?: string } | null;
+                      setMessage(response.ok ? "Photo saved." : data?.message || "Could not store that photo.");
+                      if (response.ok) await load();
+                    });
+                  }} /></label> : null}
                   {office.canManageUsers ? <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "reset")}>Reset link</button> : null}
                 </div>
               </article>

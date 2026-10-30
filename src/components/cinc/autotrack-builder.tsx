@@ -532,14 +532,26 @@ export function AutoTrackWizard({
           <label className="block"><input type="checkbox" checked={doc.share} onChange={(event) => setDoc({ ...doc, share: event.target.checked })} /> Allow team members to access this template</label>
           {doc.share ? (
             <div className="max-h-40 overflow-auto border border-[#eee] p-2 text-[12px]">
-              {OFFICE_ROSTER.map((agent) => (
-                <div key={agent} className="flex flex-wrap gap-3 py-0.5">
-                  <span className="w-40">{agent}</span>
-                  <label><input type="checkbox" /> Can Copy</label>
-                  <label><input type="checkbox" /> Can Edit</label>
-                  <label><input type="checkbox" /> Is Owner</label>
-                </div>
-              ))}
+              {OFFICE_ROSTER.map((agent) => {
+                const grant = doc.permissions.find((item) => item.name === agent) ?? { name: agent, copy: false, edit: false, owner: false };
+                const setGrant = (key: "copy" | "edit" | "owner", checked: boolean) => {
+                  const next = { ...grant, [key]: checked };
+                  setDoc({
+                    ...doc,
+                    permissions: doc.permissions.some((item) => item.name === agent)
+                      ? doc.permissions.map((item) => item.name === agent ? next : item)
+                      : [...doc.permissions, next],
+                  });
+                };
+                return (
+                  <div key={agent} className="flex flex-wrap gap-3 py-0.5">
+                    <span className="w-40">{agent}</span>
+                    <label><input type="checkbox" checked={grant.copy} onChange={(event) => setGrant("copy", event.target.checked)} /> Can Copy</label>
+                    <label><input type="checkbox" checked={grant.edit} onChange={(event) => setGrant("edit", event.target.checked)} /> Can Edit</label>
+                    <label><input type="checkbox" checked={grant.owner} onChange={(event) => setGrant("owner", event.target.checked)} /> Is Owner</label>
+                  </div>
+                );
+              })}
             </div>
           ) : null}
           <div className="flex justify-end gap-2">
@@ -562,7 +574,7 @@ export function AutoTrackWizard({
             <dt className="font-bold">Start</dt><dd>{doc.startNewLead ? "New Lead; " : ""}{doc.startLabel ? `Label ${doc.startLabel}; ` : ""}{doc.startStage ? `${doc.startStage}; ` : ""}{doc.landing ? `${doc.landing}; ` : ""}{doc.sources.length ? `Source ${doc.sources.join("; ")}` : doc.source ? `Source ${doc.source}` : ""}</dd>
             <dt className="font-bold">Stop</dt><dd>{doc.stopReply ? "When Lead Replies/Reaches Out" : "No reply rule"}{doc.stopLabel ? `; Label ${doc.stopLabel}` : ""}{doc.stopStage ? `; ${doc.stopStage}` : ""}</dd>
             <dt className="font-bold">Completion</dt><dd>{doc.complete}{doc.completeTrack ? ` (${doc.completeTrack})` : ""}{doc.completeLabel ? ` (${doc.completeLabel})` : ""}</dd>
-            <dt className="font-bold">Sharing</dt><dd>{doc.share ? "Allow team members to access this template" : "Private to you"}</dd>
+            <dt className="font-bold">Sharing</dt><dd>{doc.share ? `Team access: ${doc.permissions.filter((item) => item.copy || item.edit || item.owner).map((item) => `${item.name}${item.owner ? " owner" : ""}${item.edit ? " edit" : ""}${item.copy ? " copy" : ""}`).join("; ") || "allowed, no one checked"}` : "Private to you"}</dd>
           </dl>
           <div>
             <p className="font-bold">Steps</p>
@@ -587,11 +599,11 @@ export function AutoTrackWizard({
   );
 }
 
-export async function loadAutoTracks(): Promise<{ tracks: Track[]; hiddenIds: string[] } | null> {
+export async function loadAutoTracks(): Promise<{ tracks: Track[]; hiddenIds: string[]; stats: Record<string, { sent: number; opens: number; clicks: number; leads: number; touches: number; openRate: number | null; clickRate: number | null }> } | null> {
   const response = await fetch("/api/office/autotracks", { cache: "no-store" });
-  const data = (await response.json().catch(() => null)) as { tracks?: Track[]; hiddenIds?: string[] } | null;
+  const data = (await response.json().catch(() => null)) as { tracks?: Track[]; hiddenIds?: string[]; stats?: Record<string, { sent: number; opens: number; clicks: number; leads: number; touches: number; openRate: number | null; clickRate: number | null }> } | null;
   if (!response.ok || !data?.tracks) return null;
-  return { tracks: data.tracks, hiddenIds: data.hiddenIds ?? [] };
+  return { tracks: data.tracks, hiddenIds: data.hiddenIds ?? [], stats: data.stats ?? {} };
 }
 
 export async function persistTrackStatus(track: Track, status: TrackStatus): Promise<Track> {
