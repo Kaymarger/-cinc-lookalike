@@ -55,7 +55,7 @@ export type Track = {
   id: string;
   name: string;
   category: string;
-  status: "active" | "paused" | "draft";
+  status: "active" | "paused" | "disabled" | "draft";
   trigger: string;
   stopTrigger?: string;
   steps?: AutoTrackStep[];
@@ -68,6 +68,13 @@ export type Track = {
   landing?: string;
   customField?: string;
   source?: string;
+  sources?: string[];
+  startNewLead?: boolean;
+  owner?: string;
+  visibility?: "public" | "private";
+  captured?: boolean;
+  completeTrack?: string;
+  completeLabel?: string;
   stopLabel?: string;
   stopStage?: string;
   stopReply?: boolean;

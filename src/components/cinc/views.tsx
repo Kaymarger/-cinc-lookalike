@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CRM_AGENT, CRM_AUTOTRACKS, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
+import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
+import { statusLabel } from "@/lib/autotrack";
 import { useLeads } from "@/lib/leads";
 import { AutoTrackWizard, duplicateTrack, loadAutoTracks, persistTrackStatus, removeTrack } from "./autotrack-builder";
 import { useChrome } from "./chrome-context";
@@ -736,10 +737,7 @@ export function AutoTracksView() {
   }, [update]);
   const tracks = useMemo(() => {
     const hidden = new Set([...state.hiddenTracks, ...hiddenIds]);
-    const savedIds = new Set(state.tracks.map((track) => track.id));
-    const saved = state.tracks.filter((track) => !hidden.has(track.id));
-    const seeds: Track[] = CRM_AUTOTRACKS.filter((track) => !savedIds.has(track.id) && !hidden.has(track.id)).map((track) => ({ ...track, trigger: "New lead" }));
-    return [...saved, ...seeds];
+    return state.tracks.filter((track) => !hidden.has(track.id));
   }, [hiddenIds, state.hiddenTracks, state.tracks]);
   const trackQuery = chrome.leadSearch.trim().toLowerCase();
   const shown = tracks.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
@@ -771,14 +769,24 @@ export function AutoTracksView() {
         {shown.map((track) => {
           const seed = track.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
           const days = track.steps?.length ? Math.max(...track.steps.map((step) => step.day)) : [7, 14, 21, 30, 45, 60][seed % 6];
-          const stats = [
-            ["% Open Rate", `${seed % 40}`],
-            ["% Click Rate", `${seed % 12}`],
-            ["Leads", String((seed % 80) + 3)],
-            ["Completed", String((seed % 400) + 4)],
-            ["Touches", String((seed % 6) + 1)],
-            ["Steps", String(track.steps?.length || (seed % 6) + 1)],
-          ];
+          const real = Boolean(track.captured || track.steps?.length);
+          const stats = real
+            ? [
+                ["% Open Rate", "—"],
+                ["% Click Rate", "—"],
+                ["Leads", "0"],
+                ["Completed", "0"],
+                ["Touches", "0"],
+                ["Steps", String(track.steps?.length ?? 0)],
+              ]
+            : [
+                ["% Open Rate", `${seed % 40}`],
+                ["% Click Rate", `${seed % 12}`],
+                ["Leads", String((seed % 80) + 3)],
+                ["Completed", String((seed % 400) + 4)],
+                ["Touches", String((seed % 6) + 1)],
+                ["Steps", String(track.steps?.length || (seed % 6) + 1)],
+              ];
           return (
             <article key={track.id} className="border-t border-[#eee]">
               <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
@@ -788,13 +796,13 @@ export function AutoTracksView() {
                     {track.name}
                   </button>
                   <p className="text-[12px] text-[#666]">Duration: {days} Days</p>
-                  <p className="text-[12px] text-[#666]">Public ({CRM_AGENT.name})</p>
+                  <p className="text-[12px] text-[#666]">{track.visibility === "private" ? "Private" : "Public"} ({track.owner || CRM_AGENT.name})</p>
                 </div>
                 <div className="w-16 text-center">
                   <div className={`mx-auto grid h-12 w-12 place-items-center rounded-full border-2 ${track.status === "active" ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#bbb] text-[#999]"}`}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M9 1 3 9h4l-1 6 7-9H9z" /></svg>
                   </div>
-                  <p className="mt-1 text-[11px] text-[#666]">{track.status === "active" ? "Active" : track.status === "paused" ? "Paused" : "Draft"}</p>
+                  <p className="mt-1 text-[11px] text-[#666]">{statusLabel(track.status)}</p>
                 </div>
                 <div>
                   <p className="mb-1 text-center text-[11px] text-[#888]">Email</p>

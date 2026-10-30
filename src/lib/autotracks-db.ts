@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { loadCincAutoTracks } from "./cinc-autotrack-catalog";
 import { officeDb } from "./leads-db";
 import { sanitizeTrack, type AutoTrackDocument, type AutoTrackFile } from "./autotrack";
 
@@ -25,10 +26,37 @@ function parseDocument(value: AutoTrackDocument | string): unknown {
   return value;
 }
 
+export async function seedCincAutoTracks(): Promise<number> {
+  const sql = await officeDb();
+  if (!sql) return 0;
+  const tracks = loadCincAutoTracks();
+  for (const raw of tracks) {
+    const parsed = sanitizeTrack(raw);
+    if (!parsed.ok) continue;
+    const doc = parsed.value;
+    await sql`
+      INSERT INTO autotracks (id, name, category, status, document, created_at, updated_at)
+      VALUES (${doc.id}, ${doc.name}, ${doc.category}, ${doc.status}, ${sql.json(JSON.parse(JSON.stringify(doc)))}, now(), now())
+      ON CONFLICT (id) DO UPDATE
+      SET name = EXCLUDED.name,
+          category = EXCLUDED.category,
+          status = EXCLUDED.status,
+          document = EXCLUDED.document,
+          updated_at = now()
+      WHERE COALESCE(autotracks.document->>'userEdited', '') <> 'true'
+    `;
+  }
+  return tracks.length;
+}
+
 export async function listAutoTracks(): Promise<{ tracks: AutoTrackDocument[]; hiddenIds: string[] }> {
   const sql = await officeDb();
   if (!sql) return { tracks: [], hiddenIds: [] };
-  const rows = await sql<TrackRow[]>`SELECT id, document FROM autotracks ORDER BY updated_at DESC`;
+  await seedCincAutoTracks();
+  const rows = await sql<TrackRow[]>`
+    SELECT id, document FROM autotracks
+    ORDER BY CASE WHEN id LIKE 'cinc-%' THEN 0 ELSE 1 END, id
+  `;
   const hidden = await sql<HiddenRow[]>`SELECT id FROM autotrack_hidden`;
   const tracks = rows.flatMap((row) => {
     const parsed = sanitizeTrack(parseDocument(row.document));

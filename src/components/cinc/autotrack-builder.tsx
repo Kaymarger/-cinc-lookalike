@@ -232,13 +232,15 @@ function MessageStepEditor({
           </span>
         ))}
       </div>
+      {step.delayMinutes ? <p className="text-[12px]">Send {step.delayMinutes % 60 === 0 && step.delayMinutes >= 60 ? `${step.delayMinutes / 60} hour(s)` : `${step.delayMinutes} minute(s)`} after {step.afterPrevious ? "the previous step is completed" : "AutoTrack is applied"}.</p> : null}
+      {step.calendarOn ? <p className="text-[12px]">Calendar date: {step.calendarOn}</p> : null}
       <p className="font-bold">Set Schedule</p>
       <label className="mr-3 text-[12px]"><input type="radio" checked={step.schedule === "immediate"} onChange={() => onChange({ ...step, schedule: "immediate" })} /> Send immediately after AutoTrack is applied</label>
       <label className="text-[12px]"><input type="radio" checked={step.schedule === "specific"} onChange={() => onChange({ ...step, schedule: "specific" })} /> Send at Specific Time</label>
       {step.schedule === "specific" ? (
         <div className="flex gap-2">
           <select className={inputCls} value={step.scheduleTime} onChange={(event) => onChange({ ...step, scheduleTime: event.target.value })}>
-            {clockTimes().map((item) => <option key={item}>{item}</option>)}
+            {(clockTimes().includes(step.scheduleTime) ? clockTimes() : [step.scheduleTime, ...clockTimes()]).map((item) => <option key={item}>{item}</option>)}
           </select>
           <select className={inputCls} value={step.meridiem} onChange={(event) => onChange({ ...step, meridiem: event.target.value === "PM" ? "PM" : "AM" })}>
             <option>AM</option>
@@ -293,27 +295,10 @@ export function AutoTrackWizard({
   const { update } = useCinc();
   const chrome = useChrome();
   const [doc, setDoc] = useState<AutoTrackDocument>(() => documentFrom({
+    ...initial,
     id: initial?.id || trackId(),
     name: initial?.name || "Blank Template Copy",
-    category: initial?.category === "My AutoTracks" ? "My AutoTracks" : initial?.category || "General",
-    status: initial?.status || "draft",
-    trigger: initial?.trigger || "New Lead",
-    stopTrigger: initial?.stopTrigger || "",
-    leadTypes: initial?.leadTypes,
-    hours: initial?.hours,
-    includeWeekend: initial?.includeWeekend,
-    skipHolidays: initial?.skipHolidays,
-    startLabel: initial?.startLabel,
-    startStage: initial?.startStage,
-    landing: initial?.landing,
-    customField: initial?.customField,
-    source: initial?.source,
-    stopLabel: initial?.stopLabel,
-    stopStage: initial?.stopStage,
-    stopReply: initial?.stopReply,
-    complete: initial?.complete,
-    share: initial?.share,
-    steps: initial?.steps,
+    steps: initial?.steps ?? [],
   }));
   const [wizard, setWizard] = useState(initial ? 2 : 1);
   const [filter, setFilter] = useState("Blank Templates");
@@ -386,7 +371,7 @@ export function AutoTrackWizard({
     }
     setSaving(true);
     try {
-      const track = await putTrack({ ...doc, status, name: doc.name.trim() || "Blank Template Copy" });
+      const track = await putTrack({ ...doc, status, userEdited: true, name: doc.name.trim() || "Blank Template Copy" });
       remember(track);
       onSaved?.(track.category);
       chrome.toast(status === "active" ? `${track.name} activated.` : `${track.name} saved as a draft.`);
@@ -525,12 +510,17 @@ export function AutoTrackWizard({
       {wizard === 3 ? (
         <div className="space-y-2 text-[13px]">
           <p className="font-bold">I want to start my AutoTrack...</p>
-          <label className="block"><input type="checkbox" checked disabled /> With a New Lead — New Lead</label>
+          <label className="block"><input type="checkbox" checked={doc.startNewLead} onChange={(event) => setDoc({ ...doc, startNewLead: event.target.checked })} /> With a New Lead — New Lead</label>
           <label className="block">Or, with a Label <select className="ml-2 border border-[#ccc]" value={doc.startLabel} onChange={(event) => setDoc({ ...doc, startLabel: event.target.value })}><option value="">Select Label</option>{labels.map((label) => <option key={label}>{label}</option>)}</select></label>
           <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={doc.startStage} onChange={(event) => setDoc({ ...doc, startStage: event.target.value })}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label className="block">Or, with a Landing Page <select className="ml-2 border border-[#ccc]" value={doc.landing} onChange={(event) => setDoc({ ...doc, landing: event.target.value })}><option value="">Select Landing Page</option>{AUTOTRACK_LANDING_PAGES.map((item) => <option key={item}>{item}</option>)}</select></label>
           <p>Or, with a Custom Field <select className="ml-2 border border-[#ccc]" value={doc.customField} onChange={(event) => setDoc({ ...doc, customField: event.target.value })}><option value="">Select Custom Field</option><option>Birthdate</option></select></p>
-          <label className="block">And, with a Source <input className="ml-2 h-8 border border-[#ccc] px-2" placeholder="Type a lead source" value={doc.source} onChange={(event) => setDoc({ ...doc, source: event.target.value })} /></label>
+          <label className="block">And, with a Source
+            <textarea className="mt-1 h-16 w-full border border-[#ccc] px-2 py-1" placeholder="One lead source per line" value={doc.sources.length ? doc.sources.join("\n") : doc.source} onChange={(event) => {
+              const sources = event.target.value.split("\n").map((item) => item.trim()).filter(Boolean);
+              setDoc({ ...doc, sources, source: sources.join("; ") });
+            }} />
+          </label>
           <p className="font-bold">I want to stop my AutoTrack...</p>
           <label className="block">with a Label <select className="ml-2 border border-[#ccc]" value={doc.stopLabel} onChange={(event) => setDoc({ ...doc, stopLabel: event.target.value })}><option value="">Select Label</option>{labels.map((label) => <option key={`stop-${label}`}>{label}</option>)}</select></label>
           <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={doc.stopStage} onChange={(event) => setDoc({ ...doc, stopStage: event.target.value })}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={`stop-${item}`}>{item}</option>)}</select></label>
@@ -564,12 +554,14 @@ export function AutoTrackWizard({
           <h3 className="text-[16px] font-semibold">Review & Finalize</h3>
           <dl className="grid grid-cols-[160px_1fr] gap-y-1">
             <dt className="font-bold">Name</dt><dd>{doc.name}</dd>
+            <dt className="font-bold">Owner</dt><dd>{doc.visibility === "private" ? "Private" : "Public"} ({doc.owner || "Casey Archibald"})</dd>
+            <dt className="font-bold">Status</dt><dd>{doc.status === "active" ? "Active" : doc.status === "paused" ? "Paused" : doc.status === "disabled" ? "Disabled" : "Draft"}</dd>
             <dt className="font-bold">Category</dt><dd>{doc.category === "Select Type" ? "General" : doc.category}</dd>
             <dt className="font-bold">Lead types</dt><dd>{doc.leadTypes.join(", ") || "Everyone"}</dd>
             <dt className="font-bold">Send hours</dt><dd>{doc.hours}{doc.includeWeekend ? ", Include Saturday and Sunday" : ""}{doc.skipHolidays ? ", Skip Holidays" : ""}</dd>
-            <dt className="font-bold">Start</dt><dd>New Lead{doc.startLabel ? `; Label ${doc.startLabel}` : ""}{doc.startStage ? `; ${doc.startStage}` : ""}{doc.landing ? `; ${doc.landing}` : ""}{doc.customField ? `; ${doc.customField}` : ""}{doc.source ? `; Source ${doc.source}` : ""}</dd>
+            <dt className="font-bold">Start</dt><dd>{doc.startNewLead ? "New Lead; " : ""}{doc.startLabel ? `Label ${doc.startLabel}; ` : ""}{doc.startStage ? `${doc.startStage}; ` : ""}{doc.landing ? `${doc.landing}; ` : ""}{doc.sources.length ? `Source ${doc.sources.join("; ")}` : doc.source ? `Source ${doc.source}` : ""}</dd>
             <dt className="font-bold">Stop</dt><dd>{doc.stopReply ? "When Lead Replies/Reaches Out" : "No reply rule"}{doc.stopLabel ? `; Label ${doc.stopLabel}` : ""}{doc.stopStage ? `; ${doc.stopStage}` : ""}</dd>
-            <dt className="font-bold">Completion</dt><dd>{doc.complete}</dd>
+            <dt className="font-bold">Completion</dt><dd>{doc.complete}{doc.completeTrack ? ` (${doc.completeTrack})` : ""}{doc.completeLabel ? ` (${doc.completeLabel})` : ""}</dd>
             <dt className="font-bold">Sharing</dt><dd>{doc.share ? "Allow team members to access this template" : "Private to you"}</dd>
           </dl>
           <div>
@@ -626,7 +618,7 @@ export async function persistTrackStatus(track: Track, status: TrackStatus): Pro
     share: track.share,
     steps: track.steps ?? [],
   });
-  return putTrack({ ...doc, status });
+  return putTrack({ ...doc, status, userEdited: true });
 }
 
 export async function duplicateTrack(track: Track): Promise<Track> {

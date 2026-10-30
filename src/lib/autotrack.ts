@@ -2,8 +2,13 @@ import { MERGE_TAGS } from "./cinc-options";
 
 export const AUTOTRACK_HOURS = [
   "9 AM - 5 PM, Monday - Friday",
+  "9 AM - 5 PM, Monday - Sunday",
   "9 AM - 9 PM, Monday - Friday",
+  "9 AM - 9 PM, Monday - Sunday",
 ] as const;
+
+export const EMAIL_FOOTER =
+  "The recipient of this message is [EMAIL]. Archibald Real Estate Group, 300 - 1195 W Broadway. 604-363-7858 / If you do not wish to receive these messages in the future, click https://www.greatervancouverhomesearch.com/account/settings/?[AUTOLOGINQS] to unsubscribe.";
 
 export const AUTOTRACK_CATEGORIES = ["General", "Buyer", "Listing", "Nurture", "Past Client", "My AutoTracks"] as const;
 
@@ -17,7 +22,7 @@ export const COMPLETION_ACTIONS = [
 export const STEP_ACTIONS = ["email", "text", "task"] as const;
 
 export type StepAction = (typeof STEP_ACTIONS)[number];
-export type TrackStatus = "active" | "paused" | "draft";
+export type TrackStatus = "active" | "paused" | "disabled" | "draft";
 export type BodyFormat = "html" | "plain";
 
 export type AutoTrackFile = {
@@ -40,6 +45,9 @@ export type AutoTrackStep = {
   schedule: "immediate" | "specific";
   scheduleTime: string;
   meridiem: "AM" | "PM";
+  delayMinutes: number;
+  afterPrevious: boolean;
+  calendarOn: string;
   attachments: AutoTrackFile[];
   videoUrl: string;
   videoTitle: string;
@@ -58,16 +66,25 @@ export type AutoTrackDocument = {
   hours: string;
   includeWeekend: boolean;
   skipHolidays: boolean;
+  startNewLead: boolean;
   startLabel: string;
   startStage: string;
   landing: string;
   customField: string;
   source: string;
+  sources: string[];
   stopLabel: string;
   stopStage: string;
   stopReply: boolean;
   complete: string;
+  completeTrack: string;
+  completeLabel: string;
   share: boolean;
+  owner: string;
+  visibility: "public" | "private";
+  captured: boolean;
+  seedRevision: number;
+  userEdited: boolean;
   steps: AutoTrackStep[];
 };
 
@@ -222,7 +239,15 @@ export function deliveryPayload(step: AutoTrackStep, sample: MergeSample = SAMPL
 export function stepSummary(step: AutoTrackStep): string {
   const kind = step.action === "email" ? "Email" : step.action === "text" ? "Text" : "Reminder";
   const label = step.subject.trim() || step.body.trim().slice(0, 80) || "Untitled";
-  return `Day ${step.day} · offset ${Math.max(0, step.day - 1)} · ${kind} · ${label}`;
+  const when = step.calendarOn ? `${step.calendarOn} · ` : "";
+  return `${when}Day ${step.day} · offset ${Math.max(0, step.day - 1)} · ${kind} · ${label}`;
+}
+
+export function statusLabel(status: TrackStatus): string {
+  if (status === "active") return "Active";
+  if (status === "paused") return "Paused";
+  if (status === "disabled") return "Disabled";
+  return "Draft";
 }
 
 export function emptyStep(action: StepAction, day: number, id: string): AutoTrackStep {
@@ -239,6 +264,9 @@ export function emptyStep(action: StepAction, day: number, id: string): AutoTrac
     schedule: "immediate",
     scheduleTime: "09:00",
     meridiem: "AM",
+    delayMinutes: 0,
+    afterPrevious: false,
+    calendarOn: "",
     attachments: [],
     videoUrl: "",
     videoTitle: "",
@@ -287,6 +315,9 @@ export function sanitizeStep(input: unknown, index: number): AutoTrackStep | nul
     schedule: raw.schedule === "specific" ? "specific" : "immediate",
     scheduleTime: clip(raw.scheduleTime, 8) || "09:00",
     meridiem: raw.meridiem === "PM" ? "PM" : "AM",
+    delayMinutes: Math.max(0, Math.min(24 * 60, Math.round(Number(raw.delayMinutes) || 0))),
+    afterPrevious: Boolean(raw.afterPrevious),
+    calendarOn: clip(raw.calendarOn, 80),
     attachments,
     videoUrl: clip(raw.videoUrl, 500),
     videoTitle: clip(raw.videoTitle, 180),
@@ -321,21 +352,30 @@ export function sanitizeTrack(input: unknown): { ok: true; value: AutoTrackDocum
     id: String(raw.id),
     name,
     category: oneOf(raw.category, AUTOTRACK_CATEGORIES, "General"),
-    status: oneOf(raw.status, ["active", "paused", "draft"] as const, "draft"),
+    status: oneOf(raw.status, ["active", "paused", "disabled", "draft"] as const, "draft"),
     leadTypes: leadTypes.length ? leadTypes : ["Everyone"],
     hours: oneOf(raw.hours, AUTOTRACK_HOURS, AUTOTRACK_HOURS[0]),
     includeWeekend: Boolean(raw.includeWeekend),
     skipHolidays: Boolean(raw.skipHolidays),
+    startNewLead: Boolean(raw.startNewLead),
     startLabel: clip(raw.startLabel, 80),
     startStage: clip(raw.startStage, 80),
     landing: clip(raw.landing, 80),
     customField: clip(raw.customField, 40),
-    source: clip(raw.source, 80),
+    source: clip(raw.source, 800),
+    sources: (Array.isArray(raw.sources) ? raw.sources : []).map((item) => clip(item, 120)).filter(Boolean).slice(0, 40),
     stopLabel: clip(raw.stopLabel, 80),
     stopStage: clip(raw.stopStage, 80),
     stopReply: raw.stopReply !== false,
     complete: oneOf(raw.complete, COMPLETION_ACTIONS, "Take No Further Action"),
+    completeTrack: clip(raw.completeTrack, 160),
+    completeLabel: clip(raw.completeLabel, 80),
     share: Boolean(raw.share),
+    owner: clip(raw.owner, 80),
+    visibility: raw.visibility === "private" ? "private" : "public",
+    captured: Boolean(raw.captured),
+    seedRevision: Math.max(0, Math.round(Number(raw.seedRevision) || 0)),
+    userEdited: Boolean(raw.userEdited),
     steps,
     trigger: "",
     stopTrigger: "",
