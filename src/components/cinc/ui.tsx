@@ -195,30 +195,30 @@ export function Menu({
 export function useComposer() {
   const chrome = useChrome();
   return {
-    email(to: string, onDone: (sent: boolean, value: MailDraft) => void) {
+    email(to: string, onDone: (sent: boolean, value: MailDraft) => boolean | Promise<boolean | void> | void) {
       chrome.openModal(
         <EmailComposer
           to={to}
           onClose={chrome.closeModal}
-          onSend={(value) => {
-            chrome.closeModal();
-            onDone(true, value);
+          onSend={async (value) => {
+            const ok = await onDone(true, value);
+            if (ok !== false) chrome.closeModal();
           }}
           onDraft={(value) => {
-            chrome.closeModal();
             onDone(false, value);
+            chrome.closeModal();
           }}
         />,
       );
     },
-    text(to: string, onDone: (value: { to: string; body: string }) => void) {
+    text(to: string, onDone: (value: { to: string; body: string }) => boolean | Promise<boolean | void> | void) {
       chrome.openModal(
         <TextComposer
           to={to}
           onClose={chrome.closeModal}
-          onSend={(value) => {
-            chrome.closeModal();
-            onDone(value);
+          onSend={async (value) => {
+            const ok = await onDone(value);
+            if (ok !== false) chrome.closeModal();
           }}
         />,
       );

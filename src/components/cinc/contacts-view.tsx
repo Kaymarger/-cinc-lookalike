@@ -90,14 +90,14 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
       <div className="flex flex-wrap gap-3">
         <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>+<br />ADD VENDOR</button>
         {shown.map((vendor) => (
-          <article key={vendor.id} className="h-40 w-48 border border-[#e5e5e5] bg-white p-2 text-[13px]">
+          <article key={vendor.id} className="w-48 border border-[#e5e5e5] bg-white p-2 text-[13px]">
             <p className="font-semibold">{vendor.name}</p>
             <p className="text-[12px] text-[#666]">{vendor.type}</p>
             <p className="truncate text-[12px]">{vendor.email}</p>
             <button type="button" className="mt-1 text-[#1c93b5]" onClick={() => void save({ ...vendor, preferred: !vendor.preferred })}>{vendor.preferred ? "★ Preferred" : "Mark preferred"}</button>
             <div className="mt-1 flex gap-2">
               <button type="button" className="text-[#1c93b5]" onClick={() => setDraft(vendor)}>Edit</button>
-              <button type="button" className="text-[#d9363e]" onClick={() => void remove(vendor.id)}>Delete</button>
+              <button type="button" className="text-[#d9363e]" onClick={(event) => { event.stopPropagation(); if (window.confirm(`Delete ${vendor.name}?`)) void remove(vendor.id); }}>Delete</button>
             </div>
           </article>
         ))}

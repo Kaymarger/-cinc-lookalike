@@ -26,6 +26,7 @@ import {
   PropertiesView,
   ReportsView,
   SellerView,
+  WebsiteView,
   SettingsView,
   TasksView,
 } from "./views";
@@ -64,6 +65,7 @@ function View() {
   if (route.view === "ai") return <AiView />;
   if (route.view === "properties") return <PropertiesView sub={route.sub} />;
   if (route.view === "seller") return <SellerView />;
+  if (route.view === "website") return <WebsiteView page={route.page} />;
   if (route.view === "landing") return <LandingView category={route.category} />;
   if (route.view === "settings") return <SettingsView tab={route.tab} />;
   if (route.view === "users") return <UsersView mode={route.mode} />;

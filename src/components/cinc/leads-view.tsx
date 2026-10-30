@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CRM_AGENT, CRM_AUTOTRACKS, CRM_LEADS } from "@/lib/cinc-crm";
+import { CRM_AGENT, CRM_LEADS } from "@/lib/cinc-crm";
+import { CINC_SAVED_TRACKS } from "@/lib/cinc-track-names";
 import { ACTIVITY_FILTER_GROUPS, LABEL_GROUPS, OFFICE_ROSTER, REMINDER_TIMING, clockTimes } from "@/lib/cinc-options";
 import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/lib/cinc-lists";
 import type { OfficeSettings } from "@/lib/office-settings";
@@ -411,6 +412,8 @@ export function LeadsView({
   const [view, setView] = useState<"Roomy" | "Default" | "Compact">("Default");
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState("");
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [showTrash, setShowTrash] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -516,10 +519,24 @@ export function LeadsView({
     if (mustLabels && !mustLabels.split(",").every((part) => labels.includes(part.trim()))) return false;
     return true;
   });
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortKey) return 0;
+    const value = (row: Row) => {
+      if (sortKey === "Name/Info") return row.name;
+      if (sortKey === "Pipeline") return row.pipeline;
+      if (sortKey === "Registered") return row.registered;
+      if (sortKey === "Price/City") return row.city;
+      if (sortKey === "Timeframe") return row.timeframe;
+      if (sortKey === "Last Login") return row.lastLogin;
+      if (sortKey === "Assigned To") return row.assigned.agent;
+      return "";
+    };
+    return value(a).localeCompare(value(b)) * sortDir;
+  });
 
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  const slice = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const slice = sorted.slice(safePage * pageSize, safePage * pageSize + pageSize);
   const dirty = cincFilter !== "None" || customFilter !== "None" || checks.length > 0 || drawerStage !== "Any" || Boolean(chrome.leadSearch);
   const open = rows.find((row) => row.id === leadId);
 
@@ -608,12 +625,12 @@ export function LeadsView({
     const extra = [value.cc && `Cc ${value.cc}`, value.bcc && `Bcc ${value.bcc}`, value.attachments?.length ? `Attachments: ${value.attachments.join(", ")}` : ""].filter(Boolean).join(" · ");
     const kind = channel === "email" ? "email" : "text";
     if (!response.ok) {
-      log(row, kind, channel === "email" ? "Email not sent" : "Text not sent", data?.message || "The provider is not connected.");
       chrome.toast(data?.message || "That message was not sent. The provider is not connected.");
-      return;
+      return false;
     }
     log(row, kind, channel === "email" ? "Email sent" : "Text sent", [value.body, extra].filter(Boolean).join("\n"));
     chrome.toast(channel === "email" ? "Email sent." : "Text sent.");
+    return true;
   }
 
   function mass(action: string) {
@@ -623,14 +640,27 @@ export function LeadsView({
       return;
     }
     if (action === "Send Email to Selected") {
-      composer.email(chosen.map((row) => row.email).join(", "), (sent, value) => {
-        chosen.forEach((row) => log(row, "email", sent ? "Email sent" : "Email draft", value.body));
-        chrome.toast(sent ? "Email sent from this device." : "Draft saved on this device.");
+      composer.email(chosen.map((row) => row.email).join(", "), async (sent, value) => {
+        if (!sent) {
+          chosen.forEach((row) => log(row, "email", "Email draft", value.body));
+          chrome.toast("Draft saved.");
+          return true;
+        }
+        const response = await fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: value.to, subject: value.subject, body: value.body }) });
+        const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) { chrome.toast(data?.message || "Email is not connected."); return false; }
+        chosen.forEach((row) => log(row, "email", "Email sent", value.body));
+        chrome.toast("Email sent.");
+        return true;
       });
     } else if (action === "Send Text to Selected") {
-      composer.text(chosen.map((row) => row.phone).join(", "), (value) => {
+      composer.text(chosen.map((row) => row.phone).join(", "), async (value) => {
+        const response = await fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "sms", to: value.to, body: value.body }) });
+        const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) { chrome.toast(data?.message || "Texting is not connected."); return false; }
         chosen.forEach((row) => log(row, "text", "Text sent", value.body));
-        chrome.toast("Text sent from this device.");
+        chrome.toast("Text sent.");
+        return true;
       });
     } else if (action === "Apply Label to Selected" || action === "Remove Label from Selected") {
       const removing = action.startsWith("Remove");
@@ -865,7 +895,7 @@ export function LeadsView({
             <ul className="bg-white">
               {slice.map((row) => (
                 <li key={row.id} className={`border-b border-[#f0f0f0] ${row.id === leadId ? "bg-[#d5eaf2]" : ""}`}>
-                  <a href={href.lead(row.id, openTab)} className="block truncate px-2 py-2 text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
+                  <a href={href.lead(row.id, "activity")} className="block truncate px-2 py-2 text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
                 </li>
               ))}
             </ul>
@@ -875,8 +905,7 @@ export function LeadsView({
                 <tr>
                   {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
                     <th key={`${col}-${index}`} className="border-b border-[#eee] px-2 py-2">
-                      {col}
-                      {col ? <span className="ml-1 inline-block align-middle text-[#888]">▾</span> : null}
+                      {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : " ▾"}</button> : null}
                     </th>
                   ))}
                 </tr>
@@ -889,7 +918,7 @@ export function LeadsView({
                     </td>
                     <td className="px-2">
                       <div className="flex items-center gap-1">
-                        <a href={href.lead(row.id, openTab)} className="text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
+                        <a href={href.lead(row.id, "activity")} className="text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
                         <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}>{row.verified ? "✓" : "🔒"}</span>
                       </div>
                       <div className="text-[12px]">
@@ -898,12 +927,12 @@ export function LeadsView({
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
                           items={[
                             { label: "Call", onClick: () => { log(row, "call", "Call logged"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                            { label: "Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", row, value)) },
+                            { label: "Text", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
                             { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                           ]}
                         />
                       </div>
-                      <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { if (!sent) { log(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return; } void sendLead("email", row, value); })}>
+                      <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { if (!sent) { log(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", row, value); })}>
                         {row.email} <span className="text-[#2e9e5b]">✓</span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
@@ -935,8 +964,8 @@ export function LeadsView({
                           items={[
                             { label: "+ Add Note", onClick: () => chrome.openModal(<NoteModal onClose={chrome.closeModal} onSave={(body) => { log(row, "note", "Note added", body); chrome.closeModal(); }} />) },
                             { label: "+ New Reminder", onClick: () => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />) },
-                            { label: "→ Send Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", row, value)) },
-                            { label: "→ Send Email", onClick: () => composer.email(row.email, (sent, value) => sent ? void sendLead("email", row, value) : log(row, "email", "Draft", value.body)) },
+                            { label: "→ Send Text", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
+                            { label: "→ Send Email", onClick: () => composer.email(row.email, (sent, value) => sent ? sendLead("email", row, value) : (log(row, "email", "Draft", value.body), true)) },
                             { label: "Trash this Lead", danger: true, onClick: () => trash([row.id]) },
                             { label: "Merge lead", onClick: () => chrome.openModal(
                               <ChoiceModal
@@ -1079,12 +1108,12 @@ function LeadDetail({
     const extra = [value.cc && `Cc ${value.cc}`, value.bcc && `Bcc ${value.bcc}`, value.attachments?.length ? `Attachments: ${value.attachments.join(", ")}` : ""].filter(Boolean).join(" · ");
     const kind = channel === "email" ? "email" : "text";
     if (!response.ok) {
-      onLog(row, kind, channel === "email" ? "Email not sent" : "Text not sent", data?.message || "The provider is not connected.");
       chrome.toast(data?.message || "That message was not sent. The provider is not connected.");
-      return;
+      return false;
     }
     onLog(row, kind, channel === "email" ? "Email sent" : "Text sent", [value.body, extra].filter(Boolean).join("\n"));
     chrome.toast(channel === "email" ? "Email sent." : "Text sent.");
+    return true;
   }
   const index = rows.findIndex((item) => item.id === row.id);
   const prev = rows[index - 1];
@@ -1128,8 +1157,8 @@ function LeadDetail({
     ["Dialer", "▦", () => { if (!office.canDial) { chrome.toast("Your permissions do not include the dialer."); return; } chrome.openModal(
       <DialerPanel title="Dialer" name={row.name} phone={row.phone} onClose={chrome.closeModal} onLog={(outcome, notes) => { onLog(row, "call", `Dialer: ${outcome}`, notes || outcome); chrome.closeModal(); chrome.toast(`${outcome} logged.`); }} />,
     ); }],
-    ["Text", "💬", () => composer.text(row.phone, (value) => void sendLead("sms", value))],
-    ["Email", "✉", () => composer.email(row.email, (sent, value) => { if (!sent) { onLog(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return; } void sendLead("email", value); })],
+    ["Text", "💬", () => composer.text(row.phone, (value) => sendLead("sms", value))],
+    ["Email", "✉", () => composer.email(row.email, (sent, value) => { if (!sent) { onLog(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", value); })],
     ["Etta", "✦", () => chrome.openModal(
       <ModalFrame title="Etta" onClose={chrome.closeModal}>
         <p className="text-[13px]">Suggested for {row.name}: follow up on {row.city} and ask about {row.timeframe}.</p>
@@ -1158,7 +1187,7 @@ function LeadDetail({
               { label: "Add AutoTrack", onClick: () => chrome.openModal(
                 <ChoiceModal
                   title="Add AutoTrack"
-                  options={CRM_AUTOTRACKS.map((track) => track.name)}
+                  options={[...CINC_SAVED_TRACKS]}
                   onClose={chrome.closeModal}
                   onSave={(name) => {
                     update((current) => ({
@@ -1205,7 +1234,7 @@ function LeadDetail({
                 label={<span className="ml-1 text-[12px] text-[#888]">▾</span>}
                 items={[
                   { label: "Call Lead", onClick: () => { onLog(row, "call", "Call logged", "Connected"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                  { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", value)) },
+                  { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => sendLead("sms", value)) },
                   { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                 ]}
               />
@@ -1392,7 +1421,7 @@ function LeadDetail({
               <button type="button" className="grid h-7 w-7 place-items-center rounded-full bg-[#1c93b5] text-white" onClick={() => chrome.openModal(
                 <ChoiceModal
                   title="Add AutoTrack"
-                  options={CRM_AUTOTRACKS.map((track) => track.name)}
+                  options={[...CINC_SAVED_TRACKS]}
                   onClose={chrome.closeModal}
                   onSave={(name) => {
                     update((current) => ({ ...current, leadTracks: { ...current.leadTracks, [row.id]: [...(current.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true }]), { id: uid("lt"), name }] } }));
@@ -1705,6 +1734,7 @@ function FilterDrawer(props: {
 }
 
 function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input: { name: string; email: string; phone: string }) => void }) {
+  const chrome = useChrome();
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
@@ -1717,7 +1747,12 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
       <Field label="Cell phone"><input className={inputCls} value={phone} onChange={(event) => setPhone(event.target.value)} /></Field>
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
-        <Btn kind="teal" onClick={() => onSave({ name: `${first} ${last}`.trim() || "New Lead", email, phone })}>Save</Btn>
+        <Btn kind="teal" onClick={() => {
+          if (!first.trim() || !last.trim()) { chrome.toast("Enter a first and last name."); return; }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { chrome.toast("Enter a valid email."); return; }
+          if (phone.replace(/\D/g, "").length < 10) { chrome.toast("Enter a 10-digit cell phone."); return; }
+          onSave({ name: `${first.trim()} ${last.trim()}`, email: email.trim(), phone });
+        }}>Save</Btn>
       </div>
     </ModalFrame>
   );

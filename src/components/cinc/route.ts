@@ -69,6 +69,7 @@ export type CincRoute =
   | { view: "ai" }
   | { view: "properties"; sub: "list" | "text" | "open" | "virtual" | "add" }
   | { view: "seller" }
+  | { view: "website"; page: string }
   | { view: "landing"; category: "all" | "buyers" | "sellers" | "contact" }
   | { view: "settings"; tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" }
   | { view: "contacts"; mode: "vendors" | "people" }
@@ -117,6 +118,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (b === "overviewreturn") return { view: "leads", mode: "list", tab: "activity" };
     return { view: "leads", mode: "list", tab: "activity" };
   }
+  if (a === "gmail") return { view: "gmail" };
   if (a === "inbox") {
     if (b === "gmail") return { view: "gmail" };
     if (b === "sent" || b === "drafts" || b === "trashed" || b === "templates") {
@@ -153,7 +155,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   if (a === "dialer") return { view: "dialer" };
   if (a === "calendar") return { view: "calendar" };
   if (a === "tasks") return { view: "tasks" };
-  if (a === "marketing") return { view: "marketing" };
+  if (a === "website") return { view: "website", page: b === "theme" ? "theme" : (c || b || "home") };
   if (a === "reports") return { view: "reports" };
   return { view: "launchpad" };
 }
@@ -180,6 +182,7 @@ export function sectionOf(route: CincRoute): NavSection {
     case "calendar":
       return "calendar";
     case "seller":
+    case "website":
     case "landing":
       return "web";
     case "contacts":
@@ -224,7 +227,8 @@ export function titleOf(route: CincRoute): string {
       if (route.sub === "add") return "Add Pocket Listing";
       return "Properties";
     case "seller":
-      return "";
+    case "website":
+      return route.view === "website" ? "Page Editor" : "";
     case "landing":
       return "Landing Pages";
     case "settings":
@@ -265,6 +269,7 @@ export function titleMenu(route: CincRoute): { label: string; href: string }[] {
     case "behavioral":
     case "ai":
     case "seller":
+    case "website":
     case "landing":
     case "settings":
     case "users":

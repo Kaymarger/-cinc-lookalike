@@ -42,9 +42,9 @@ export function channelStatus(): { email: boolean; sms: boolean; voice: boolean 
 }
 
 export function channelMessage(channel: "email" | "sms" | "voice"): string {
-  if (channel === "email") return "Email is not connected. Add RESEND_API_KEY or SENDGRID_API_KEY, plus RESEND_FROM_EMAIL or SENDGRID_FROM_EMAIL.";
-  if (channel === "sms") return "Texting is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.";
-  return "Calling is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.";
+  if (channel === "email") return "Email is not connected.";
+  if (channel === "sms") return "Texting is not connected.";
+  return "Calling is not connected.";
 }
 
 export async function startOfficeCall(toRaw: string): Promise<"sent" | "skipped" | "failed"> {

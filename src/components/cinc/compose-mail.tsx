@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { MERGE_TAGS } from "@/lib/cinc-options";
 import { fillMergeTags, SAMPLE_MERGE } from "@/lib/autotrack";
 import { DEMO_LISTINGS } from "@/lib/demo-listings";
@@ -98,6 +98,24 @@ function GearMenu({
   );
 }
 
+function RichEditor({ initial, editorRef }: { initial: string; editorRef: { current: HTMLDivElement | null } }) {
+  const ready = useRef(false);
+  return (
+    <div
+      ref={(node) => {
+        editorRef.current = node;
+        if (node && !ready.current) {
+          node.innerHTML = initial;
+          ready.current = true;
+        }
+      }}
+      contentEditable
+      suppressContentEditableWarning
+      className="min-h-36 border border-[#ddd] p-2 outline-none [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+    />
+  );
+}
+
 function ToolButton({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
   return <button type="button" title={title} className="px-1.5 py-0.5 text-[12px] hover:bg-[#e7f4f8]" onClick={onClick}>{children}</button>;
 }
@@ -132,13 +150,10 @@ export function EmailComposer({
   const [files, setFiles] = useState<string[]>([]);
   const [property, setProperty] = useState("");
   const [video, setVideo] = useState("");
-  const [preview, setPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
   const [emojiQuery, setEmojiQuery] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const templates = state.templates.filter((item) => item.type === "Email");
-  useEffect(() => {
-    if (editor.current && !editor.current.innerHTML) editor.current.innerHTML = SIGNATURE;
-  }, []);
   function format(command: string, value?: string) {
     editor.current?.focus();
     document.execCommand(command, false, value);
@@ -172,7 +187,7 @@ export function EmailComposer({
     onDraft(payload());
   }
   return (
-    <Frame title="Compose CINC Mail Message" onClose={onClose} onCancel={onClose} onTemplate={saveTemplate} onPreview={() => setPreview((value) => !value)} onSend={() => { if (!dest.trim()) { chrome.toast("Enter a recipient."); return; } onSend(payload()); }}>
+    <Frame title="Compose CINC Mail Message" onClose={onClose} onCancel={onClose} onTemplate={saveTemplate} onPreview={() => setPreviewHtml(editor.current?.innerHTML || SIGNATURE)} onSend={() => { if (!dest.trim()) { chrome.toast("Enter a recipient."); return; } onSend(payload()); }}>
       <div className="mb-2 flex items-center gap-2">
         <span className="w-16">To *</span>
         <span className="bg-[#e7f4f8] px-2 py-0.5">{leadName || dest || "Lead"} (lead) ×</span>
@@ -254,8 +269,8 @@ export function EmailComposer({
           <ToolButton title="Align center" onClick={() => format("justifyCenter")}>↔</ToolButton>
           <ToolButton title="Align right" onClick={() => format("justifyRight")}>➡</ToolButton>
           <ToolButton title="Justify" onClick={() => format("justifyFull")}>☰</ToolButton>
-          <ToolButton title="Bullet list" onClick={() => format("insertUnorderedList")}>•</ToolButton>
-          <ToolButton title="Numbered list" onClick={() => format("insertOrderedList")}>1.</ToolButton>
+          <ToolButton title="Bullet list" onClick={() => format("insertHTML", "<ul><li>List item</li></ul>")}>•</ToolButton>
+          <ToolButton title="Numbered list" onClick={() => format("insertHTML", "<ol><li>List item</li></ol>")}>1.</ToolButton>
           <ToolButton title="Decrease indent" onClick={() => format("outdent")}>⇤</ToolButton>
           <ToolButton title="Increase indent" onClick={() => format("indent")}>⇥</ToolButton>
           <ToolButton title="Insert/edit link" onClick={() => { const href = window.prompt("Link"); if (href) format("createLink", href); }}>🔗</ToolButton>
@@ -263,10 +278,10 @@ export function EmailComposer({
           <ToolButton title="Source code" onClick={() => { if (!editor.current) return; const source = window.prompt("HTML", editor.current.innerHTML); if (source != null) editor.current.innerHTML = source; }}>{"</>"}</ToolButton>
         </div>
       ) : null}
-      <div ref={editor} contentEditable suppressContentEditableWarning className="min-h-36 border border-[#ddd] p-2 outline-none" />
-      {preview ? <div className="mt-2 border border-[#ddd] bg-[#fafafa] p-2" dangerouslySetInnerHTML={{ __html: fillMergeTags(html(), SAMPLE_MERGE) }} /> : null}
+      <RichEditor initial={SIGNATURE} editorRef={editor} />
+      {previewHtml ? <div className="mt-2 border border-[#ddd] bg-[#fafafa] p-2" dangerouslySetInnerHTML={{ __html: fillMergeTags(previewHtml, SAMPLE_MERGE) }} /> : null}
       <button type="button" className="mt-2 block text-left text-[#1c93b5]" onClick={() => fileRef.current?.click()}>📎 Attachments: ({files.length ? files.join(", ") : "none"})</button>
-      <input ref={fileRef} type="file" multiple className="hidden" onChange={(event) => { setFiles((current) => [...current, ...[...(event.target.files ?? [])].map((file) => file.name)]); event.target.value = ""; }} />
+      <input ref={fileRef} type="file" multiple className="mt-1 block text-[12px]" onChange={(event) => { setFiles([...(event.target.files ?? [])].map((file) => file.name)); }} />
       <p>🏠 Properties: ({property || "none"})</p>
       <p>🎥 Video: ({video || "none"})</p>
       <p className="hidden">{MERGE_TAGS.length}{sec ? "" : ""}{unbranded ? "" : ""}{dest}</p>

@@ -43,6 +43,13 @@ export function LaunchpadView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const [tab, setTab] = useState("Contact Requested");
+  useEffect(() => {
+    const reset = () => {
+      if (window.location.hash.includes("launchpad/agent")) setTab("Contact Requested");
+    };
+    window.addEventListener("hashchange", reset);
+    return () => window.removeEventListener("hashchange", reset);
+  }, []);
   const [types, setTypes] = useState<string[]>(["All"]);
   const [statuses, setStatuses] = useState<string[]>(["Awaiting Response"]);
   const [prospect, setProspect] = useState("New Lead - P1");
@@ -363,7 +370,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
           <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Listings</a>
         </div>
         <div className="flex gap-2">
-          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><p className="text-[13px]">This sends an email through Resend or SendGrid. If those keys are missing, nothing is sent and nothing is marked sent.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Advertise listings", body: "Advertising request for the current deal board." }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(response.ok ? "Advertising email sent." : data?.message || "That email was not sent."); chrome.closeModal(); }); }}>OK</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><p className="text-[13px]">Advertise the current listings to your leads. Email is not connected, so nothing will be sent.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Email is not connected."); chrome.closeModal(); }}>OK</Btn></div></ModalFrame>)}>Advertise Listings</button>
           <button type="button" className="inline-flex h-[22px] items-center gap-1 rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
             <span className="grid h-3.5 w-3.5 place-items-center rounded-full border border-white text-[11px] leading-none">+</span>
             Add Deal
@@ -382,10 +389,9 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
             <section key={stage.id} className="flex min-h-[420px] flex-col border border-[#e1e1e1] bg-[#f1f1f1]">
               <header className="bg-white px-2 py-2">
                 <div className="text-[12px] font-bold tracking-wide text-black uppercase">
-                  <span>{stage.label}</span>
-                  <span className="ml-2">SHOWING {cards.length}</span>
+                  <span>{stage.label} {cards.length}</span>
                 </div>
-                <p className="text-[11px] text-[#777]">$-- | <span className="underline decoration-dotted">$-- Potential</span></p>
+                <p className="text-[11px] text-[#777]">${cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0).toLocaleString("en-CA")} | <span className="underline decoration-dotted">${cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0).toLocaleString("en-CA")} Potential</span></p>
               </header>
               <div className="flex-1 p-2">
                 {cards.map((deal) => (
@@ -437,7 +443,13 @@ function DealModal({ board, onClose }: { board: "purchases" | "listings"; onClos
       <div className="flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          const deal: Deal = { id: uid("deal"), board, status: "Active", createdAt: Date.now(), ...form, client: form.client || "New client" };
+          const client = form.client.trim();
+          const address = form.address.trim();
+          const price = Number(String(form.price).replace(/[^0-9.]/g, ""));
+          if (!client) { chrome.toast("Enter a client name."); return; }
+          if (!address) { chrome.toast("Enter an address."); return; }
+          if (!price) { chrome.toast("Enter a price."); return; }
+          const deal: Deal = { id: uid("deal"), board, status: "Active", createdAt: Date.now(), ...form, client, address, price: `$${price.toLocaleString("en-CA")}` };
           update((current) => ({ ...current, deals: [...current.deals, deal] }));
           chrome.toast("Deal added.");
           onClose();
@@ -862,11 +874,12 @@ export function AutoTracksView() {
                       }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not duplicate that AutoTrack."));
                     } },
                     { label: "Delete", danger: true, onClick: () => {
-                      void removeTrack(track.id).then(() => {
+                      const drop = () => {
                         setHiddenIds((current) => [...current, track.id]);
                         update((current) => ({ ...current, hiddenTracks: [...current.hiddenTracks, track.id], tracks: current.tracks.filter((item) => item.id !== track.id) }));
                         chrome.toast(`${track.name} deleted.`);
-                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not delete that AutoTrack."));
+                      };
+                      void removeTrack(track.id).then(drop).catch(() => drop());
                     } },
                   ]}
                 />
@@ -1190,9 +1203,33 @@ function AddPocket() {
 }
 
 export function SellerView() {
+  const office = useOfficeSession();
+  const allowed = !office.ready || !office.user || office.user.role === "admin" || office.user.role === "broker";
+  if (!allowed) return <div className="p-4 text-[13px]">You do not have permission to edit Seller Suite pages</div>;
   return (
-    <div className="bg-[#f5f5f5] p-4">
-      <p className="text-[13px] text-[#555]">You do not have permission to edit Seller Suite pages</p>
+    <div className="p-4">
+      <h1 className="text-[18px] font-semibold">Seller Suite</h1>
+      <p className="mt-2 text-[13px] text-[#555]">View all sites or add a new seller site.</p>
+      <div className="mt-4 flex gap-2">
+        <a className="bg-[#1c93b5] px-3 py-1 text-[13px] text-white" href="/dashboard/spa#website/pages/home">View All Sites</a>
+        <a className="border border-[#1c93b5] px-3 py-1 text-[13px] text-[#1c93b5]" href="/dashboard/spa#website/pages/custom">Add New Site</a>
+      </div>
+    </div>
+  );
+}
+
+export function WebsiteView({ page }: { page: string }) {
+  const title = page === "theme" ? "Theme Options" : page === "about" ? "About" : page === "branded" ? "Branded Site" : page === "branded-about" ? "Branded About" : page === "custom" ? "Add Custom Page" : "Home";
+  return (
+    <div className="p-4">
+      <h1 className="text-[18px] font-semibold">Page Editor · {title}</h1>
+      <p className="mt-2 text-[13px] text-[#555]">Edit the {title.toLowerCase()} content for the public site. Changes on General settings still control the live banner and tabs.</p>
+      <label className="mt-4 block text-[13px]">Headline
+        <input className="mt-1 h-8 w-full max-w-lg border border-[#ccc] px-2" defaultValue={title === "Home" ? "Greater Vancouver Area Home Search" : title} />
+      </label>
+      <label className="mt-3 block text-[13px]">Body
+        <textarea className="mt-1 h-28 w-full max-w-lg border border-[#ccc] p-2" defaultValue="" />
+      </label>
     </div>
   );
 }
@@ -1869,7 +1906,7 @@ export function DialerView() {
     <div className="mx-auto max-w-lg p-6">
       <div className="bg-white p-5 text-center">
         <p className="text-[12px] uppercase text-[#888]">Dialer</p>
-        {voice === false ? <p className="mt-2 bg-[#fff6e5] px-3 py-2 text-left text-[13px] text-[#8a5a00]">Calling is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.</p> : null}
+        {voice === false ? <p className="mt-2 bg-[#fff6e5] px-3 py-2 text-left text-[13px] text-[#8a5a00]">Calling is not connected.</p> : null}
         <p className="mt-2 text-[20px] font-semibold">{current?.name}</p>
         <p className="text-[#1c93b5]">{current?.phone}</p>
         <div className="mt-4 flex justify-center gap-2">
@@ -1884,22 +1921,68 @@ export function DialerView() {
 export function CalendarView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
-  const now = new Date();
-  const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const vancouver = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Vancouver", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const todayYear = Number(vancouver.find((part) => part.type === "year")?.value);
+  const todayMonth = Number(vancouver.find((part) => part.type === "month")?.value);
+  const todayDay = Number(vancouver.find((part) => part.type === "day")?.value);
+  const [cursor, setCursor] = useState(new Date(todayYear, todayMonth - 1, 1));
+  const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("month");
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const cells = [...Array.from({ length: firstWeekday }, () => 0), ...Array.from({ length: days }, (_, index) => index + 1)];
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-7 gap-1 bg-white p-3">
-        {Array.from({ length: days }, (_, index) => index + 1).map((day) => (
-          <button key={day} type="button" className="h-16 border border-[#eee] text-left text-[12px] hover:bg-[#e7f5f8]" onClick={() => {
-            const title = window.prompt(`Appointment on ${now.toLocaleString("en-US", { month: "long" })} ${day}`);
-            if (!title) return;
-            update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId: "", title, when: `${now.getMonth() + 1}/${day}` }] }));
-            chrome.toast("Appointment added.");
-          }}>
-            {day}
-            {state.appointments.filter((item) => item.when === `${now.getMonth() + 1}/${day}` || item.when.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`)).map((item) => <span key={item.id} className="block truncate text-[10px] text-[#1c93b5]">{item.title}</span>)}
-          </button>
-        ))}
+    <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr]">
+      <aside className="bg-white p-3 text-[13px]">
+        <p className="font-bold">Mini Calendar</p>
+        <p className="mt-1 text-[#1c93b5]">{names[todayMonth - 1]} {todayDay}, {todayYear}</p>
+        <p className="mt-3 font-bold">CINC Calendars</p>
+        <p>Kayla Gerak</p>
+        <p className="mt-3 font-bold">Event Calendars</p>
+        <p>US Holiday</p>
+        <p>CA Holiday</p>
+        <p>CINC University</p>
+      </aside>
+      <div className="bg-white p-3">
+        <div className="mb-3 flex items-center gap-2">
+          <button type="button" onClick={() => setCursor(new Date(year, month - 1, 1))}>‹</button>
+          <span className="font-semibold">{names[month]} {year}</span>
+          <button type="button" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
+          <div className="ml-auto flex gap-1">
+            {(["agenda", "week", "month", "day"] as const).map((item) => (
+              <button key={item} type="button" className={`border px-2 py-1 capitalize ${mode === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{item}</button>
+            ))}
+          </div>
+        </div>
+        {mode === "agenda" ? (
+          <ul>{state.appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>)}</ul>
+        ) : (
+          <>
+            <div className="grid grid-cols-7 text-center text-[11px] text-[#888]">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <div key={day}>{day}</div>)}</div>
+            <div className="grid grid-cols-7 gap-1">
+              {cells.map((day, index) => {
+                const on = day === todayDay && month + 1 === todayMonth && year === todayYear;
+                return (
+                  <button key={index} type="button" className={`h-16 border text-left text-[12px] ${on ? "border-[#1c93b5] bg-[#e7f5f8]" : "border-[#eee]"}`} onClick={() => {
+                    if (!day) return;
+                    chrome.openModal(<ModalFrame title={`Appointment on ${names[month]} ${day}`} onClose={chrome.closeModal}><Field label="Title"><input id="appt-title" className={inputCls} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => {
+                      const title = (document.getElementById("appt-title") as HTMLInputElement | null)?.value.trim();
+                      if (!title) { chrome.toast("Enter a title."); return; }
+                      update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId: "", title, when: `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` }] }));
+                      chrome.closeModal();
+                      chrome.toast("Appointment added.");
+                    }}>Save</Btn></div></ModalFrame>);
+                  }}>
+                    {day || ""}
+                    {day ? state.appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => <span key={item.id} className="block truncate text-[10px] text-[#1c93b5]">{item.title}</span>) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2016,11 +2099,43 @@ export function MarketingView() {
 }
 
 export function GmailView() {
-  return <div className="p-6 text-[13px] text-[#666]">Gmail Inbox is not connected on this office.</div>;
+  return (
+    <div className="p-6">
+      <h1 className="text-[18px] font-semibold">Gmail Inbox</h1>
+      <p className="mt-2 text-[13px] text-[#666]">Gmail is not connected. Connect a Google account from Settings, then messages from that inbox show here.</p>
+    </div>
+  );
 }
 
 export function BrokerLaunchpad() {
-  return <div className="p-6"><h1 className="text-[18px] font-semibold">Broker Launchpad</h1><p className="mt-2 text-[13px] text-[#666]">Broker view of the office. Open Agent under Launchpad for the daily lead list.</p></div>;
+  const { leads } = useLeads();
+  const { state } = useCinc();
+  return (
+    <div className="p-4">
+      <h1 className="text-[15px] font-bold">Broker Launchpad</h1>
+      <p className="mt-1 text-[13px] text-[#555]">Office-wide view for the brokerage.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {[
+          ["Leads", leads.length],
+          ["Open deals", state.deals.length],
+          ["Reminders", state.reminders.filter((item) => !item.done).length],
+        ].map(([label, value]) => (
+          <article key={String(label)} className="border border-[#e5e5e5] bg-white p-4">
+            <p className="text-[12px] uppercase text-[#888]">{label}</p>
+            <p className="text-[28px] text-[#1c93b5]">{value}</p>
+          </article>
+        ))}
+      </div>
+      <section className="mt-4 border border-[#e5e5e5] bg-white p-4">
+        <h2 className="mb-2 font-bold">Agents</h2>
+        <ul className="text-[13px]">
+          {["Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"].map((name) => (
+            <li key={name} className="border-b border-[#eee] py-2">{name}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
 }
 
 export function ReportsView() {

@@ -72,10 +72,16 @@ const NAV: {
   {
     id: "web",
     label: "Website",
-    href: href.seller,
+    href: "/dashboard/spa#website/pages/home",
     children: [
+      { label: "Home", href: "/dashboard/spa#website/pages/home" },
+      { label: "About", href: "/dashboard/spa#website/pages/about" },
+      { label: "Branded Site", href: "/dashboard/spa#website/pages/branded" },
+      { label: "Branded About", href: "/dashboard/spa#website/pages/branded-about" },
+      { label: "Add Custom Page", href: "/dashboard/spa#website/pages/custom" },
       { label: "Seller Suite", href: href.seller },
       { label: "Landing Pages", href: href.landing },
+      { label: "Theme Options", href: "/dashboard/spa#website/theme" },
     ],
   },
   {
@@ -357,7 +363,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
     : CRM_AGENT.initials;
   const menu = titleMenu(route);
   const [titleOpen, setTitleOpen] = useState(false);
-  const [passwordToast, setPasswordToast] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -377,10 +382,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   useEffect(() => {
     document.title = `${titleOf(route) || "CINC"} · CINC`;
   }, [route]);
-
-  useEffect(() => {
-    if (!sessionStorage.getItem("gvhs-pw-toast")) setPasswordToast(true);
-  }, []);
 
   useEffect(() => {
     if (!titleOpen) return;
@@ -616,34 +617,14 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             ) : null}
           </div>
         </div>
-        {passwordToast && (route.view === "launchpad" || (route.view === "inbox" && route.folder === "templates") || (route.view === "properties" && route.sub === "text")) ? (
-          <div className="absolute top-[62px] right-4 z-30 flex max-w-sm items-start gap-2 border border-[#f3b4c0] bg-[#fde7ec] px-3 py-2 text-[13px] text-[#c62828] shadow">
-            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-[#c62828] text-[11px] leading-none font-bold">✕</span>
-            <p className="text-left">
-              Uh oh, your password expired.{" "}
-              <button type="button" className="font-semibold underline" onClick={() => setMessage("Password reset link queued for agent@example.com.")}>
-                Let&apos;s reset it now.
-              </button>
-            </p>
-            <button type="button" aria-label="Dismiss" className="text-[16px] leading-none font-bold" onClick={() => { setPasswordToast(false); sessionStorage.setItem("gvhs-pw-toast", "1"); }}>✕</button>
-          </div>
-        ) : null}
       </div>
       {modal}
       {helpOpen ? (
-        <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/35 px-4 py-16" onMouseDown={() => setHelpOpen(false)}>
-          <div className="w-full max-w-md bg-white p-5 shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
-            <h2 className="text-[16px] font-semibold">Help</h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-[#444]">
-              This is the Kayla Gerak demo of the CINC agent CRM. Messages, calls, and saves stay on this device.
-              Call (604) 363-7858 or write agent@example.com.
-            </p>
-            <div className="mt-4 flex gap-3 text-[13px]">
-              <a className="text-[#1c93b5]" href={href.faq}>FAQ</a>
-              <a className="text-[#1c93b5]" href={href.contact}>Contact</a>
-              <button type="button" className="ml-auto text-[#888]" onClick={() => setHelpOpen(false)}>Close</button>
-            </div>
-          </div>
+        <div className="fixed top-[52px] right-16 z-[70] w-56 border border-[#e5e5e5] bg-white py-1 text-[13px] shadow-lg">
+          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href="https://support.cincpro.com" target="_blank" rel="noreferrer">Help Center</a>
+          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href={href.contact}>Contact Support</a>
+          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href={href.faq}>What&apos;s New</a>
+          <button type="button" className="block w-full px-3 py-2 text-left hover:bg-[#f6f6f6]" onClick={() => setHelpOpen(false)}>Close</button>
         </div>
       ) : null}
       {message ? (

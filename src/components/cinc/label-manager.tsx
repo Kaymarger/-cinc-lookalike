@@ -19,7 +19,6 @@ export function LabelManager({ onClose, onChange }: { onClose: () => void; onCha
   const [group, setGroup] = useState(rows[0]?.category ?? "Miscellaneous");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [draft, setDraft] = useState("");
   useEffect(() => {
     void fetch("/api/office/settings", { cache: "no-store" }).then(async (response) => {
       const data = (await response.json().catch(() => null)) as { settings?: OfficeSettings } | null;
@@ -77,10 +76,11 @@ export function LabelManager({ onClose, onChange }: { onClose: () => void; onCha
               <option value="">Move selected ▾</option>
               {targets.map((item) => <option key={item}>{item}</option>)}
             </select>
-            <form className="flex gap-1" onSubmit={(event) => { event.preventDefault(); if (!draft.trim()) return; void persist([...rows, { category: group, name: draft.trim() }], "Label created."); setDraft(""); }}>
-              <input className={inputCls} placeholder="+ New" value={draft} onChange={(event) => setDraft(event.target.value)} />
-              <button type="submit" className="bg-[#1c93b5] px-2 text-white">+ New</button>
-            </form>
+            <button type="button" className="shrink-0 bg-[#1c93b5] px-2 py-1 text-white" onClick={() => {
+              const name = window.prompt("New label name");
+              if (!name?.trim()) return;
+              void persist([...rows, { category: group, name: name.trim() }], "Label created.");
+            }}>+ New</button>
           </div>
           <div className="grid max-h-64 grid-cols-3 gap-2 overflow-auto">
             {visible.map((row) => (

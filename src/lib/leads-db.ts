@@ -469,3 +469,10 @@ export async function assignCapturedLead(
   `;
   return rows[0] ? rowToStoredLead(rows[0]) : null;
 }
+
+export async function deleteCapturedLead(id: string): Promise<boolean> {
+  const sql = await ready();
+  if (!sql) return false;
+  const rows = await sql<{ id: string }[]>`DELETE FROM captured_leads WHERE id = ${id} RETURNING id`;
+  return rows.length > 0;
+}

@@ -232,12 +232,14 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
 
   return (
     <div className="mt-2 text-left">
+      {searches.some((search) => savedSearchSummary(search)) ? null : (
       <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => openForm()}>
         🔍 + Saved Search
       </button>
+      )}
       {notice ? <p className="mt-1 text-[11px] text-[#8a5a00]">{notice}</p> : null}
       <ul className="mt-1 space-y-1">
-        {searches.map((search) => (
+        {searches.filter((search) => savedSearchSummary(search) || (search.name && search.name !== "New Search")).map((search) => (
           <li key={search.id} className="px-1 py-1 text-center text-[12px]">
             <button type="button" className="text-[#1c93b5]" onClick={() => openForm(search)}>{savedSearchSummary(search) || search.name}</button>
             <div>
@@ -270,6 +272,7 @@ function SearchModal({
   const [tab, setTab] = useState<"filters" | "results">("filters");
   const [styleQuery, setStyleQuery] = useState("");
   const [placeQuery, setPlaceQuery] = useState("");
+  const [link, setLink] = useState("");
   const set = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
   const suggestions = suggestSearch(placeQuery);
   const matches = filterDemoListings({
@@ -288,34 +291,30 @@ function SearchModal({
   });
   function addPlace(hit: SuggestHit) {
     const value = chipValue(hit);
-    setDraft((current) => ({ ...current, places: current.places.includes(value) ? current.places : [...current.places, value], city: hit.kind === "City" ? hit.label : current.city }));
+    setDraft((current) => ({
+      ...current,
+      places: current.places.includes(value) ? current.places : [...current.places, value],
+      city: hit.kind === "City" || hit.kind === "Neighbourhood" ? hit.label : current.city,
+    }));
     setPlaceQuery("");
   }
   async function shareLink() {
     const params = new URLSearchParams();
-    if (draft.city) params.set("city", draft.city);
-    const area = draft.places.find((place) => place.startsWith("Neighbourhood: "));
-    if (area) params.set("q", area.split(": ").slice(1).join(": "));
+    const city = draft.city || draft.places.find((place) => place.startsWith("City: "))?.split(": ").slice(1).join(": ") || "";
+    if (city) params.set("city", city);
     if (draft.minPrice) params.set("min", draft.minPrice);
     if (draft.maxPrice) params.set("max", draft.maxPrice);
     if (draft.beds) params.set("beds", draft.beds);
     if (draft.propertyType) params.set("type", draft.propertyType);
     const url = `${window.location.origin}/search?${params.toString()}`;
+    let copied = false;
     try {
       await navigator.clipboard.writeText(url);
-      chrome.toast("Search link copied.");
-    } catch {
-      chrome.toast(`Copy this link: ${url}`);
-    }
+      copied = true;
+    } catch { /* show the link either way */ }
+    setLink(url);
+    chrome.toast(copied ? "Search link copied." : "Search link is ready to copy.");
   }
-  const chips = [
-    draft.city && `City: ${draft.city}`,
-    draft.beds && `Beds: ${draft.beds}+`,
-    draft.baths && `Min Baths: ${draft.baths}+`,
-    draft.minPrice && `Min Price: ${draft.minPrice}`,
-    draft.maxPrice && `Max Price: ${draft.maxPrice}`,
-    draft.propertyType && `Property Type: ${draft.propertyType}`,
-  ].filter(Boolean) as string[];
   const styles = HOME_STYLES.filter((style) => style.toLowerCase().includes(styleQuery.toLowerCase())).slice(0, 8);
   return (
     <ModalFrame title="Search Filters" onClose={onClose} wide>
@@ -361,8 +360,8 @@ function SearchModal({
                 {place} ×
               </button>
             ))}
-            {chips.map((chip) => <span key={chip} className="bg-[#f3f3f3] px-2 py-0.5 text-[11px]">{chip}</span>)}
           </div>
+          {link ? <input readOnly className={`${inputCls} mt-2`} value={link} onFocus={(event) => event.currentTarget.select()} /> : null}
           <h3 className="font-bold">GENERAL</h3>
           <p className="font-semibold">Basic Settings</p>
           <label className="block">Beds {draft.beds || "Any"}<input type="range" min="0" max="5" value={draft.beds || "0"} onChange={(event) => set("beds", event.target.value === "0" ? "" : event.target.value)} /></label>

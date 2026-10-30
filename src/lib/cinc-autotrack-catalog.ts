@@ -23,6 +23,16 @@ export function loadCincAutoTracks(): AutoTrackDocument[] {
   return parseCincAutoTracks(markdown);
 }
 
+function categoryForTrack(name: string): string {
+  const text = name.toLowerCase();
+  if (text.includes("buyer") || text.startsWith("foreign")) return "Buyer";
+  if (text.includes("seller")) return "Listing";
+  if (text.includes("holiday")) return "Past Client";
+  if (text.includes("blank template")) return "My AutoTracks";
+  if (text.includes("market") || text.includes("reminder") || text.includes("follow") || text.includes("wrong number") || text.includes("spanish") || text.includes("linkedin")) return "Nurture";
+  return "General";
+}
+
 function parseTrack(chunk: string): AutoTrackDocument {
   const title = chunk.match(/^## (\d+)\. (.+)$/m);
   if (!title) throw new Error("AutoTrack section is missing a title.");
@@ -44,7 +54,7 @@ function parseTrack(chunk: string): AutoTrackDocument {
   return {
     id: `cinc-${number}`,
     name,
-    category: "General",
+    category: categoryForTrack(name),
     status: statusWord.toLowerCase() as AutoTrackDocument["status"],
     trigger: "",
     stopTrigger: "",

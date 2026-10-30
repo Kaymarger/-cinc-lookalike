@@ -47,7 +47,7 @@ export function DialerPanel({
     <ModalFrame title={title} onClose={onClose}>
       <p className="text-[18px] font-semibold">{name}</p>
       <p className="text-[#1c93b5]">{phone || "No phone on file"}</p>
-      {voice === false ? <p className="mt-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">Calling is not connected. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER. Nothing is logged until Twilio places the call.</p> : null}
+      {voice === false ? <p className="mt-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">Calling is not connected.</p> : null}
       {dial ? (
         <a className="mt-3 inline-flex h-9 items-center border border-[#2e9e5b] px-3 text-[13px] font-semibold text-[#2e9e5b]" href={`tel:${dial}`}>
           Call from this phone
