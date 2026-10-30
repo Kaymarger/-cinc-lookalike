@@ -214,7 +214,7 @@ export type SpaState = {
   info: Record<string, Record<string, string>>;
   buyerMatches: Record<string, boolean>;
   customFilters: string[];
-  leadTracks: Record<string, { id: string; name: string; cancelled?: boolean }[]>;
+  leadTracks: Record<string, { id: string; name: string; cancelled?: boolean; status?: "active" | "paused" | "stopped" }[]>;
   verify: Record<string, "verified" | "unlocked" | "locked">;
   dataVersion: number;
 };

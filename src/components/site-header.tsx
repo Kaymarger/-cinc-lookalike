@@ -25,10 +25,10 @@ const ACCOUNT = [
 ];
 
 const AGENT_MENU = [
-  { href: "/agent/leads", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard/spa#launchpad/agent", label: "Dashboard", icon: "dashboard" },
   { href: "/seller/homepulse", label: "HomePulse", icon: "homepulse" },
   { href: "/notebook", label: "My Notebook", icon: "notebook" },
-  { href: "/account/settings", label: "Settings", icon: "settings" },
+  { href: "/dashboard/spa#settings/profile/profile", label: "Settings", icon: "settings" },
 ] as const;
 
 function AgentIcon({ name }: { name: (typeof AGENT_MENU)[number]["icon"] | "logout" }) {

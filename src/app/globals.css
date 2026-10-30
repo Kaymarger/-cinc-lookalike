@@ -107,7 +107,9 @@
   }
   /* Agent CRM stays at real CINC sizes at 1280 and grows slightly on wide screens. */
   .cinc-root {
+    font-family: var(--font-sans), "Segoe UI", sans-serif;
     font-size: 13px;
+    background: #f3f5f6;
   }
   @media (min-width: 1680px) {
     .cinc-root {

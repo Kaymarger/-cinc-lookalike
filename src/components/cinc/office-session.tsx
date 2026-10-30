@@ -57,6 +57,11 @@ type Ctx = {
   seesAll: boolean;
   canManageUsers: boolean;
   canReassign: boolean;
+  canExport: boolean;
+  canDelete: boolean;
+  canDial: boolean;
+  canSendEmail: boolean;
+  canSendText: boolean;
   canBecome: boolean;
   impersonating: boolean;
   refresh: () => void;
@@ -73,6 +78,11 @@ const empty: Ctx = {
   seesAll: false,
   canManageUsers: false,
   canReassign: false,
+  canExport: false,
+  canDelete: false,
+  canDial: false,
+  canSendEmail: true,
+  canSendText: true,
   canBecome: false,
   impersonating: false,
   refresh: () => undefined,
@@ -86,6 +96,11 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   const [seesAll, setSeesAll] = useState(false);
   const [canManageUsers, setCanManageUsers] = useState(false);
   const [canReassign, setCanReassign] = useState(false);
+  const [canExport, setCanExport] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [canDial, setCanDial] = useState(false);
+  const [canSendEmail, setCanSendEmail] = useState(true);
+  const [canSendText, setCanSendText] = useState(true);
   const [canBecome, setCanBecome] = useState(false);
   const [impersonating, setImpersonating] = useState(false);
   const [ready, setReady] = useState(false);
@@ -111,6 +126,11 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
           seesAll?: boolean;
           canManageUsers?: boolean;
           canReassign?: boolean;
+          canExport?: boolean;
+          canDelete?: boolean;
+          canDial?: boolean;
+          canSendEmail?: boolean;
+          canSendText?: boolean;
           canBecome?: boolean;
           impersonating?: boolean;
         };
@@ -122,6 +142,11 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
         setSeesAll(Boolean(data?.seesAll));
         setCanManageUsers(Boolean(data?.canManageUsers));
         setCanReassign(Boolean(data?.canReassign));
+        setCanExport(Boolean(data?.canExport));
+        setCanDelete(Boolean(data?.canDelete));
+        setCanDial(Boolean(data?.canDial));
+        setCanSendEmail(data?.canSendEmail !== false);
+        setCanSendText(data?.canSendText !== false);
         setCanBecome(Boolean(data?.canBecome));
         setImpersonating(Boolean(data?.impersonating));
         if (!data?.user) {
@@ -154,12 +179,17 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
       seesAll,
       canManageUsers,
       canReassign,
+      canExport,
+      canDelete,
+      canDial,
+      canSendEmail,
+      canSendText,
       canBecome,
       impersonating,
       refresh,
       endImpersonation,
     }),
-    [ready, user, roster, database, seesAll, canManageUsers, canReassign, canBecome, impersonating, refresh, endImpersonation]
+    [ready, user, roster, database, seesAll, canManageUsers, canReassign, canExport, canDelete, canDial, canSendEmail, canSendText, canBecome, impersonating, refresh, endImpersonation]
   );
 
   return (

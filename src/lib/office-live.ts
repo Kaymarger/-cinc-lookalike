@@ -297,8 +297,9 @@ export async function loadLeadFields(leadId: string): Promise<Record<string, str
 export async function saveLeadFields(leadId: string, document: Record<string, string>): Promise<string | null> {
   const sql = await officeDb();
   if (!sql) return "Office data is not connected.";
-  const clean: Record<string, string> = {};
-  for (const [key, value] of Object.entries(document)) clean[key.slice(0, 40)] = String(value ?? "").slice(0, 200);
+  const current = await loadLeadFields(leadId);
+  const clean: Record<string, string> = { ...current };
+  for (const [key, value] of Object.entries(document)) clean[key.slice(0, 40)] = String(value ?? "").slice(0, 4000);
   await sql`
     INSERT INTO office_lead_fields (lead_id, document, updated_at)
     VALUES (${leadId.slice(0, 80)}, ${sql.json(clean)}, now())

@@ -14,7 +14,9 @@ import {
   STORIES_EXACT,
   STORIES_MIN,
 } from "@/lib/cinc-options";
+import { filterDemoListings } from "@/lib/demo-listings";
 import { savedSearchSummary, type AlertFrequency, type LeadSavedSearch } from "@/lib/office-access";
+import { chipValue, suggestSearch, type SuggestHit } from "@/lib/search-suggest";
 import { useChrome } from "./chrome-context";
 import { Btn, Field, inputCls, ModalFrame } from "./ui";
 
@@ -49,6 +51,7 @@ type Draft = {
   sqftMax: string;
   ownership: string;
   tags: string[];
+  places: string[];
 };
 
 function emptyDraft(): Draft {
@@ -83,6 +86,7 @@ function emptyDraft(): Draft {
     sqftMax: "",
     ownership: "",
     tags: [],
+    places: [],
   };
 }
 
@@ -121,6 +125,7 @@ function fromSearch(search: LeadSavedSearch): Draft {
     sqftMax: criteria?.sqftMax == null ? "" : String(criteria.sqftMax),
     ownership: criteria?.ownership || "",
     tags: criteria?.tags || [],
+    places: criteria?.places || [],
   };
 }
 
@@ -134,7 +139,6 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
     const data = (await response.json().catch(() => null)) as { searches?: LeadSavedSearch[]; message?: string } | null;
     if (!response.ok) {
       setNotice(data?.message || "Saved searches need a connected database.");
-      setSearches([]);
       return;
     }
     setNotice(null);
@@ -159,11 +163,27 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
     };
   }, [leadId]);
 
+  async function copySearch(search: LeadSavedSearch) {
+    const draft = fromSearch(search);
+    draft.name = `${search.name} copy`.slice(0, 80);
+    const response = await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...draft, leadEmail }),
+    });
+    const data = (await response.json().catch(() => null)) as { search?: LeadSavedSearch; message?: string } | null;
+    if (!response.ok || !data?.search) {
+      chrome.toast(data?.message || "Could not copy that search.");
+      return;
+    }
+    setSearches((current) => [data.search!, ...current.filter((item) => item.id !== data.search!.id)]);
+    chrome.toast("Saved search copied.");
+  }
+
   function openForm(initial?: LeadSavedSearch) {
     chrome.openModal(
       <SearchModal
         initial={initial ? fromSearch(initial) : emptyDraft()}
-        editing={Boolean(initial)}
         onClose={chrome.closeModal}
         onDelete={
           initial
@@ -179,9 +199,10 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
               }
             : undefined
         }
-        onSave={async (draft) => {
-          const response = initial
-            ? await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(initial.id)}`, {
+        searchId={initial?.id ?? null}
+        onSave={async (draft, targetId, keepOpen) => {
+          const response = targetId
+            ? await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(targetId)}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ...draft, leadEmail }),
@@ -191,14 +212,19 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ...draft, leadEmail }),
               });
-          const data = (await response.json().catch(() => null)) as { message?: string } | null;
-          if (!response.ok) {
+          const data = (await response.json().catch(() => null)) as { search?: LeadSavedSearch; message?: string } | null;
+          if (!response.ok || !data?.search) {
             chrome.toast(data?.message || "Could not save that search.");
-            return;
+            return null;
           }
-          chrome.closeModal();
-          chrome.toast(initial ? "Saved search updated." : "Saved search created.");
-          await load();
+          setSearches((current) => [data.search!, ...current.filter((item) => item.id !== data.search!.id)]);
+          if (!keepOpen) {
+            chrome.closeModal();
+            chrome.toast(targetId ? "Saved search updated." : "Saved search created.");
+          } else {
+            chrome.toast("New search saved.");
+          }
+          return data.search;
         }}
       />
     );
@@ -215,7 +241,8 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
           <li key={search.id} className="border border-[#e5e5e5] bg-[#f7fbfc] px-2 py-1 text-[11px]">
             <p className="font-semibold text-[#243238]">{search.name}</p>
             <p className="text-[#666]">{savedSearchSummary(search)}</p>
-            <button type="button" className="text-[#1c93b5]" onClick={() => openForm(search)}>Edit</button>
+            <button type="button" className="mr-2 text-[#1c93b5]" onClick={() => openForm(search)}>Edit</button>
+            <button type="button" className="text-[#1c93b5]" onClick={() => void copySearch(search)}>Copy</button>
           </li>
         ))}
       </ul>
@@ -225,21 +252,61 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
 
 function SearchModal({
   initial,
-  editing,
+  searchId,
   onClose,
   onSave,
   onDelete,
 }: {
   initial: Draft;
-  editing: boolean;
+  searchId: string | null;
   onClose: () => void;
-  onSave: (draft: Draft) => Promise<void>;
+  onSave: (draft: Draft, targetId: string | null, keepOpen?: boolean) => Promise<LeadSavedSearch | null>;
   onDelete?: () => Promise<void>;
 }) {
+  const chrome = useChrome();
   const [draft, setDraft] = useState(initial);
+  const [targetId, setTargetId] = useState<string | null>(searchId);
   const [tab, setTab] = useState<"filters" | "results">("filters");
   const [styleQuery, setStyleQuery] = useState("");
+  const [placeQuery, setPlaceQuery] = useState("");
   const set = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
+  const suggestions = suggestSearch(placeQuery);
+  const matches = filterDemoListings({
+    places: draft.places,
+    city: draft.city,
+    location: draft.location,
+    minPrice: draft.minPrice ? Number(draft.minPrice) : null,
+    maxPrice: draft.maxPrice ? Number(draft.maxPrice) : null,
+    beds: draft.beds ? Number(draft.beds) : null,
+    baths: draft.baths ? Number(draft.baths) : null,
+    propertyType: draft.propertyType,
+    status: draft.status,
+    sqftMin: draft.sqftMin ? Number(draft.sqftMin) : null,
+    sqftMax: draft.sqftMax ? Number(draft.sqftMax) : null,
+    daysOnSite: draft.daysOnSite,
+  });
+  function addPlace(hit: SuggestHit) {
+    const value = chipValue(hit);
+    setDraft((current) => ({ ...current, places: current.places.includes(value) ? current.places : [...current.places, value], city: hit.kind === "City" ? hit.label : current.city }));
+    setPlaceQuery("");
+  }
+  async function shareLink() {
+    const params = new URLSearchParams();
+    if (draft.city) params.set("city", draft.city);
+    const area = draft.places.find((place) => place.startsWith("Neighbourhood: "));
+    if (area) params.set("q", area.split(": ").slice(1).join(": "));
+    if (draft.minPrice) params.set("min", draft.minPrice);
+    if (draft.maxPrice) params.set("max", draft.maxPrice);
+    if (draft.beds) params.set("beds", draft.beds);
+    if (draft.propertyType) params.set("type", draft.propertyType);
+    const url = `${window.location.origin}/search?${params.toString()}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      chrome.toast("Search link copied.");
+    } catch {
+      chrome.toast(`Copy this link: ${url}`);
+    }
+  }
   const chips = [
     draft.city && `City: ${draft.city}`,
     draft.beds && `Beds: ${draft.beds}+`,
@@ -254,10 +321,19 @@ function SearchModal({
       <div className="mb-3 flex gap-4 border-b border-[#ddd] text-[13px]">
         <button type="button" className={tab === "filters" ? "border-b-2 border-[#1c93b5] pb-1 font-semibold" : "pb-1"} onClick={() => setTab("filters")}>Search Filters</button>
         <button type="button" className={tab === "results" ? "border-b-2 border-[#1c93b5] pb-1 font-semibold" : "pb-1"} onClick={() => setTab("results")}>Search Results</button>
-        <span className="ml-auto text-[#888]">(0) Search Total</span>
+        <span className="ml-auto text-[#888]">({matches.length}) Search Total</span>
       </div>
       {tab === "results" ? (
-        <p className="text-[13px] text-[#666]">No listings are matched in this demo. Filters are saved for the lead.</p>
+        <div className="max-h-[60vh] overflow-auto text-[13px]">
+          <p className="mb-2 font-semibold">{matches.length} listing{matches.length === 1 ? "" : "s"}</p>
+          {matches.length ? matches.slice(0, 40).map((listing) => (
+            <article key={listing.mls} className="mb-2 border border-[#eee] px-2 py-1">
+              <p className="font-semibold">{listing.address}</p>
+              <p className="text-[#666]">{listing.area}, {listing.city} {listing.postal} · {listing.mls}</p>
+              <p>${listing.price.toLocaleString("en-CA")} · {listing.beds} bd · {listing.baths} ba · {listing.type}</p>
+            </article>
+          )) : <p className="text-[#666]">No listings match these filters.</p>}
+        </div>
       ) : (
         <div className="max-h-[60vh] space-y-3 overflow-auto pr-1 text-[13px]">
           <Field label="Search Name"><input className={inputCls} value={draft.name} onChange={(event) => set("name", event.target.value)} /></Field>
@@ -267,10 +343,24 @@ function SearchModal({
             </select>
           </Field>
           <Field label="Location + Keyword Search">
-            <input className={inputCls} value={draft.location} placeholder="City, area, or keyword" onChange={(event) => set("location", event.target.value)} />
+            <input className={inputCls} value={placeQuery} placeholder="City, neighbourhood, postal code, MLS#, address, or keyword" onChange={(event) => setPlaceQuery(event.target.value)} />
+            {suggestions.length ? (
+              <div className="max-h-36 overflow-auto border border-[#ddd] bg-white">
+                {suggestions.map((hit) => (
+                  <button key={chipValue(hit)} type="button" className="block w-full px-2 py-1 text-left hover:bg-[#f3fafc]" onClick={() => addPlace(hit)}>
+                    <span className="mr-2 text-[10px] uppercase text-[#888]">{hit.kind}</span> {hit.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </Field>
           <div className="flex flex-wrap gap-1">
-            {chips.map((chip) => <span key={chip} className="bg-[#e7f4f8] px-2 py-0.5 text-[11px]">{chip}</span>)}
+            {draft.places.map((place) => (
+              <button key={place} type="button" className="bg-[#e7f4f8] px-2 py-0.5 text-[11px]" onClick={() => setDraft((current) => ({ ...current, places: current.places.filter((item) => item !== place) }))}>
+                {place} ×
+              </button>
+            ))}
+            {chips.map((chip) => <span key={chip} className="bg-[#f3f3f3] px-2 py-0.5 text-[11px]">{chip}</span>)}
           </div>
           <h3 className="font-bold">GENERAL</h3>
           <p className="font-semibold">Basic Settings</p>
@@ -363,12 +453,16 @@ function SearchModal({
         </div>
       )}
       <div className="mt-3 flex flex-wrap justify-end gap-2">
-        <Btn onClick={() => setDraft(emptyDraft())}>Create New</Btn>
-        <Btn onClick={() => { void navigator.clipboard?.writeText(window.location.href); }}>Generate Link</Btn>
+        <Btn onClick={() => void onSave({ ...emptyDraft(), name: "New Search" }, null, true).then((created) => {
+          if (!created) return;
+          setDraft(fromSearch(created));
+          setTargetId(created.id);
+        })}>Create New</Btn>
+        <Btn onClick={() => void shareLink()}>Generate Link</Btn>
         <Btn onClick={() => setDraft(initial)}>Reset Original</Btn>
         <Btn onClick={() => setDraft(emptyDraft())}>Clear All</Btn>
-        {editing && onDelete ? <Btn kind="danger" onClick={() => void onDelete()}>DELETE</Btn> : null}
-        <Btn kind="teal" onClick={() => void onSave(draft)}>SAVE</Btn>
+        {targetId && onDelete ? <Btn kind="danger" onClick={() => void onDelete()}>DELETE</Btn> : null}
+        <Btn kind="teal" onClick={() => void onSave(draft.name.trim() ? draft : { ...draft, name: "New Search" }, targetId)}>SAVE</Btn>
       </div>
     </ModalFrame>
   );

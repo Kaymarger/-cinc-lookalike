@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
+import { PERMISSION_OPTIONS, type OfficePermissions } from "@/lib/permission-options";
 import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
-import { Btn, Field, inputCls } from "./ui";
+import { Btn, Field, inputCls, ModalFrame } from "./ui";
 
 const ROLES: OfficeRole[] = ["admin", "broker", "agent", "isa", "lender"];
 
@@ -37,6 +38,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<Draft>(blank());
   const [message, setMessage] = useState<string | null>(null);
+  const [permUser, setPermUser] = useState<OfficeProfile | null>(null);
   const [linkBox, setLinkBox] = useState<LinkBox | null>(null);
   const [pondOnly, setPondOnly] = useState(false);
   const [showDisabled, setShowDisabled] = useState(false);
@@ -239,7 +241,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {office.canManageUsers ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => startEdit(user)}>Edit Permissions</button> : null}
+                  {office.canManageUsers ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => setPermUser(user)}>Edit Permissions</button> : null}
                   {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => void become(user)}>Become User</button> : null}
                   {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                   {office.canManageUsers ? <label className="border border-[#ccc] px-2 py-1">Photo<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
@@ -316,6 +318,42 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       ) : null}
       </>
       ) : null}
+      {permUser ? <PermissionsModal user={permUser} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
     </div>
+  );
+}
+
+function PermissionsModal({ user, onClose, onSaved }: { user: OfficeProfile; onClose: () => void; onSaved: (message: string) => void }) {
+  const [flags, setFlags] = useState<OfficePermissions | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void fetch(`/api/office/users/${user.id}/permissions`, { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { permissions?: OfficePermissions; message?: string } | null;
+      if (!response.ok || !data?.permissions) setError(data?.message || "Could not load permissions.");
+      else setFlags(data.permissions);
+    });
+  }, [user.id]);
+  return (
+    <ModalFrame title={`Edit Permissions · ${user.name}`} onClose={onClose}>
+      <p className="mb-2 text-[12px] text-[#666]">These controls save on the user and are enforced for routing, export, delete, dialer, and sending. Exact CINC wording can replace the labels when that list arrives.</p>
+      {error ? <p className="text-[13px] text-[#8a5a00]">{error}</p> : null}
+      {flags ? PERMISSION_OPTIONS.map(([key, label]) => (
+        <label key={key} className="mb-1 block text-[13px]">
+          <input type="checkbox" checked={flags[key]} onChange={(event) => setFlags({ ...flags, [key]: event.target.checked })} /> {label}
+        </label>
+      )) : <p className="text-[13px]">Loading permissions…</p>}
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="teal" disabled={!flags} onClick={() => {
+          if (!flags) return;
+          void fetch(`/api/office/users/${user.id}/permissions`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ permissions: flags }) }).then(async (response) => {
+            const data = (await response.json().catch(() => null)) as { message?: string } | null;
+            if (!response.ok) { setError(data?.message || "Could not save permissions."); return; }
+            onSaved("Permissions saved.");
+            onClose();
+          });
+        }}>Save</Btn>
+      </div>
+    </ModalFrame>
   );
 }

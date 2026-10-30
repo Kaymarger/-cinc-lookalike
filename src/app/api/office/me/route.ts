@@ -15,6 +15,12 @@ export async function GET() {
     seesAll: actor.seesAll,
     canManageUsers: actor.canManageUsers,
     canReassign: actor.canReassign,
+    canExport: actor.canExport,
+    canDelete: actor.canDelete,
+    canDial: actor.canDial,
+    canSendEmail: actor.canSendEmail,
+    canSendText: actor.canSendText,
+    permissions: actor.permissions,
     canBecome: actor.canBecome,
     impersonating: actor.impersonating,
   });

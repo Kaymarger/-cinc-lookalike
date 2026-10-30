@@ -3,10 +3,9 @@ import { BECOME_COOKIE, COOKIE_NAME, agentPassword, passwordMatches, readBecome,
 import { databaseStatus, leadsDatabaseConfigured, type DatabaseStatus } from "@/lib/leads-db";
 import {
   canManageUsers,
-  canReassignLeads,
-  seesAllLeads,
   type OfficeRole,
 } from "@/lib/office-access";
+import { permissionsFor, type OfficePermissions } from "@/lib/office-permissions";
 import {
   BOOTSTRAP_EMAIL,
   BOOTSTRAP_ID,
@@ -28,14 +27,21 @@ export type Actor = {
   seesAll: boolean;
   canManageUsers: boolean;
   canReassign: boolean;
+  canExport: boolean;
+  canDelete: boolean;
+  canDial: boolean;
+  canSendEmail: boolean;
+  canSendText: boolean;
   canBecome: boolean;
   impersonating: boolean;
+  permissions: OfficePermissions;
 };
 
 function actorFrom(
   user: OfficeUser,
   real: OfficeUser,
   database: DatabaseStatus,
+  permissions: OfficePermissions,
   manageOverride?: boolean
 ): Actor {
   const impersonating = user.id !== real.id;
@@ -44,11 +50,17 @@ function actorFrom(
     publicUser: toPublic(user),
     realUser: toPublic(real),
     database,
-    seesAll: seesAllLeads(user.role),
-    canManageUsers: manageOverride ?? (canManageUsers(user.role) && database.connected && !impersonating),
-    canReassign: canReassignLeads(user.role),
+    seesAll: permissions.viewAllLeads,
+    canManageUsers: (manageOverride ?? (canManageUsers(user.role) && database.connected && !impersonating)) && permissions.manageUsers,
+    canReassign: permissions.reassignLeads,
+    canExport: permissions.exportLeads,
+    canDelete: permissions.deleteLeads,
+    canDial: permissions.accessDialer,
+    canSendEmail: permissions.sendEmail,
+    canSendText: permissions.sendText,
     canBecome: real.role === "admin" && real.active && database.connected && !impersonating,
     impersonating,
+    permissions,
   };
 }
 
@@ -86,9 +98,13 @@ export async function currentActor(): Promise<Actor | null> {
   const become = await readBecome(jar.get(BECOME_COOKIE)?.value);
   if (become && database.connected && real.role === "admin" && real.active && become.userId !== real.id) {
     const target = await findUserById(become.userId);
-    if (target?.active) return actorFrom(target, real, database, false);
+    if (target?.active) {
+      const permissions = await permissionsFor(target.id, target.role);
+      return actorFrom(target, real, database, permissions, false);
+    }
   }
-  return actorFrom(real, real, database, manageLocked ? false : undefined);
+  const permissions = await permissionsFor(real.id, real.role);
+  return actorFrom(real, real, database, permissions, manageLocked ? false : undefined);
 }
 
 export async function loginOffice(

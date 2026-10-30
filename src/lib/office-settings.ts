@@ -51,6 +51,7 @@ export type OfficeSettings = {
   aiSeoNotes: string;
   customSources: string[];
   sourceMap: Record<string, string>;
+  labelCatalog: { category: string; name: string }[];
 };
 
 export const EMPTY_SETTINGS: OfficeSettings = {
@@ -106,6 +107,7 @@ export const EMPTY_SETTINGS: OfficeSettings = {
   aiSeoNotes: "",
   customSources: [],
   sourceMap: {},
+  labelCatalog: [],
 };
 
 function clip(value: unknown, max: number): string {
@@ -168,7 +170,19 @@ export function sanitizeSettings(input: unknown): OfficeSettings {
     aiSeoNotes: clip(raw.aiSeoNotes, 2000),
     customSources: (Array.isArray(raw.customSources) ? raw.customSources : []).map((item) => clip(item, 80)).filter(Boolean).slice(0, 40),
     sourceMap: mapSources(raw.sourceMap),
+    labelCatalog: catalog(raw.labelCatalog),
   };
+}
+
+function catalog(value: unknown): { category: string; name: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const row = item && typeof item === "object" ? (item as { category?: unknown; name?: unknown }) : {};
+      return { category: clip(row.category, 40), name: clip(row.name, 40) };
+    })
+    .filter((item) => item.category && item.name)
+    .slice(0, 200);
 }
 
 function mapSources(value: unknown): Record<string, string> {

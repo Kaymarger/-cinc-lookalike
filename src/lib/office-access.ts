@@ -122,6 +122,7 @@ export type SearchCriteria = {
   sqftMax: number | null;
   ownership: string;
   tags: string[];
+  places: string[];
 };
 
 export const EMPTY_CRITERIA: SearchCriteria = {
@@ -147,6 +148,7 @@ export const EMPTY_CRITERIA: SearchCriteria = {
   sqftMax: null,
   ownership: "",
   tags: [],
+  places: [],
 };
 
 export type LeadSavedSearch = {
@@ -198,6 +200,7 @@ export type SavedSearchInput = {
   garage?: unknown;
   ownership?: unknown;
   tags?: unknown;
+  places?: unknown;
 };
 
 function cleanText(value: unknown, max: number): string {
@@ -283,6 +286,9 @@ export function sanitizeSavedSearch(
   const tags = Array.isArray(raw.tags)
     ? raw.tags.map((tag) => cleanText(tag, 40)).filter((tag) => (SEARCH_TAGS as readonly string[]).includes(tag))
     : [];
+  const places = Array.isArray(raw.places)
+    ? raw.places.map((place) => cleanText(place, 80)).filter(Boolean).slice(0, 24)
+    : [];
   return {
     ok: true,
     value: {
@@ -318,6 +324,7 @@ export function sanitizeSavedSearch(
         sqftMax,
         ownership,
         tags,
+        places,
       },
     },
   };
@@ -329,16 +336,23 @@ function oneOf(value: unknown, allowed: readonly string[], fallback: string): st
   return allowed.includes(text) ? text : "bad";
 }
 
+function money(value: number): string {
+  return `$${value.toLocaleString("en-CA")}`;
+}
+
 export function savedSearchSummary(search: Pick<LeadSavedSearch, "city" | "minPrice" | "maxPrice" | "beds" | "baths" | "propertyType" | "frequency" | "criteria">): string {
-  const parts: string[] = [];
-  if (search.city) parts.push(search.city);
-  if (search.criteria?.location) parts.push(search.criteria.location);
-  if (search.minPrice != null) parts.push(`Min Price $${search.minPrice.toLocaleString("en-CA")}`);
-  if (search.maxPrice != null) parts.push(`Max Price $${search.maxPrice.toLocaleString("en-CA")}`);
-  if (search.beds != null) parts.push(`Beds ${search.beds}+`);
-  if (search.baths != null) parts.push(`Min Baths ${search.baths}+`);
-  if (search.propertyType) parts.push(search.propertyType);
-  if (search.criteria?.status) parts.push(search.criteria.status);
-  parts.push(search.frequency);
-  return parts.join(" · ");
+  const placeCity = (search.criteria?.places ?? [])
+    .filter((place) => place.startsWith("City: ") || place.startsWith("Neighbourhood: "))
+    .map((place) => place.split(": ").slice(1).join(": "))
+    .filter(Boolean);
+  const city = search.city || placeCity[0] || search.criteria?.location || "Any";
+  let price = "Any";
+  if (search.minPrice != null && search.maxPrice != null) price = `${money(search.minPrice)}–${money(search.maxPrice)}`;
+  else if (search.minPrice != null) price = `${money(search.minPrice)}+`;
+  else if (search.maxPrice != null) price = `up to ${money(search.maxPrice)}`;
+  const extra: string[] = [];
+  if (search.beds != null) extra.push(`${search.beds}+ beds`);
+  if (search.propertyType) extra.push(search.propertyType);
+  const tail = extra.length ? ` · ${extra.join(" · ")}` : "";
+  return `Price: ${price}, City: ${city}${tail}`;
 }

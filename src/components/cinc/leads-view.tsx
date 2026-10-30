@@ -9,6 +9,7 @@ import { leadVisibleTo } from "@/lib/office-access";
 import { useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
 import { LeadSearches } from "./lead-searches";
+import { LabelManager, useLabelCatalog } from "./label-manager";
 import { useOfficeSession } from "./office-session";
 import { useChrome } from "./chrome-context";
 import { go, href, type LeadTab } from "./route";
@@ -447,15 +448,25 @@ export function LeadsView({
       chrome.toast("Your role cannot reassign leads.");
       return;
     }
-    update((current) => ({
-      ...current,
-      assigned: { ...current.assigned, [id]: assign },
-    }));
     void fetch("/api/leads/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, agent: assign.agent, partner: assign.partner, listing: assign.listing }),
-    }).catch(() => undefined);
+    }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { agent?: string; routed?: boolean; message?: string } | null;
+      if (!response.ok) {
+        chrome.toast(data?.message || "That lead was not reassigned.");
+        return;
+      }
+      const next = data?.routed && data.agent ? { ...assign, agent: data.agent } : assign;
+      update((current) => ({
+        ...current,
+        assigned: { ...current.assigned, [id]: next },
+        notes: data?.routed ? { ...current.notes, [id]: [...(current.notes[id] ?? []), { id: uid("note"), body: `Routing engine assigned this lead to ${data.agent}.`, at: nowLabel() }] } : current.notes,
+        mail: data?.routed ? [{ id: uid("mail"), folder: "inbox" as const, kind: "email" as const, from: "Routing", to: CRM_AGENT.name, subject: `Lead routed to ${data.agent}`, body: `The routing rules assigned this lead to ${data.agent}.`, at: nowLabel(), unread: true }, ...current.mail] : current.mail,
+      }));
+      chrome.toast(data?.routed ? `Lead routed to ${data.agent}.` : "Assignment saved.");
+    });
   }
 
   const rows = useMemo(() => {
@@ -506,6 +517,10 @@ export function LeadsView({
 
   useEffect(() => {
     if (mode !== "export") return;
+    if (office.ready && !office.canExport) {
+      chrome.toast("Your permissions do not include exporting leads.");
+      return;
+    }
     const header = ["Name", "Email", "Phone", "Pipeline", "Source", "City"];
     const lines = [header.join(","), ...filtered.map((row) => [row.name, row.email, row.phone, row.pipeline, row.source, row.city].join(","))];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -540,6 +555,10 @@ export function LeadsView({
   }
 
   function trash(ids: string[]) {
+    if (!office.canDelete) {
+      chrome.toast("Your permissions do not include deleting leads.");
+      return;
+    }
     update((current) => ({ ...current, trashed: [...new Set([...current.trashed, ...ids])] }));
     setSelected([]);
     chrome.toast(`Trashed ${ids.length} lead${ids.length === 1 ? "" : "s"}.`);
@@ -549,6 +568,13 @@ export function LeadsView({
     update((current) => ({ ...current, trashed: current.trashed.filter((id) => !ids.includes(id)) }));
     setSelected([]);
     chrome.toast("Restored the selected leads.");
+  }
+
+  const [removedLabel, setRemovedLabel] = useState<{ id: string; label: string } | null>(null);
+  function removeLabel(id: string, label: string) {
+    update((current) => ({ ...current, labels: { ...current.labels, [id]: (current.labels[id] ?? []).filter((item) => item !== label) } }));
+    setRemovedLabel({ id, label });
+    chrome.toast(`${label} removed.`);
   }
 
   function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) {
@@ -567,6 +593,26 @@ export function LeadsView({
         calls: [{ id: uid("call"), leadId: row.id, name: row.name, at: nowLabel(), kind, body: body || title }, ...current.calls],
       }));
     }
+  }
+
+  async function sendLead(channel: "email" | "sms", row: Row, value: { to: string; body: string; subject?: string; cc?: string; bcc?: string; attachments?: string[] }) {
+    if (channel === "email" && !office.canSendEmail) { chrome.toast("Your permissions do not include email."); return; }
+    if (channel === "sms" && !office.canSendText) { chrome.toast("Your permissions do not include text."); return; }
+    const response = await fetch("/api/office/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel, to: value.to, subject: value.subject, body: value.body }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    const extra = [value.cc && `Cc ${value.cc}`, value.bcc && `Bcc ${value.bcc}`, value.attachments?.length ? `Attachments: ${value.attachments.join(", ")}` : ""].filter(Boolean).join(" · ");
+    const kind = channel === "email" ? "email" : "text";
+    if (!response.ok) {
+      log(row, kind, channel === "email" ? "Email not sent" : "Text not sent", data?.message || "The provider is not connected.");
+      chrome.toast(data?.message || "That message was not sent. The provider is not connected.");
+      return;
+    }
+    log(row, kind, channel === "email" ? "Email sent" : "Text sent", [value.body, extra].filter(Boolean).join("\n"));
+    chrome.toast(channel === "email" ? "Email sent." : "Text sent.");
   }
 
   function mass(action: string) {
@@ -734,6 +780,7 @@ export function LeadsView({
             { label: "None", onClick: () => setSelected([]) },
           ]} />
         </span>
+        {removedLabel ? <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => { update((current) => ({ ...current, labels: { ...current.labels, [removedLabel.id]: [...new Set([...(current.labels[removedLabel.id] ?? []), removedLabel.label])] } })); setRemovedLabel(null); chrome.toast(`${removedLabel.label} restored.`); }}>Undo remove {removedLabel.label}</button> : null}
         <Menu
           label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">Mass Actions ▾</span>}
           items={[
@@ -851,12 +898,12 @@ export function LeadsView({
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
                           items={[
                             { label: "Call", onClick: () => { log(row, "call", "Call logged"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                            { label: "Text", onClick: () => composer.text(row.phone, (value) => { log(row, "text", "Text sent", value.body); chrome.toast("Text sent."); }) },
+                            { label: "Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", row, value)) },
                             { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                           ]}
                         />
                       </div>
-                      <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { log(row, "email", sent ? "Email sent" : "Draft", value.body); chrome.toast(sent ? "Email sent." : "Draft saved."); })}>
+                      <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { if (!sent) { log(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return; } void sendLead("email", row, value); })}>
                         {row.email} <span className="text-[#2e9e5b]">✓</span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
@@ -867,7 +914,7 @@ export function LeadsView({
                     <td className="px-1">
                       <div className="flex flex-col items-center gap-1">
                         {(state.labels[row.id] ?? []).map((label) => (
-                          <span key={label} className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }}>{label}</span>
+                          <button key={label} type="button" title="Remove label" className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }} onClick={() => removeLabel(row.id, label)}>{label} ×</button>
                         ))}
                         <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => {
                           const label = window.prompt("Label letter");
@@ -888,8 +935,8 @@ export function LeadsView({
                           items={[
                             { label: "+ Add Note", onClick: () => chrome.openModal(<NoteModal onClose={chrome.closeModal} onSave={(body) => { log(row, "note", "Note added", body); chrome.closeModal(); }} />) },
                             { label: "+ New Reminder", onClick: () => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />) },
-                            { label: "→ Send Text", onClick: () => composer.text(row.phone, (value) => log(row, "text", "Text sent", value.body)) },
-                            { label: "→ Send Email", onClick: () => composer.email(row.email, (sent, value) => log(row, "email", sent ? "Email sent" : "Draft", value.body)) },
+                            { label: "→ Send Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", row, value)) },
+                            { label: "→ Send Email", onClick: () => composer.email(row.email, (sent, value) => sent ? void sendLead("email", row, value) : log(row, "email", "Draft", value.body)) },
                             { label: "Trash this Lead", danger: true, onClick: () => trash([row.id]) },
                             { label: "Merge lead", onClick: () => chrome.openModal(
                               <ChoiceModal
@@ -1021,8 +1068,24 @@ function LeadDetail({
 }) {
   const chrome = useChrome();
   const composer = useComposer();
+  const office = useOfficeSession();
   const { state, update } = useCinc();
   const { leads } = useLeads();
+  async function sendLead(channel: "email" | "sms", value: { to: string; body: string; subject?: string; cc?: string; bcc?: string; attachments?: string[] }) {
+    if (channel === "email" && !office.canSendEmail) { chrome.toast("Your permissions do not include email."); return; }
+    if (channel === "sms" && !office.canSendText) { chrome.toast("Your permissions do not include text."); return; }
+    const response = await fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel, to: value.to, subject: value.subject, body: value.body }) });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    const extra = [value.cc && `Cc ${value.cc}`, value.bcc && `Bcc ${value.bcc}`, value.attachments?.length ? `Attachments: ${value.attachments.join(", ")}` : ""].filter(Boolean).join(" · ");
+    const kind = channel === "email" ? "email" : "text";
+    if (!response.ok) {
+      onLog(row, kind, channel === "email" ? "Email not sent" : "Text not sent", data?.message || "The provider is not connected.");
+      chrome.toast(data?.message || "That message was not sent. The provider is not connected.");
+      return;
+    }
+    onLog(row, kind, channel === "email" ? "Email sent" : "Text sent", [value.body, extra].filter(Boolean).join("\n"));
+    chrome.toast(channel === "email" ? "Email sent." : "Text sent.");
+  }
   const index = rows.findIndex((item) => item.id === row.id);
   const prev = rows[index - 1];
   const next = rows[index + 1];
@@ -1048,15 +1111,25 @@ function LeadDetail({
   const [activityChecks, setActivityChecks] = useState<string[]>(["Assigned Agent", "Notes"]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openSteps, setOpenSteps] = useState(false);
+  const [undoLabel, setUndoLabel] = useState<string | null>(null);
+  function setTrackStatus(leadId: string, trackId: string, status: "active" | "paused" | "stopped") {
+    update((current) => {
+      const existing = current.leadTracks[leadId] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true, status: "stopped" as const }];
+      const leadTracks = { ...current.leadTracks, [leadId]: existing.map((item) => item.id === trackId ? { ...item, status, cancelled: status === "stopped" } : item) };
+      void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields: { trackStatus: JSON.stringify(leadTracks[leadId]) } }) });
+      return { ...current, leadTracks };
+    });
+    chrome.toast(status === "active" ? "AutoTrack resumed for this lead." : status === "paused" ? "AutoTrack paused for this lead." : "AutoTrack stopped for this lead.");
+  }
   const rail = [
     ["Call", "☎", () => chrome.openModal(
       <DialerPanel title={`Call ${row.name}`} name={row.name} phone={row.phone} onClose={chrome.closeModal} onLog={(outcome, notes) => { onLog(row, "call", `Call: ${outcome}`, notes || outcome); chrome.closeModal(); chrome.toast(`${outcome} logged for ${row.phone}.`); }} />,
     )],
-    ["Dialer", "▦", () => chrome.openModal(
+    ["Dialer", "▦", () => { if (!office.canDial) { chrome.toast("Your permissions do not include the dialer."); return; } chrome.openModal(
       <DialerPanel title="Dialer" name={row.name} phone={row.phone} onClose={chrome.closeModal} onLog={(outcome, notes) => { onLog(row, "call", `Dialer: ${outcome}`, notes || outcome); chrome.closeModal(); chrome.toast(`${outcome} logged.`); }} />,
-    )],
-    ["Text", "💬", () => go(href.lead(row.id, "conversations"))],
-    ["Email", "✉", () => composer.email(row.email, (sent, value) => { onLog(row, "email", sent ? "Email sent" : "Draft", value.body); chrome.toast(sent ? "Email sent." : "Draft saved."); })],
+    ); }],
+    ["Text", "💬", () => composer.text(row.phone, (value) => void sendLead("sms", value))],
+    ["Email", "✉", () => composer.email(row.email, (sent, value) => { if (!sent) { onLog(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return; } void sendLead("email", value); })],
     ["Etta", "✦", () => chrome.openModal(
       <ModalFrame title="Etta" onClose={chrome.closeModal}>
         <p className="text-[13px]">Suggested for {row.name}: follow up on {row.city} and ask about {row.timeframe}.</p>
@@ -1132,7 +1205,7 @@ function LeadDetail({
                 label={<span className="ml-1 text-[12px] text-[#888]">▾</span>}
                 items={[
                   { label: "Call", onClick: () => { onLog(row, "call", "Call logged", "Connected"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                  { label: "Text", onClick: () => go(href.lead(row.id, "conversations")) },
+                  { label: "Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", value)) },
                   { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                 ]}
               />
@@ -1163,8 +1236,15 @@ function LeadDetail({
               />
             )}>+ Label</button>
             <div className="mt-1 flex flex-wrap gap-1">
-              {(state.labels[row.id] ?? []).map((label) => <span key={label} className="bg-[#1c93b5] px-1 text-[10px] text-white">{label}</span>)}
+              {(state.labels[row.id] ?? []).map((label) => (
+                <button key={label} type="button" className="bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => {
+                  update((current) => ({ ...current, labels: { ...current.labels, [row.id]: (current.labels[row.id] ?? []).filter((item) => item !== label) } }));
+                  setUndoLabel(label);
+                  chrome.toast(`${label} removed.`);
+                }}>{label} ×</button>
+              ))}
             </div>
+            {undoLabel ? <button type="button" className="mt-1 text-[11px] text-[#1c93b5]" onClick={() => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: [...new Set([...(current.labels[row.id] ?? []), undoLabel])] } })); setUndoLabel(null); chrome.toast(`${undoLabel} restored.`); }}>Undo remove {undoLabel}</button> : null}
             <div className="mt-3 flex items-center justify-between text-left text-[12px] font-semibold">
               <span>Active Deals</span>
               <button type="button" className="font-normal text-[#1c93b5]" onClick={() => chrome.openModal(<LeadDealModal client={row.name} onClose={chrome.closeModal} />)}>+ Add Deal</button>
@@ -1222,11 +1302,7 @@ function LeadDetail({
                   ))}
                 </div>
               ) : null}
-              <button type="button" className="text-[12px] font-bold" onClick={() => {
-                const next = !state.signInAlert[row.id];
-                update((current) => ({ ...current, signInAlert: { ...current.signInAlert, [row.id]: next } }));
-                chrome.toast(next ? "Subscribed to sign-in alerts." : "Sign-in alerts turned off.");
-              }}>{state.signInAlert[row.id] ? "Subscriptions: On" : "Subscriptions"}</button>
+              <button type="button" className="text-[12px] font-bold" onClick={() => chrome.openModal(<SubscriptionModal leadId={row.id} onClose={chrome.closeModal} />)}>{state.signInAlert[row.id] ? "Subscriptions: On" : "Subscriptions"}</button>
               <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
             {activityChecks.includes("Notes") && notes[0] ? (
@@ -1332,10 +1408,11 @@ function LeadDetail({
                 />,
               )}>+</button>
             </div>
-            {(state.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true }]).map((track) => (
+            {(state.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true, status: "stopped" as const }]).map((track) => (
               <article key={track.id} className="relative mb-3 border border-[#e5e5e5] bg-white p-3 pl-8 shadow-sm">
                 <button type="button" className="absolute top-6 -left-3 grid h-6 w-6 place-items-center rounded-full bg-[#bbb] text-white" onClick={() => update((current) => ({ ...current, leadTracks: { ...current.leadTracks, [row.id]: (current.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true }]).filter((item) => item.id !== track.id) } }))}>✕</button>
-                {track.cancelled ? <span className="absolute top-0 right-3 bg-[#666] px-2 py-1 text-[10px] text-white">CANCELLED</span> : null}
+                {track.status === "paused" ? <span className="absolute top-0 right-3 bg-[#e39b2b] px-2 py-1 text-[10px] text-white">PAUSED</span> : null}
+                {track.status === "stopped" || track.cancelled ? <span className="absolute top-0 right-3 bg-[#666] px-2 py-1 text-[10px] text-white">STOPPED</span> : null}
                 <p className="font-bold">{track.name}</p>
                 <p className="text-[12px] text-[#888]">General | Started on Oct 18, 2026 at 2:10 PM</p>
                 <div className="my-2 h-1.5 bg-[#eee]"><div className="h-full w-1/3 bg-[#1c93b5]" /></div>
@@ -1345,7 +1422,11 @@ function LeadDetail({
                   <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by Pipeline Complete - Contacted</p><p className="text-[11px] text-[#888]">Stop Trigger(s)</p></div>
                 </div>
                 {openSteps ? <ol className="mt-2 list-decimal pl-5 text-[12px] text-[#444]"><li>Day 1 call</li><li>Day 2 email</li><li>Day 4 text</li><li>Day 7 call</li><li>Day 10 email</li><li>Day 14 close</li></ol> : null}
-                <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => setOpenSteps((value) => !value)}>{openSteps ? "View Less" : "View More"}</button></div>
+                <div className="mt-2 flex justify-end gap-2 text-[12px]">
+                  {track.status === "paused" ? <button type="button" className="text-[#1c93b5]" onClick={() => setTrackStatus(row.id, track.id, "active")}>Resume</button> : <button type="button" className="text-[#1c93b5]" onClick={() => setTrackStatus(row.id, track.id, "paused")}>Pause</button>}
+                  <button type="button" className="text-[#d9363e]" onClick={() => setTrackStatus(row.id, track.id, "stopped")}>Stop</button>
+                  <button type="button" className="text-[#1c93b5]" onClick={() => setOpenSteps((value) => !value)}>{openSteps ? "View Less" : "View More"}</button>
+                </div>
               </article>
             ))}
           </div>
@@ -1688,12 +1769,52 @@ function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => 
   );
 }
 
+const SUBSCRIPTION_OPTIONS = ["Email property alerts", "Text property alerts", "Saved search alerts", "Market reports", "Newsletter", "Phone"] as const;
+
+function SubscriptionModal({ leadId, onClose }: { leadId: string; onClose: () => void }) {
+  const chrome = useChrome();
+  const { update } = useCinc();
+  const [picked, setPicked] = useState<string[]>(["Email property alerts", "Saved search alerts"]);
+  useEffect(() => {
+    void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fields?: { subscriptions?: string } } | null;
+      if (!data?.fields?.subscriptions) return;
+      try {
+        const parsed = JSON.parse(data.fields.subscriptions) as string[];
+        if (Array.isArray(parsed)) setPicked(parsed);
+      } catch { /* keep defaults */ }
+    });
+  }, [leadId]);
+  return (
+    <ModalFrame title="Subscriptions" onClose={onClose}>
+      <p className="mb-2 text-[12px] text-[#666]">These are the working subscription controls. Exact CINC wording can replace the labels when that list arrives.</p>
+      {SUBSCRIPTION_OPTIONS.map((option) => (
+        <label key={option} className="mb-1 block text-[13px]">
+          <input type="checkbox" checked={picked.includes(option)} onChange={() => setPicked((current) => current.includes(option) ? current.filter((item) => item !== option) : [...current, option])} /> {option}
+        </label>
+      ))}
+      <div className="mt-3 text-right">
+        <Btn kind="teal" onClick={() => {
+          void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields: { subscriptions: JSON.stringify(picked) } }) }).then((response) => {
+            chrome.toast(response.ok ? "Subscriptions saved." : "Could not save subscriptions.");
+          });
+          update((current) => ({ ...current, signInAlert: { ...current.signInAlert, [leadId]: picked.length > 0 } }));
+          onClose();
+        }}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
 function ApplyLabels({ selected, onClose, onApply }: { selected: string[]; onClose: () => void; onApply: (labels: string[]) => void }) {
+  const chrome = useChrome();
+  const catalog = useLabelCatalog();
   const [picked, setPicked] = useState(selected);
   const [group, setGroup] = useState(LABEL_GROUPS[0]?.name ?? "");
   const [query, setQuery] = useState("");
   const [selectedOnly, setSelectedOnly] = useState(false);
-  const labels = (LABEL_GROUPS.find((item) => item.name === group)?.labels ?? []).filter((label) => label.toLowerCase().includes(query.toLowerCase()) && (!selectedOnly || picked.includes(label)));
+  const groups = [...new Set(catalog.rows.map((row) => row.category))];
+  const labels = catalog.rows.filter((row) => row.category === group && row.name.toLowerCase().includes(query.toLowerCase()) && (!selectedOnly || picked.includes(row.name)));
   return (
     <ModalFrame title="Apply Labels" onClose={onClose} wide>
       <div className="grid grid-cols-[180px_1fr] gap-3 text-[13px]">
@@ -1701,21 +1822,21 @@ function ApplyLabels({ selected, onClose, onApply }: { selected: string[]; onClo
           <p className="font-bold">Groups</p>
           <p className="text-[11px] text-[#888]">Name A–Z</p>
           <label className="text-[12px]"><input type="checkbox" checked={selectedOnly} onChange={(event) => setSelectedOnly(event.target.checked)} /> Selected only ({picked.length})</label>
-          {LABEL_GROUPS.map((item) => (
-            <button key={item.name} type="button" className={`mt-1 block w-full px-2 py-1 text-left ${group === item.name ? "bg-[#e7f4f8]" : ""}`} onClick={() => setGroup(item.name)}>{item.name}</button>
+          {(groups.length ? groups : LABEL_GROUPS.map((item) => item.name)).map((item) => (
+            <button key={item} type="button" className={`mt-1 block w-full px-2 py-1 text-left ${group === item ? "bg-[#e7f4f8]" : ""}`} onClick={() => setGroup(item)}>{item}</button>
           ))}
         </div>
         <div>
           <input className={inputCls} placeholder="Search labels" value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="mt-2 max-h-64 overflow-auto">
-            {labels.map((label) => (
-              <label key={label} className="block py-1"><input type="checkbox" checked={picked.includes(label)} onChange={() => setPicked((current) => current.includes(label) ? current.filter((item) => item !== label) : [...current, label])} /> {label}</label>
+            {labels.map((row) => (
+              <label key={`${row.category}-${row.name}`} className="block py-1"><input type="checkbox" checked={picked.includes(row.name)} onChange={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])} /> {row.name}</label>
             ))}
           </div>
         </div>
       </div>
       <div className="mt-3 flex justify-between text-[13px]">
-        <button type="button" className="text-[#1c93b5]" onClick={() => onClose()}>Manage labels</button>
+        <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<LabelManager onClose={chrome.closeModal} onChange={() => undefined} />)}>Manage labels</button>
         <div className="flex gap-2">
           <Btn onClick={onClose}>Cancel</Btn>
           <Btn kind="teal" onClick={() => onApply(picked)}>Apply</Btn>

@@ -30,6 +30,7 @@ function asCriteria(value: unknown): SearchCriteria {
     ...EMPTY_CRITERIA,
     ...raw,
     tags: Array.isArray(raw.tags) ? raw.tags.filter((tag): tag is string => typeof tag === "string") : [],
+    places: Array.isArray(raw.places) ? raw.places.filter((place): place is string => typeof place === "string") : [],
   };
 }
 

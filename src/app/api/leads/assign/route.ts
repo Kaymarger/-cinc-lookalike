@@ -1,6 +1,7 @@
 import { assignCapturedLead, getLead } from "@/lib/leads-db";
-import { canReassignLeads, leadVisibleTo } from "@/lib/office-access";
+import { leadVisibleTo } from "@/lib/office-access";
 import { currentActor } from "@/lib/office-actor";
+import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { findUserByName, listUsers } from "@/lib/office-users";
 
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ function clean(value: unknown): string {
 export async function POST(request: Request) {
   const actor = await currentActor();
   if (!actor) return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
-  if (!canReassignLeads(actor.user.role)) {
+  if (!actor.canReassign) {
     return Response.json({ ok: false, message: "Your role cannot reassign leads." }, { status: 403 });
   }
   const body = (await request.json().catch(() => null)) as {
@@ -38,7 +39,12 @@ export async function POST(request: Request) {
     });
   }
 
-  const agent = clean(body?.agent);
+  let agent = clean(body?.agent);
+  const routed = agent === "Routing Engine";
+  if (routed) {
+    const assignee = await resolveNewLeadAssignee();
+    agent = assignee.name || "Unassigned";
+  }
   const partner = clean(body?.partner);
   const listing = clean(body?.listing);
   const users = await listUsers().catch(() => []);
@@ -53,7 +59,7 @@ export async function POST(request: Request) {
     listing,
   });
   if (!saved) {
-    return Response.json({ ok: true, persisted: false, message: "Sample lead updated on this device." });
+    return Response.json({ ok: true, persisted: false, agent, routed, message: routed ? `Routed to ${agent}.` : "Sample lead updated on this device." });
   }
-  return Response.json({ ok: true, persisted: true, lead: saved });
+  return Response.json({ ok: true, persisted: true, agent, routed, lead: saved });
 }
