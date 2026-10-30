@@ -10,19 +10,19 @@ function asFlags(value: unknown): Partial<OfficePermissions> {
   const out: Partial<OfficePermissions> = {};
   for (const [key] of PERMISSION_OPTIONS) {
     const flag = (value as Record<string, unknown>)[key];
-    if (typeof flag === "boolean") out[key] = flag;
+    if (typeof flag === "boolean") out[key as PermissionKey] = flag;
   }
   return out;
 }
 
 export async function permissionsFor(userId: string, role: OfficeRole): Promise<OfficePermissions> {
   const prefs = await readPreferences(userId).catch(() => ({} as Record<string, unknown>));
-  return { ...defaultPermissions(role), ...asFlags(prefs.permissions) };
+  return { ...defaultPermissions(role), ...asFlags(prefs.permissions) } as OfficePermissions;
 }
 
 export async function savePermissions(userId: string, role: OfficeRole, flags: Partial<OfficePermissions>): Promise<OfficePermissions> {
   const current = await readPreferences(userId);
-  const next = { ...defaultPermissions(role), ...asFlags(current.permissions), ...asFlags(flags) };
+  const next = { ...defaultPermissions(role), ...asFlags(current.permissions), ...asFlags(flags) } as OfficePermissions;
   await writePreferences(userId, { ...current, permissions: next });
   return next;
 }

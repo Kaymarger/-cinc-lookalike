@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MERGE_TAGS } from "@/lib/cinc-options";
-import { fillMergeTags, SAMPLE_MERGE } from "@/lib/autotrack";
 import { useChrome } from "./chrome-context";
-import { useCinc } from "./store";
+import { EmailComposer, TextComposer, type MailDraft } from "./compose-mail";
+
+export type { MailDraft };
 
 export function Caret({ className = "text-current" }: { className?: string }) {
   return (
@@ -189,148 +189,6 @@ export function Menu({
         </div>
       ) : null}
     </div>
-  );
-}
-
-export type MailDraft = { to: string; cc: string; bcc: string; subject: string; body: string; attachments: string[] };
-
-export function EmailComposer({
-  to = "",
-  onClose,
-  onSend,
-  onDraft,
-}: {
-  to?: string;
-  onClose: () => void;
-  onSend: (value: MailDraft) => void;
-  onDraft: (value: MailDraft) => void;
-}) {
-  const { state } = useCinc();
-  const chrome = useChrome();
-  const editor = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState({ from: "Kayla Gerak <agent@example.com>", to, cc: "", bcc: "", subject: "" });
-  const [sign, setSign] = useState(true);
-  const [templateId, setTemplateId] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
-  const [preview, setPreview] = useState(false);
-  const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const emailTemplates = state.templates.filter((item) => item.type === "Email");
-  function html() {
-    return editor.current?.innerHTML ?? "";
-  }
-  function payload(): MailDraft {
-    const signature = sign ? "<p>Kayla Gerak · Archibald Real Estate Group</p>" : "";
-    const attached = files.length ? `<p>Attachments: ${files.join(", ")}</p>` : "";
-    return { to: form.to, cc: form.cc, bcc: form.bcc, subject: form.subject || "(no subject)", body: `${html()}${signature}${attached}`, attachments: files };
-  }
-  function format(command: string, value?: string) {
-    editor.current?.focus();
-    document.execCommand(command, false, value);
-  }
-  return (
-    <ModalFrame title="New Email" onClose={onClose} wide>
-      <Field label="From"><input className={inputCls} value={form.from} onChange={(event) => set("from", event.target.value)} /></Field>
-      <Field label="To"><input className={inputCls} placeholder="Search leads" value={form.to} onChange={(event) => set("to", event.target.value)} /></Field>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Cc"><input className={inputCls} value={form.cc} onChange={(event) => set("cc", event.target.value)} /></Field>
-        <Field label="Bcc"><input className={inputCls} value={form.bcc} onChange={(event) => set("bcc", event.target.value)} /></Field>
-      </div>
-      <Field label="Subject"><input className={inputCls} value={form.subject} onChange={(event) => set("subject", event.target.value)} /></Field>
-      <Field label="Template">
-        <select className={inputCls} value={templateId} onChange={(event) => {
-          const id = event.target.value;
-          setTemplateId(id);
-          const chosen = emailTemplates.find((item) => item.id === id);
-          if (!chosen || !editor.current) return;
-          set("subject", chosen.name);
-          editor.current.innerHTML = chosen.body || "";
-        }}>
-          <option value="">Choose a template</option>
-          {emailTemplates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-      </Field>
-      <div className="mb-1 flex flex-wrap items-center gap-1 border border-[#ddd] bg-[#f7f7f7] p-1 text-[12px]">
-        <button type="button" className="px-1 font-bold" onClick={() => format("bold")}>B</button>
-        <button type="button" className="px-1 italic" onClick={() => format("italic")}>I</button>
-        <button type="button" className="px-1 underline" onClick={() => format("underline")}>U</button>
-        <button type="button" className="px-1" onClick={() => format("insertUnorderedList")}>• List</button>
-        <button type="button" className="px-1" onClick={() => format("insertOrderedList")}>1. List</button>
-        <button type="button" className="px-1" onClick={() => format("justifyLeft")}>Left</button>
-        <button type="button" className="px-1" onClick={() => format("justifyCenter")}>Center</button>
-        <select className="border border-[#ccc] bg-white" defaultValue="3" onChange={(event) => format("fontSize", event.target.value)} aria-label="Font size">
-          <option value="2">Small</option>
-          <option value="3">Normal</option>
-          <option value="5">Large</option>
-        </select>
-        <input aria-label="Font colour" type="color" defaultValue="#243238" onChange={(event) => format("foreColor", event.target.value)} />
-        <button type="button" className="px-1" onClick={() => { const href = window.prompt("Link"); if (href) format("createLink", href); }}>Link</button>
-        <select className="border border-[#ccc] bg-white" value="" onChange={(event) => { if (event.target.value) format("insertText", event.target.value); event.target.value = ""; }} aria-label="Merge tag">
-          <option value="">Merge tag</option>
-          {MERGE_TAGS.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-        </select>
-      </div>
-      <div ref={editor} contentEditable className="mb-2 h-40 w-full overflow-auto border border-[#ccc] bg-white p-2 text-[13px] outline-none focus:border-[#1c93b5]" />
-      <label className="mb-2 block text-[12px]">Attachments
-        <input className="mt-1 block text-[12px]" type="file" multiple onChange={(event) => {
-          const names = [...(event.target.files ?? [])].map((file) => file.name);
-          setFiles((current) => [...current, ...names]);
-          event.target.value = "";
-        }} />
-      </label>
-      <div className="mb-2 flex flex-wrap gap-1">{files.map((name) => <button key={name} type="button" className="bg-[#e7f4f8] px-2 py-0.5 text-[11px]" onClick={() => setFiles((current) => current.filter((item) => item !== name))}>{name} ×</button>)}</div>
-      <label className="mb-3 flex items-center gap-2 text-[12px]"><input type="checkbox" checked={sign} onChange={(event) => setSign(event.target.checked)} /> Include signature</label>
-      {preview ? <div className="mb-3 border border-[#ddd] bg-[#fafafa] p-3 text-[13px]" dangerouslySetInnerHTML={{ __html: fillMergeTags(payload().body, SAMPLE_MERGE) }} /> : null}
-      <div className="flex justify-end gap-2">
-        <Btn onClick={onClose}>Cancel</Btn>
-        <Btn onClick={() => setPreview((value) => !value)}>Preview</Btn>
-        <Btn onClick={() => onDraft(payload())}>Save Draft</Btn>
-        <Btn kind="teal" onClick={() => { if (!form.to.trim()) { chrome.toast("Enter a recipient."); return; } onSend(payload()); }}>Send</Btn>
-      </div>
-    </ModalFrame>
-  );
-}
-
-export function TextComposer({
-  to = "",
-  onClose,
-  onSend,
-}: {
-  to?: string;
-  onClose: () => void;
-  onSend: (value: { to: string; body: string }) => void;
-}) {
-  const { state } = useCinc();
-  const chrome = useChrome();
-  const box = useRef<HTMLTextAreaElement>(null);
-  const [dest, setDest] = useState(to);
-  const [body, setBody] = useState("");
-  const texts = state.templates.filter((item) => item.type === "Text");
-  function insert(value: string) {
-    const el = box.current;
-    if (!el) { setBody((current) => current + value); return; }
-    const start = el.selectionStart ?? body.length;
-    const next = `${body.slice(0, start)}${value}${body.slice(el.selectionEnd ?? start)}`;
-    setBody(next.slice(0, 320));
-  }
-  return (
-    <ModalFrame title="New Text" onClose={onClose}>
-      <Field label="To"><input className={inputCls} placeholder="Search leads" value={dest} onChange={(event) => setDest(event.target.value)} /></Field>
-      <Field label="Template">
-        <select className={inputCls} defaultValue="" onChange={(event) => { const chosen = texts.find((item) => item.id === event.target.value); if (chosen) setBody((chosen.body || chosen.name).slice(0, 320)); }}>
-          <option value="">Choose a template</option>
-          {texts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-      </Field>
-      <div className="mb-1 flex flex-wrap gap-1">
-        {MERGE_TAGS.slice(0, 6).map((tag) => <button key={tag} type="button" className="border border-[#ccc] px-1 text-[10px]" onClick={() => insert(tag)}>{tag}</button>)}
-      </div>
-      <textarea ref={box} className="mb-1 h-28 w-full border border-[#ccc] p-2 text-[13px] outline-none focus:border-[#1c93b5]" maxLength={320} placeholder="Enter message" value={body} onChange={(event) => setBody(event.target.value)} />
-      <p className="mb-3 text-right text-[11px] text-[#888]">{body.length}/320</p>
-      <div className="flex justify-end gap-2">
-        <Btn onClick={onClose}>Cancel</Btn>
-        <Btn kind="teal" onClick={() => { if (!dest.trim() || !body.trim()) { chrome.toast("Enter a recipient and a message."); return; } onSend({ to: dest, body: fillMergeTags(body, SAMPLE_MERGE) }); }}>Send</Btn>
-      </div>
-    </ModalFrame>
   );
 }
 

@@ -363,7 +363,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const [helpOpen, setHelpOpen] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [rail, setRail] = useState(false);
+  const [rail, setRail] = useState(true);
   const [feed, setFeed] = useState("All");
   const [modal, setModal] = useState<ReactNode>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -603,7 +603,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   ))}
                 </div>
                 <div className="border-t border-[#e5e5e5] bg-white">
-                  <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-[#888] uppercase">Dialer</p>
+                  <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-[#888] uppercase">Online</p>
                   {ROSTER.map(([name, role]) => (
                     <a key={name} href={href.dialer} className="flex items-center gap-1 px-2 py-1 text-[12px] text-[#1c93b5] hover:bg-[#f3fafc]">
                       <span className="min-w-0 flex-1 truncate">{name}</span>

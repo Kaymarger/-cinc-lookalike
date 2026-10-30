@@ -98,18 +98,6 @@ export function LaunchpadView() {
   });
   return (
     <div className="p-4">
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          ["Leads", href.leads],
-          ["Inbox", href.inbox],
-          ["Calendar", href.calendar],
-          ["Tasks", href.tasks],
-          ["Dialer", href.dialer],
-          ["Marketing", href.marketing],
-        ].map(([label, link]) => (
-          <a key={label} href={link} className="border border-[#e5e5e5] bg-white px-3 py-3 text-[12px] font-bold tracking-wide text-[#1c93b5] uppercase shadow-sm hover:border-[#1c93b5]">{label}</a>
-        ))}
-      </div>
       <h1 className="text-[15px] font-bold text-[#243238]">Welcome back, {CRM_AGENT.greetingName}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}

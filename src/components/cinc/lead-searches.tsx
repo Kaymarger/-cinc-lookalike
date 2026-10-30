@@ -238,11 +238,12 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
       {notice ? <p className="mt-1 text-[11px] text-[#8a5a00]">{notice}</p> : null}
       <ul className="mt-1 space-y-1">
         {searches.map((search) => (
-          <li key={search.id} className="border border-[#e5e5e5] bg-[#f7fbfc] px-2 py-1 text-[11px]">
-            <p className="font-semibold text-[#243238]">{search.name}</p>
-            <p className="text-[#666]">{savedSearchSummary(search)}</p>
-            <button type="button" className="mr-2 text-[#1c93b5]" onClick={() => openForm(search)}>Edit</button>
-            <button type="button" className="text-[#1c93b5]" onClick={() => void copySearch(search)}>Copy</button>
+          <li key={search.id} className="px-1 py-1 text-center text-[12px]">
+            <button type="button" className="text-[#1c93b5]" onClick={() => openForm(search)}>{savedSearchSummary(search) || search.name}</button>
+            <div>
+              <button type="button" className="mr-2 text-[11px] text-[#1c93b5]" onClick={() => openForm(search)}>Edit</button>
+              <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => void copySearch(search)}>Copy</button>
+            </div>
           </li>
         ))}
       </ul>

@@ -255,6 +255,14 @@ function siteRow(lead: Lead): Row {
   };
 }
 
+function listPrice(value: string): string {
+  const amount = Number(String(value).replace(/[^0-9.]/g, ""));
+  if (!amount) return "$ n/a";
+  if (amount >= 1_000_000) return `$ ${(amount / 1_000_000).toFixed(2)}M`;
+  if (amount >= 1000) return `$ ${Math.round(amount / 1000)}k`;
+  return `$ ${amount}`;
+}
+
 function crmRows(): Row[] {
   return CRM_LEADS.map((lead) => ({
     id: lead.id,
@@ -570,13 +578,6 @@ export function LeadsView({
     chrome.toast("Restored the selected leads.");
   }
 
-  const [removedLabel, setRemovedLabel] = useState<{ id: string; label: string } | null>(null);
-  function removeLabel(id: string, label: string) {
-    update((current) => ({ ...current, labels: { ...current.labels, [id]: (current.labels[id] ?? []).filter((item) => item !== label) } }));
-    setRemovedLabel({ id, label });
-    chrome.toast(`${label} removed.`);
-  }
-
   function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) {
     if (row.origin === "site" && kind !== "note") {
       appendActivity(row.id, { kind, title, body });
@@ -780,7 +781,6 @@ export function LeadsView({
             { label: "None", onClick: () => setSelected([]) },
           ]} />
         </span>
-        {removedLabel ? <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => { update((current) => ({ ...current, labels: { ...current.labels, [removedLabel.id]: [...new Set([...(current.labels[removedLabel.id] ?? []), removedLabel.label])] } })); setRemovedLabel(null); chrome.toast(`${removedLabel.label} restored.`); }}>Undo remove {removedLabel.label}</button> : null}
         <Menu
           label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">Mass Actions ▾</span>}
           items={[
@@ -914,7 +914,7 @@ export function LeadsView({
                     <td className="px-1">
                       <div className="flex flex-col items-center gap-1">
                         {(state.labels[row.id] ?? []).map((label) => (
-                          <button key={label} type="button" title="Remove label" className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }} onClick={() => removeLabel(row.id, label)}>{label} ×</button>
+                          <span key={label} title={label} className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }}>{label.slice(0, 1)}</span>
                         ))}
                         <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => {
                           const label = window.prompt("Label letter");
@@ -955,7 +955,7 @@ export function LeadsView({
                       </div>
                     </td>
                     <td className="px-2 text-[12px]">{row.registered}<br />{row.source}</td>
-                    <td className="px-2 text-[12px]">{row.price}<br />{row.city}<br /><span className="text-[11px] text-[#999]">⌂ PRE</span></td>
+                    <td className="px-2 text-[12px]">{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td>
                     <td className="px-2 text-[12px]">{row.timeframe}</td>
                     <td className="px-2 text-[12px]">{row.lastLogin}<br />{row.logins} Total</td>
                     <td className="px-2 text-[12px] leading-5">
@@ -1111,7 +1111,7 @@ function LeadDetail({
   const [activityChecks, setActivityChecks] = useState<string[]>(["Assigned Agent", "Notes"]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openSteps, setOpenSteps] = useState(false);
-  const [undoLabel, setUndoLabel] = useState<string | null>(null);
+  const [trackMenu, setTrackMenu] = useState<string | null>(null);
   function setTrackStatus(leadId: string, trackId: string, status: "active" | "paused" | "stopped") {
     update((current) => {
       const existing = current.leadTracks[leadId] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true, status: "stopped" as const }];
@@ -1145,7 +1145,7 @@ function LeadDetail({
       {!expanded ? (
         <div className="absolute top-14 left-0 z-20 flex w-16 -translate-x-1/2 flex-col items-center gap-2">
           {rail.map(([label, icon, action]) => (
-            <button key={label} type="button" className="grid place-items-center text-[#1c93b5]" onClick={action}>
+            <button key={label} type="button" title={label === "Email" ? "Email Lead" : label === "Text" ? "Text Lead" : label} className="grid place-items-center text-[#1c93b5]" onClick={action}>
               <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1c93b5] text-[16px] text-white">{icon}</span>
               <span className="text-[11px] leading-tight">{label}</span>
             </button>
@@ -1204,8 +1204,8 @@ function LeadDetail({
               <Menu
                 label={<span className="ml-1 text-[12px] text-[#888]">▾</span>}
                 items={[
-                  { label: "Call", onClick: () => { onLog(row, "call", "Call logged", "Connected"); chrome.toast(`Call to ${row.phone} logged.`); } },
-                  { label: "Text", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", value)) },
+                  { label: "Call Lead", onClick: () => { onLog(row, "call", "Call logged", "Connected"); chrome.toast(`Call to ${row.phone} logged.`); } },
+                  { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => void sendLead("sms", value)) },
                   { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                 ]}
               />
@@ -1228,23 +1228,18 @@ function LeadDetail({
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
-            <button type="button" className="mt-2 rounded border border-dashed border-[#bbb] px-2 py-0.5 text-[11px]" onClick={() => chrome.openModal(
+            <button type="button" title="Add or remove labels" className="mt-2 rounded border border-dashed border-[#bbb] px-2 py-0.5 text-[11px]" onClick={() => chrome.openModal(
               <ApplyLabels
                 selected={state.labels[row.id] ?? []}
                 onClose={chrome.closeModal}
                 onApply={(labels) => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: labels } })); chrome.closeModal(); chrome.toast("Labels applied."); }}
               />
             )}>+ Label</button>
-            <div className="mt-1 flex flex-wrap gap-1">
+            <div className="mt-1 flex flex-wrap justify-center gap-1">
               {(state.labels[row.id] ?? []).map((label) => (
-                <button key={label} type="button" className="bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => {
-                  update((current) => ({ ...current, labels: { ...current.labels, [row.id]: (current.labels[row.id] ?? []).filter((item) => item !== label) } }));
-                  setUndoLabel(label);
-                  chrome.toast(`${label} removed.`);
-                }}>{label} ×</button>
+                <span key={label} title={label} className="rounded-full bg-[#1c93b5] px-2 py-0.5 text-[10px] text-white">{label}</span>
               ))}
             </div>
-            {undoLabel ? <button type="button" className="mt-1 text-[11px] text-[#1c93b5]" onClick={() => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: [...new Set([...(current.labels[row.id] ?? []), undoLabel])] } })); setUndoLabel(null); chrome.toast(`${undoLabel} restored.`); }}>Undo remove {undoLabel}</button> : null}
             <div className="mt-3 flex items-center justify-between text-left text-[12px] font-semibold">
               <span>Active Deals</span>
               <button type="button" className="font-normal text-[#1c93b5]" onClick={() => chrome.openModal(<LeadDealModal client={row.name} onClose={chrome.closeModal} />)}>+ Add Deal</button>
@@ -1302,7 +1297,6 @@ function LeadDetail({
                   ))}
                 </div>
               ) : null}
-              <button type="button" className="text-[12px] font-bold" onClick={() => chrome.openModal(<SubscriptionModal leadId={row.id} onClose={chrome.closeModal} />)}>{state.signInAlert[row.id] ? "Subscriptions: On" : "Subscriptions"}</button>
               <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
             {activityChecks.includes("Notes") && notes[0] ? (
@@ -1408,27 +1402,39 @@ function LeadDetail({
                 />,
               )}>+</button>
             </div>
-            {(state.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true, status: "stopped" as const }]).map((track) => (
-              <article key={track.id} className="relative mb-3 border border-[#e5e5e5] bg-white p-3 pl-8 shadow-sm">
-                <button type="button" className="absolute top-6 -left-3 grid h-6 w-6 place-items-center rounded-full bg-[#bbb] text-white" onClick={() => update((current) => ({ ...current, leadTracks: { ...current.leadTracks, [row.id]: (current.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", cancelled: true }]).filter((item) => item.id !== track.id) } }))}>✕</button>
-                {track.status === "paused" ? <span className="absolute top-0 right-3 bg-[#e39b2b] px-2 py-1 text-[10px] text-white">PAUSED</span> : null}
-                {track.status === "stopped" || track.cancelled ? <span className="absolute top-0 right-3 bg-[#666] px-2 py-1 text-[10px] text-white">STOPPED</span> : null}
-                <p className="font-bold">{track.name}</p>
+            {(state.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", status: "active" as const }]).map((track) => {
+              const paused = track.status === "paused";
+              return (
+              <article key={track.id} className="relative mb-3 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+                <span className={`absolute top-0 right-10 px-2 py-1 text-[10px] text-white ${paused ? "bg-[#e39b2b]" : "bg-[#2e9e5b]"}`}>{paused ? "PAUSED" : "ACTIVE"}</span>
+                <button type="button" className="absolute top-1 right-2 px-1 text-[16px]" aria-label="Track menu" onClick={() => setTrackMenu(trackMenu === track.id ? null : track.id)}>⋮</button>
+                {trackMenu === track.id ? (
+                  <div className="absolute top-7 right-2 z-10 border border-[#ddd] bg-white text-[13px] shadow">
+                    <button type="button" className="block w-full px-3 py-1 text-left hover:bg-[#f6f6f6]" onClick={() => { setTrackStatus(row.id, track.id, paused ? "active" : "paused"); setTrackMenu(null); }}>Pause</button>
+                    <button type="button" className="block w-full px-3 py-1 text-left hover:bg-[#f6f6f6]" onClick={() => { update((current) => ({ ...current, leadTracks: { ...current.leadTracks, [row.id]: (current.leadTracks[row.id] ?? []).filter((item) => item.id !== track.id) } })); setTrackMenu(null); chrome.toast("AutoTrack deleted for this lead."); }}>Delete</button>
+                  </div>
+                ) : null}
+                <p className="pr-16 font-bold">{track.name}</p>
                 <p className="text-[12px] text-[#888]">General | Started on Oct 18, 2026 at 2:10 PM</p>
-                <div className="my-2 h-1.5 bg-[#eee]"><div className="h-full w-1/3 bg-[#1c93b5]" /></div>
-                <p className="text-[12px]">2 of 6 steps completed</p>
+                <p className="mt-2 text-[12px]">0 of 6 steps completed</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by New Lead</p><p className="text-[11px] text-[#888]">Start Trigger(s)</p></div>
-                  <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by Pipeline Complete - Contacted</p><p className="text-[11px] text-[#888]">Stop Trigger(s)</p></div>
+                  <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">--</p><p className="text-[11px] text-[#888]">Stop Trigger(s)</p></div>
                 </div>
-                {openSteps ? <ol className="mt-2 list-decimal pl-5 text-[12px] text-[#444]"><li>Day 1 call</li><li>Day 2 email</li><li>Day 4 text</li><li>Day 7 call</li><li>Day 10 email</li><li>Day 14 close</li></ol> : null}
-                <div className="mt-2 flex justify-end gap-2 text-[12px]">
-                  {track.status === "paused" ? <button type="button" className="text-[#1c93b5]" onClick={() => setTrackStatus(row.id, track.id, "active")}>Resume</button> : <button type="button" className="text-[#1c93b5]" onClick={() => setTrackStatus(row.id, track.id, "paused")}>Pause</button>}
-                  <button type="button" className="text-[#d9363e]" onClick={() => setTrackStatus(row.id, track.id, "stopped")}>Stop</button>
-                  <button type="button" className="text-[#1c93b5]" onClick={() => setOpenSteps((value) => !value)}>{openSteps ? "View Less" : "View More"}</button>
-                </div>
+                {openSteps ? (
+                  <ol className="mt-2 pl-1 text-[12px] text-[#444]">
+                    <li>Day 1 — Call Reminder 1 Day(s) Overdue</li>
+                    <li>Day 2 — Pending</li>
+                    <li>Day 3 — Not Started</li>
+                    <li>Day 4 — Not Started</li>
+                    <li>Day 5 — Not Started</li>
+                    <li>Day 6 — Not Started</li>
+                  </ol>
+                ) : null}
+                <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => setOpenSteps((value) => !value)}>{openSteps ? "View Less" : "View More"}</button></div>
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : null}
       </section>
@@ -1769,42 +1775,7 @@ function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => 
   );
 }
 
-const SUBSCRIPTION_OPTIONS = ["Email property alerts", "Text property alerts", "Saved search alerts", "Market reports", "Newsletter", "Phone"] as const;
-
-function SubscriptionModal({ leadId, onClose }: { leadId: string; onClose: () => void }) {
-  const chrome = useChrome();
-  const { update } = useCinc();
-  const [picked, setPicked] = useState<string[]>(["Email property alerts", "Saved search alerts"]);
-  useEffect(() => {
-    void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { cache: "no-store" }).then(async (response) => {
-      const data = (await response.json().catch(() => null)) as { fields?: { subscriptions?: string } } | null;
-      if (!data?.fields?.subscriptions) return;
-      try {
-        const parsed = JSON.parse(data.fields.subscriptions) as string[];
-        if (Array.isArray(parsed)) setPicked(parsed);
-      } catch { /* keep defaults */ }
-    });
-  }, [leadId]);
-  return (
-    <ModalFrame title="Subscriptions" onClose={onClose}>
-      <p className="mb-2 text-[12px] text-[#666]">These are the working subscription controls. Exact CINC wording can replace the labels when that list arrives.</p>
-      {SUBSCRIPTION_OPTIONS.map((option) => (
-        <label key={option} className="mb-1 block text-[13px]">
-          <input type="checkbox" checked={picked.includes(option)} onChange={() => setPicked((current) => current.includes(option) ? current.filter((item) => item !== option) : [...current, option])} /> {option}
-        </label>
-      ))}
-      <div className="mt-3 text-right">
-        <Btn kind="teal" onClick={() => {
-          void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields: { subscriptions: JSON.stringify(picked) } }) }).then((response) => {
-            chrome.toast(response.ok ? "Subscriptions saved." : "Could not save subscriptions.");
-          });
-          update((current) => ({ ...current, signInAlert: { ...current.signInAlert, [leadId]: picked.length > 0 } }));
-          onClose();
-        }}>Save</Btn>
-      </div>
-    </ModalFrame>
-  );
-}
+const AUTOTRACK_LABELS = new Set(["Follow Up Reminders", "LinkedIn Spanish", "Market Reports", "Monthly", "Pause Autotrack", "REMOVE", "Spanish Lead", "Weekly"]);
 
 function ApplyLabels({ selected, onClose, onApply }: { selected: string[]; onClose: () => void; onApply: (labels: string[]) => void }) {
   const chrome = useChrome();
@@ -1822,15 +1793,19 @@ function ApplyLabels({ selected, onClose, onApply }: { selected: string[]; onClo
           <p className="font-bold">Groups</p>
           <p className="text-[11px] text-[#888]">Name A–Z</p>
           <label className="text-[12px]"><input type="checkbox" checked={selectedOnly} onChange={(event) => setSelectedOnly(event.target.checked)} /> Selected only ({picked.length})</label>
-          {(groups.length ? groups : LABEL_GROUPS.map((item) => item.name)).map((item) => (
-            <button key={item} type="button" className={`mt-1 block w-full px-2 py-1 text-left ${group === item ? "bg-[#e7f4f8]" : ""}`} onClick={() => setGroup(item)}>{item}</button>
-          ))}
+          {(groups.length ? groups : LABEL_GROUPS.map((item) => item.name)).map((item) => {
+            const count = catalog.rows.filter((row) => row.category === item).length;
+            return <button key={item} type="button" className={`mt-1 block w-full px-2 py-1 text-left ${group === item ? "bg-[#1c93b5] text-white" : ""}`} onClick={() => setGroup(item)}>{item} ({count} labels)</button>;
+          })}
         </div>
         <div>
           <input className={inputCls} placeholder="Search labels" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <div className="mt-2 max-h-64 overflow-auto">
+          <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-auto">
             {labels.map((row) => (
-              <label key={`${row.category}-${row.name}`} className="block py-1"><input type="checkbox" checked={picked.includes(row.name)} onChange={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])} /> {row.name}</label>
+              <button key={`${row.category}-${row.name}`} type="button" className={`border px-2 py-2 text-left text-[12px] ${picked.includes(row.name) ? "border-[#1c93b5] bg-[#e7f4f8]" : "border-[#eee]"}`} onClick={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])}>
+                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
+                {row.name}{AUTOTRACK_LABELS.has(row.name) ? " *" : ""}
+              </button>
             ))}
           </div>
         </div>

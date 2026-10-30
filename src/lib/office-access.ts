@@ -336,8 +336,13 @@ function oneOf(value: unknown, allowed: readonly string[], fallback: string): st
   return allowed.includes(text) ? text : "bad";
 }
 
-function money(value: number): string {
-  return `$${value.toLocaleString("en-CA")}`;
+function shortMoney(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = Math.round((value / 1_000_000) * 10) / 10;
+    return `$${millions}M`;
+  }
+  if (value >= 1000) return `$${Math.round(value / 1000)}k`;
+  return `$${value}`;
 }
 
 export function savedSearchSummary(search: Pick<LeadSavedSearch, "city" | "minPrice" | "maxPrice" | "beds" | "baths" | "propertyType" | "frequency" | "criteria">): string {
@@ -345,14 +350,13 @@ export function savedSearchSummary(search: Pick<LeadSavedSearch, "city" | "minPr
     .filter((place) => place.startsWith("City: ") || place.startsWith("Neighbourhood: "))
     .map((place) => place.split(": ").slice(1).join(": "))
     .filter(Boolean);
-  const city = search.city || placeCity[0] || search.criteria?.location || "Any";
-  let price = "Any";
-  if (search.minPrice != null && search.maxPrice != null) price = `${money(search.minPrice)}–${money(search.maxPrice)}`;
-  else if (search.minPrice != null) price = `${money(search.minPrice)}+`;
-  else if (search.maxPrice != null) price = `up to ${money(search.maxPrice)}`;
-  const extra: string[] = [];
-  if (search.beds != null) extra.push(`${search.beds}+ beds`);
-  if (search.propertyType) extra.push(search.propertyType);
-  const tail = extra.length ? ` · ${extra.join(" · ")}` : "";
-  return `Price: ${price}, City: ${city}${tail}`;
+  const city = search.city || placeCity[0] || search.criteria?.location || "";
+  const parts: string[] = [];
+  if (city) parts.push(city);
+  if (search.beds != null) parts.push(`${search.beds} beds`);
+  if (search.baths != null) parts.push(`> ${search.baths} baths`);
+  if (search.minPrice != null && search.maxPrice != null) parts.push(`${shortMoney(search.minPrice)} - ${shortMoney(search.maxPrice)}`);
+  else if (search.minPrice != null) parts.push(`${shortMoney(search.minPrice)}+`);
+  else if (search.maxPrice != null) parts.push(shortMoney(search.maxPrice));
+  return parts.join(", ");
 }

@@ -293,7 +293,7 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
       { id: "Contact Change Alert", description: "When a lead updates their phone or email." },
       { id: "High Property View", description: "When a lead views several listings in a short time." },
       { id: "Lead Login Alert", description: "When a lead signs in to the site." },
-      { id: "Unsubscribed Alert", description: "When a lead unsubscribes from email." },
+      { id: "Unsubscribed Alert", description: "A notification to alert you to the fact that a lead has unsubscribed from communications." },
       { id: "Inquiry", description: "When a lead sends a property inquiry." },
       { id: "Existing Lead Home Value Request", description: "When an existing lead asks for a home value." },
     ],
@@ -337,10 +337,6 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
       { id: "Contacted Lead Activity", description: "after 30+ days", channels: ["email", "text"] },
       { id: "Home Evaluation Submitted", description: "after 7+ days", channels: ["email", "text"] },
     ],
-  },
-  {
-    title: "MASTER SETTINGS",
-    items: [{ id: "Subscription", description: "", channels: ["cinc", "email", "text"] }],
   },
 ];
 

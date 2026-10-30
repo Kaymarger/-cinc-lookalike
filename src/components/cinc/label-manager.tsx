@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { LABEL_GROUPS } from "@/lib/cinc-options";
 import type { OfficeSettings } from "@/lib/office-settings";
 import { useChrome } from "./chrome-context";
-import { Btn, inputCls, ModalFrame } from "./ui";
+import { inputCls, ModalFrame } from "./ui";
 
 type LabelRow = { category: string; name: string };
 
@@ -15,15 +15,20 @@ function fallback(): LabelRow[] {
 export function LabelManager({ onClose, onChange }: { onClose: () => void; onChange: (rows: LabelRow[]) => void }) {
   const chrome = useChrome();
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [rows, setRows] = useState<LabelRow[]>([]);
-  const [category, setCategory] = useState("Custom");
-  const [name, setName] = useState("");
+  const [rows, setRows] = useState<LabelRow[]>(fallback());
+  const [group, setGroup] = useState(rows[0]?.category ?? "Miscellaneous");
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
   useEffect(() => {
     void fetch("/api/office/settings", { cache: "no-store" }).then(async (response) => {
       const data = (await response.json().catch(() => null)) as { settings?: OfficeSettings } | null;
       const stored = data?.settings?.labelCatalog ?? [];
       setSettings(data?.settings ?? null);
-      setRows(stored.length ? stored : fallback());
+      if (stored.length) {
+        setRows(stored);
+        setGroup(stored[0].category);
+      }
     });
   }, []);
   async function persist(next: LabelRow[], message: string) {
@@ -39,32 +44,53 @@ export function LabelManager({ onClose, onChange }: { onClose: () => void; onCha
     onChange(next);
     chrome.toast(message);
   }
-  const categories = [...new Set(rows.map((row) => row.category))];
+  const groups = [...new Set(rows.map((row) => row.category))];
+  const visible = rows.filter((row) => row.category === group && row.name.toLowerCase().includes(query.toLowerCase()));
+  const targets = groups.filter((item) => item !== group);
   return (
     <ModalFrame title="Manage Labels" onClose={onClose} wide>
-      <form className="mb-3 flex flex-wrap gap-2 text-[13px]" onSubmit={(event) => {
-        event.preventDefault();
-        const label = name.trim();
-        if (!label) return;
-        void persist([...rows, { category: category.trim() || "Custom", name: label }], "Label created.");
-        setName("");
-      }}>
-        <input className={inputCls} placeholder="Category" value={category} onChange={(event) => setCategory(event.target.value)} />
-        <input className={inputCls} placeholder="Label name" value={name} onChange={(event) => setName(event.target.value)} />
-        <Btn kind="teal" type="submit">Create</Btn>
-      </form>
-      <div className="max-h-72 overflow-auto text-[13px]">
-        {rows.map((row, index) => (
-          <div key={`${row.category}-${row.name}-${index}`} className="mb-1 flex items-center gap-2">
-            <input className={inputCls} value={row.category} onChange={(event) => setRows((current) => current.map((item, i) => i === index ? { ...item, category: event.target.value } : item))} />
-            <input className={inputCls} value={row.name} onChange={(event) => setRows((current) => current.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} />
-            <button type="button" className="text-[#1c93b5]" onClick={() => void persist(rows.map((item, i) => i === index ? row : item), "Label renamed.")}>Save</button>
-            <button type="button" className="text-[#d9363e]" onClick={() => void persist(rows.filter((_, i) => i !== index), "Label deleted.")}>Delete</button>
+      <div className="grid grid-cols-[200px_1fr] gap-3 text-[13px]">
+        <div>
+          <p className="font-bold">Groups</p>
+          {groups.map((item) => (
+            <div key={item} className={`mt-1 flex items-center gap-1 px-2 py-1 ${group === item ? "bg-[#1c93b5] text-white" : ""}`}>
+              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setGroup(item); setPicked([]); }}>{item}</button>
+              {group === item ? (
+                <>
+                  <button type="button" title="Rename group" onClick={() => { const name = window.prompt("Group name", item); if (!name || name === item) return; void persist(rows.map((row) => row.category === item ? { ...row, category: name } : row), "Group renamed."); setGroup(name); }}>✎</button>
+                  <button type="button" title="Delete group" onClick={() => void persist(rows.filter((row) => row.category !== item), "Group deleted.")}>🗑</button>
+                </>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="mb-2 flex gap-2">
+            <input className={inputCls} placeholder="Search labels" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <select className={inputCls} disabled={!picked.length} defaultValue="" onChange={(event) => {
+              const target = event.target.value;
+              if (!target) return;
+              void persist(rows.map((row) => row.category === group && picked.includes(row.name) ? { ...row, category: target } : row), "Labels moved.");
+              setPicked([]);
+              event.target.value = "";
+            }}>
+              <option value="">Move selected ▾</option>
+              {targets.map((item) => <option key={item}>{item}</option>)}
+            </select>
+            <form className="flex gap-1" onSubmit={(event) => { event.preventDefault(); if (!draft.trim()) return; void persist([...rows, { category: group, name: draft.trim() }], "Label created."); setDraft(""); }}>
+              <input className={inputCls} placeholder="+ New" value={draft} onChange={(event) => setDraft(event.target.value)} />
+              <button type="submit" className="bg-[#1c93b5] px-2 text-white">+ New</button>
+            </form>
           </div>
-        ))}
+          <div className="grid max-h-64 grid-cols-3 gap-2 overflow-auto">
+            {visible.map((row) => (
+              <button key={row.name} type="button" className={`border px-2 py-2 text-left text-[12px] ${picked.includes(row.name) ? "border-[#1c93b5] bg-[#e7f4f8]" : "border-[#eee]"}`} onClick={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])}>
+                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />{row.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <p className="mt-2 text-[11px] text-[#888]">Categories: {categories.join(", ") || "None"}</p>
-      <div className="mt-3 text-right"><Btn onClick={onClose}>Close</Btn></div>
     </ModalFrame>
   );
 }
