@@ -18,6 +18,8 @@ import {
   DialerView,
   InboxView,
   LandingView,
+  BrokerLaunchpad,
+  GmailView,
   LaunchpadView,
   MarketingView,
   PlansView,
@@ -54,7 +56,7 @@ function View() {
   if (route.view === "launchpad") return <LaunchpadView />;
   if (route.view === "callsummary") return <CallSummaryView />;
   if (route.view === "leads") return <LeadsView mode={route.mode} leadId={route.leadId} tab={route.tab} />;
-  if (route.view === "contacts") return <ContactsView />;
+  if (route.view === "contacts") return <ContactsView mode={route.mode} />;
   if (route.view === "deals") return <DealsView board={route.board} />;
   if (route.view === "inbox") return <InboxView folder={route.folder} />;
   if (route.view === "autotracks") return <AutoTracksView />;
@@ -64,7 +66,9 @@ function View() {
   if (route.view === "seller") return <SellerView />;
   if (route.view === "landing") return <LandingView category={route.category} />;
   if (route.view === "settings") return <SettingsView tab={route.tab} />;
-  if (route.view === "users") return <UsersView />;
+  if (route.view === "users") return <UsersView mode={route.mode} />;
+  if (route.view === "gmail") return <GmailView />;
+  if (route.view === "broker") return <BrokerLaunchpad />;
   if (route.view === "plans") return <PlansView />;
   if (route.view === "dialer") return <DialerView />;
   if (route.view === "calendar") return <CalendarView />;

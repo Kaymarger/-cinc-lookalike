@@ -126,6 +126,19 @@ export type AdvancedForm = {
   duplicates: "Merge" | "Keep both" | "Reject";
   defaultPipeline: string;
   forwardEmail: string;
+  status: string;
+  userLevel: string;
+  dialerSummary: string;
+  featured: string;
+  featuredOrder: string;
+  blogging: string;
+  licenseNumber: string;
+  leadAlertCc: string;
+  listingAlertCc: string;
+  companyName: string;
+  canadawestId: string;
+  assignedPond: string;
+  birthdate: string;
 };
 
 export type SettingsForm = {
@@ -225,6 +238,19 @@ export const ADVANCED: AdvancedForm = {
   duplicates: "Merge",
   defaultPipeline: "New Lead",
   forwardEmail: "",
+  status: "Active",
+  userLevel: "Broker",
+  dialerSummary: "Enabled",
+  featured: "No",
+  featuredOrder: "",
+  blogging: "No",
+  licenseNumber: "",
+  leadAlertCc: "",
+  listingAlertCc: "",
+  companyName: "",
+  canadawestId: "",
+  assignedPond: "--None--",
+  birthdate: "",
 };
 
 export const NOTIFY_GROUPS: { title: string; items: { id: string; description: string }[] }[] = [
@@ -255,6 +281,13 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
       { id: "Lead Reassign", description: "When a lead is reassigned to you." },
       { id: "Direct Mail Activity", description: "When a lead scans a direct-mail piece." },
     ],
+  },
+  { title: "AI ALERTS", items: [] },
+  { title: "COMMUNICATION ALERTS", items: [] },
+  { title: "BEHAVIORAL MESSAGE ALERTS", items: [] },
+  {
+    title: "MASTER SETTINGS",
+    items: [{ id: "Subscription", description: "CINCAgent, Email, Text" }],
   },
 ];
 

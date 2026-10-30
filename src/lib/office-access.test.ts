@@ -57,8 +57,8 @@ test("saved search criteria", () => {
     maxPrice: "900,000",
     beds: "2",
     baths: "2",
-    propertyType: "Condo",
-    frequency: "Daily",
+    propertyType: "Condominium",
+    frequency: "Daily (Best for default search)",
     leadEmail: "Jordan.Lee@Email.com",
   });
   assert.equal(ok.ok, true);

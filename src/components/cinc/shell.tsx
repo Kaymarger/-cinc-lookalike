@@ -10,7 +10,7 @@ const NAV: {
   label: string;
   href: string;
   badge?: boolean;
-  children?: { label: string; href: string }[];
+  children?: { label: string; href: string; group?: boolean }[];
 }[] = [
   {
     id: "launchpad",
@@ -18,12 +18,21 @@ const NAV: {
     href: href.launchpad,
     children: [
       { label: "Agent", href: href.launchpad },
+      { label: "Broker", href: href.broker },
       { label: "Call Summary", href: href.call },
     ],
   },
   { id: "leads", label: "Leads", href: href.leads, badge: true },
-  { id: "contacts", label: "Contacts", href: href.contacts },
   { id: "deals", label: "Deals", href: href.dealsPurchases },
+  {
+    id: "contacts",
+    label: "Contacts",
+    href: href.contacts,
+    children: [
+      { label: "Vendors", href: href.contacts },
+      { label: "Contacts", href: href.contactList },
+    ],
+  },
   {
     id: "comms",
     label: "Communications",
@@ -34,6 +43,7 @@ const NAV: {
       { label: "Sent", href: href.sent },
       { label: "Drafts", href: href.drafts },
       { label: "Trashed", href: href.trashed },
+      { label: "Gmail Inbox", href: href.gmail },
       { label: "Templates", href: href.templates },
     ],
   },
@@ -47,6 +57,7 @@ const NAV: {
       { label: "CINC AI", href: href.ai },
     ],
   },
+  { id: "calendar", label: "Calendar", href: href.calendar },
   {
     id: "props",
     label: "Properties",
@@ -65,20 +76,46 @@ const NAV: {
     children: [
       { label: "Seller Suite", href: href.seller },
       { label: "Landing Pages", href: href.landing },
-      { label: "Buyers Pages", href: href.landingCat("buyers") },
-      { label: "Sellers Pages", href: href.landingCat("sellers") },
-      { label: "Contact Pages", href: href.landingCat("contact") },
-      { label: "Add Landing Page", href: "/dashboard/landing/#add" },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    href: href.agents,
+    children: [
+      { label: "Manage Agents", href: href.agents },
+      { label: "Lead Routing", href: href.leadRouting },
+    ],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    href: href.officeGeneral,
+    children: [
+      { label: "General", href: href.officeGeneral },
+      { label: "Search", href: href.officeSearch },
+      { label: "Profile", href: href.profile },
+      { label: "Dialer", href: href.officeDialer },
+      { label: "Custom Fields", href: href.officeFields },
     ],
   },
   { id: "marketing", label: "Marketing Dashboard", href: href.marketing },
-  { id: "agents", label: "Agents", href: href.agents },
-  { id: "settings", label: "Settings", href: href.profile },
 ];
 
 function childOn(label: string, route: CincRoute) {
   if (label === "Agent") return route.view === "launchpad";
+  if (label === "Broker") return route.view === "broker";
   if (label === "Call Summary") return route.view === "callsummary";
+  if (label === "Vendors") return route.view === "contacts" && route.mode === "vendors";
+  if (label === "Contacts") return route.view === "contacts" && route.mode === "people";
+  if (label === "Gmail Inbox") return route.view === "gmail";
+  if (label === "Manage Agents") return route.view === "users" && route.mode === "manage";
+  if (label === "Lead Routing") return route.view === "users" && route.mode === "routing";
+  if (label === "General") return route.view === "settings" && route.tab === "general";
+  if (label === "Search") return route.view === "settings" && route.tab === "searchpage";
+  if (label === "Profile") return route.view === "settings" && (route.tab === "profile" || route.tab === "settings" || route.tab === "integrations" || route.tab === "advanced" || route.tab === "notifications" || route.tab === "customlinks");
+  if (label === "Dialer") return route.view === "settings" && route.tab === "dialer";
+  if (label === "Custom Fields") return route.view === "settings" && route.tab === "fields";
   if (route.view === "inbox") {
     if (label === "Inbox") return route.folder === "inbox";
     if (label === "Sent") return route.folder === "sent";
@@ -237,6 +274,14 @@ function NavIcon({ id }: { id: NavSection }) {
       </svg>
     );
   }
+  if (id === "calendar") {
+    return (
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <rect x="2" y="3" width="12" height="11" />
+        <path d="M2 6h12M5 2v2M11 2v2" />
+      </svg>
+    );
+  }
   return (
     <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
       <circle cx="8" cy="8" r="5.2" />
@@ -373,10 +418,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           <nav className="pt-2">
             {NAV.map((item) => {
               const active = section === item.id;
-              let kids = (item.children ?? []).filter((child) => !(route.view === "inbox" && route.folder === "templates" && child.label !== "Templates"));
-              if (item.id === "web" && route.view !== "landing") {
-                kids = kids.filter((child) => child.label === "Seller Suite" || child.label === "Landing Pages");
-              }
+              const kids = item.children ?? [];
               return (
                 <div key={item.id}>
                   <a
@@ -398,6 +440,9 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                         </p>
                       ) : null}
                       {kids.map((child) => {
+                        if (child.group || !child.href) {
+                          return <p key={child.label} className="px-5 py-1 text-[11px] font-bold text-[#9fd7ea]">{child.label}</p>;
+                        }
                         const on = childOn(child.label, route);
                         return (
                           <a key={child.label} href={child.href} className={`flex h-[26px] items-center gap-2 pr-1 pl-5 text-[12px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`}>
@@ -496,6 +541,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </a>
               )}
+              <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#d9363e] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>

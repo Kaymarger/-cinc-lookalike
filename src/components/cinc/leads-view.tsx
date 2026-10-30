@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CRM_AGENT, CRM_AUTOTRACKS, CRM_LEADS } from "@/lib/cinc-crm";
+import { ACTIVITY_FILTER_GROUPS, LABEL_GROUPS, OFFICE_ROSTER, REMINDER_TIMING, clockTimes } from "@/lib/cinc-options";
 import { leadVisibleTo } from "@/lib/office-access";
 import { useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
@@ -11,17 +12,6 @@ import { useChrome } from "./chrome-context";
 import { go, href, type LeadTab } from "./route";
 import { nowLabel, uid, useCinc, type Assign } from "./store";
 import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
-
-const CINC_LABELS = [
-  ["Hot", "#d9363e"],
-  ["Warm", "#f5a623"],
-  ["Cold", "#4aa8c8"],
-  ["Sphere", "#7b61ff"],
-  ["Vendor", "#2e9e5b"],
-  ["Past Client", "#333333"],
-  ["Buyer", "#1c93b5"],
-  ["Seller", "#e07a3d"],
-] as const;
 
 const PIPELINES = [
   "New Lead",
@@ -785,7 +775,7 @@ export function LeadsView({
                         <a href={href.lead(row.id, openTab)} className="text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
                         <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}>{row.verified ? "✓" : "🔒"}</span>
                       </div>
-                      <p className="text-[12px]">
+                      <div className="text-[12px]">
                         {row.phone} <span className={row.phoneValid ? "text-[#2e9e5b]" : "text-[#e39b2b]"}>{row.phoneValid ? "✓" : "!"}</span>
                         <Menu
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
@@ -795,7 +785,7 @@ export function LeadsView({
                             { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                           ]}
                         />
-                      </p>
+                      </div>
                       <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { log(row, "email", sent ? "Email sent" : "Draft", value.body); chrome.toast(sent ? "Email sent." : "Draft saved."); })}>
                         {row.email} <span className="text-[#2e9e5b]">✓</span>
                       </button>
@@ -985,7 +975,8 @@ function LeadDetail({
   const texts = state.calls.filter((call) => call.leadId === row.id && call.kind === "text").length;
   const emails = state.calls.filter((call) => call.leadId === row.id && call.kind === "email").length;
   const verify = state.verify[row.id] ?? (row.verified ? "verified" : "locked");
-  const [activityFilter, setActivityFilter] = useState("All");
+  const [activityChecks, setActivityChecks] = useState<string[]>(["Assigned Agent", "Notes"]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [openSteps, setOpenSteps] = useState(false);
   const rail = [
     ["Call", "☎", () => chrome.openModal(
@@ -1094,23 +1085,15 @@ function LeadDetail({
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
-            <Menu
-              className="mt-2"
-              label={<span className="rounded border border-dashed border-[#bbb] px-2 py-0.5 text-[11px]">+ Label</span>}
-              items={CINC_LABELS.map(([label, color]) => ({
-                label: `${(state.labels[row.id] ?? []).includes(label) ? "✓ " : ""}${label}`,
-                onClick: () => update((current) => {
-                  const have = current.labels[row.id] ?? [];
-                  const next = have.includes(label) ? have.filter((item) => item !== label) : [...have, label];
-                  return { ...current, labels: { ...current.labels, [row.id]: next } };
-                }),
-              }))}
-            />
+            <button type="button" className="mt-2 rounded border border-dashed border-[#bbb] px-2 py-0.5 text-[11px]" onClick={() => chrome.openModal(
+              <ApplyLabels
+                selected={state.labels[row.id] ?? []}
+                onClose={chrome.closeModal}
+                onApply={(labels) => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: labels } })); chrome.closeModal(); chrome.toast("Labels applied."); }}
+              />
+            )}>+ Label</button>
             <div className="mt-1 flex flex-wrap gap-1">
-              {(state.labels[row.id] ?? []).map((label) => {
-                const color = CINC_LABELS.find(([name]) => name === label)?.[1] ?? "#1c93b5";
-                return <span key={label} className="px-1 text-[10px] text-white" style={{ background: color }}>{label}</span>;
-              })}
+              {(state.labels[row.id] ?? []).map((label) => <span key={label} className="bg-[#1c93b5] px-1 text-[10px] text-white">{label}</span>)}
             </div>
             <div className="mt-3 flex items-center justify-between text-left text-[12px] font-semibold">
               <span>Active Deals</span>
@@ -1140,9 +1123,7 @@ function LeadDetail({
             <button type="button" aria-label="Next lead" className={next ? "px-1 text-[20px] text-[#1c93b5]" : "px-1 text-[20px] opacity-30"} disabled={!next} onClick={() => next && go(href.lead(next.id, tab))}>›</button>
           </div>
         ) : null}
-        <button type="button" className="mb-2 h-[28px] w-full rounded border border-[#d5d5d5] bg-white px-2 text-left text-[12px] text-[#888]" onClick={() => chrome.openModal(<NoteModal onClose={chrome.closeModal} onSave={(body, pinned) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body); chrome.closeModal(); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />)}>
-          Add a note...
-        </button>
+        <NoteComposer onSave={(body, pinned) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
         <div className="mb-3 grid grid-cols-6 border border-[#e5e5e5] bg-[#fafafa]">
           {tabs.map((item) => (
             <a key={item.id} href={href.lead(row.id, item.id)} className={`border-t-2 bg-white py-2 text-center text-[11px] ${tab === item.id ? "border-[#1c93b5] text-[#1c93b5]" : "border-transparent text-[#666]"}`}>
@@ -1152,19 +1133,33 @@ function LeadDetail({
         </div>
         {tab === "activity" ? (
           <div>
-            <div className="mb-2 flex items-center gap-3">
-              <Menu
-                label={<span className="text-[12px] font-bold">Filters ▾</span>}
-                items={["All", "Notes", "Views & Favorites", "Agent Actions", "Communications"].map((label) => ({ label, onClick: () => setActivityFilter(label) }))}
-              />
+            <div className="relative mb-2 flex items-center gap-3">
+              <button type="button" className="text-[12px] font-bold" onClick={() => setFiltersOpen((value) => !value)}>Filters</button>
+              {filtersOpen ? (
+                <div className="absolute top-full left-0 z-20 mt-1 max-h-[560px] w-72 overflow-auto border border-[#ddd] bg-white p-2 text-[12px] shadow">
+                  <div className="mb-1 flex justify-between">
+                    <button type="button" onClick={() => setActivityChecks(ACTIVITY_FILTER_GROUPS.flatMap((group) => group.items))}>Select All</button>
+                    <button type="button" onClick={() => setActivityChecks(["Assigned Agent", "Notes"])}>Reset</button>
+                    <button type="button" onClick={() => setFiltersOpen(false)}>X</button>
+                  </div>
+                  {ACTIVITY_FILTER_GROUPS.map((group) => (
+                    <div key={group.name} className="mb-2">
+                      <p className="font-bold">{group.name}</p>
+                      {group.items.map((item) => (
+                        <label key={item} className="block"><input type="checkbox" checked={activityChecks.includes(item)} onChange={() => setActivityChecks((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])} /> {item}</label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <button type="button" className="text-[12px] font-bold" onClick={() => {
                 const next = !state.signInAlert[row.id];
                 update((current) => ({ ...current, signInAlert: { ...current.signInAlert, [row.id]: next } }));
                 chrome.toast(next ? "Subscribed to sign-in alerts." : "Sign-in alerts turned off.");
               }}>{state.signInAlert[row.id] ? "Subscriptions: On" : "Subscriptions"}</button>
-              <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityFilter}</span>
+              <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
-            {(activityFilter === "All" || activityFilter === "Notes") && notes[0] ? (
+            {activityChecks.includes("Notes") && notes[0] ? (
               <article className="mb-3 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <p className="text-[13px] font-bold">📝 Note Added</p>
                 <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
@@ -1174,7 +1169,7 @@ function LeadDetail({
             ) : null}
             <p className="my-2 border-t border-dotted border-[#ccc] pt-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
             <div className="ml-2 border-l border-[#ddd] pl-4">
-            {(activityFilter === "All" || activityFilter === "Notes") ? notes.slice(1).map((note) => (
+            {activityChecks.includes("Notes") ? notes.slice(1).map((note) => (
               <article key={note.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#1c93b5]" />
                 <p className="text-[13px] font-bold">👤 Note Added</p>
@@ -1182,14 +1177,19 @@ function LeadDetail({
                 <p className="mt-1 text-[13px]">{note.body}</p>
               </article>
             )) : null}
-            {(activityFilter === "All" || activityFilter === "Communications") ? state.calls.filter((call) => call.leadId === row.id).map((call) => (
+            {state.calls.filter((call) => {
+              if (call.leadId !== row.id) return false;
+              if (call.kind === "email") return activityChecks.includes("Emails");
+              if (call.kind === "text") return activityChecks.includes("Text Conversations");
+              return activityChecks.includes("Calls");
+            }).map((call) => (
               <article key={call.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#2e9e5b]" />
                 <p className="text-[13px] font-bold">{call.kind === "email" ? "✉" : call.kind === "text" ? "💬" : "☎"} {call.body || call.kind}</p>
                 <p className="text-[11px] text-[#999]">{call.at} by {CRM_AGENT.name}</p>
               </article>
-            )) : null}
-            {(activityFilter === "All" || activityFilter === "Agent Actions" || activityFilter === "Views & Favorites") ? (crm?.activity ?? site?.activity ?? []).filter((item) => activityFilter !== "Views & Favorites" || /view|favorite|saved/i.test(`${item.title} ${item.body}`)).map((item) => (
+            ))}
+            {activityChecks.some((item) => ["Assigned Agent", "Pipeline", "Label", "Appointments", "Reminders", "Lead Info Updates"].includes(item)) ? (crm?.activity ?? site?.activity ?? []).map((item) => (
               <article key={item.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#bbb]" />
                 <p className="text-[13px] font-bold">👤 {item.title}</p>
@@ -1208,7 +1208,7 @@ function LeadDetail({
               <h3 className="font-bold">Reminders</h3>
               <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add a Reminder</button>
             </div>
-            {reminders.length ? reminders.map((item) => (
+            {reminders.filter((item) => item.day !== "PLAN").length ? reminders.filter((item) => item.day !== "PLAN").map((item) => (
               <article key={item.id} className="mb-2 flex border border-[#eee] border-l-4 border-l-[#e39b2b] bg-white p-3 shadow-sm">
                 <div className="flex-1">
                   <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
@@ -1217,7 +1217,7 @@ function LeadDetail({
                   <p className="text-[13px]">{item.title}</p>
                   <label className="mt-1 flex items-center gap-2 text-[12px]">
                     <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
-                    Completed
+                    Mark as Completed
                   </label>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -1540,26 +1540,88 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
 
 function NoteModal({ onClose, onSave, initial = "" }: { onClose: () => void; onSave: (body: string, pinned?: boolean) => void; initial?: string }) {
   const [body, setBody] = useState(initial);
+  const [kind, setKind] = useState("Call");
   const [pinned, setPinned] = useState(false);
-  const [audience, setAudience] = useState("Team");
   return (
     <ModalFrame title="Add a note" onClose={onClose}>
-      <Field label="Note">
-        <textarea className="h-28 w-full border border-[#ccc] p-2 text-[13px]" value={body} onChange={(event) => setBody(event.target.value)} />
-      </Field>
-      <Field label="Who can see it">
-        <select className={inputCls} value={audience} onChange={(event) => setAudience(event.target.value)}>
-          <option>Team</option>
-          <option>Only me</option>
-        </select>
-      </Field>
-      <label className="mb-3 flex items-center gap-2 text-[13px]">
-        <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} />
-        Pin this note
-      </label>
-      <div className="flex justify-end gap-2">
-        <Btn onClick={onClose}>Cancel</Btn>
-        <Btn kind="teal" onClick={() => { if (body.trim()) onSave(`${audience === "Only me" ? "(Private) " : ""}${body.trim()}`, pinned); }}>Save</Btn>
+      <textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" placeholder="Add a note..." value={body} onChange={(event) => setBody(event.target.value)} />
+      <div className="mt-2 text-[13px]">
+        <label className="mr-3"><input type="radio" checked={kind === "Call"} onChange={() => setKind("Call")} /> Call</label>
+        <label className="mr-3"><input type="radio" checked={kind === "General"} onChange={() => setKind("General")} /> General</label>
+        <label><input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} /> Pin</label>
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={() => setBody("")}>Clear</Btn>
+        <Btn kind="teal" disabled={!body.trim()} onClick={() => onSave(`${kind}: ${body.trim()}`, pinned)}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => void }) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState("");
+  const [kind, setKind] = useState("Call");
+  const [pinned, setPinned] = useState(false);
+  const [people, setPeople] = useState<string[]>([]);
+  if (!open) {
+    return <button type="button" className="mb-2 h-[28px] w-full rounded border border-[#d5d5d5] bg-white px-2 text-left text-[12px] text-[#888]" onClick={() => setOpen(true)}>Add a note...</button>;
+  }
+  return (
+    <div className="mb-2 border border-[#d5d5d5] bg-white p-2 text-[12px]">
+      <textarea className="h-20 w-full border border-[#ccc] p-2" placeholder="Add a note..." value={body} onChange={(event) => setBody(event.target.value)} />
+      <label className="mr-3"><input type="radio" checked={kind === "Call"} onChange={() => setKind("Call")} /> Call</label>
+      <label className="mr-3"><input type="radio" checked={kind === "General"} onChange={() => setKind("General")} /> General</label>
+      <label><input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} /> Pin</label>
+      <p className="mt-2 font-semibold">Select people to notify</p>
+      <p className="text-[11px] text-[#888]">Agents</p>
+      <div className="max-h-24 overflow-auto">
+        {OFFICE_ROSTER.map((name) => (
+          <label key={name} className="mr-2 block"><input type="checkbox" checked={people.includes(name)} onChange={() => setPeople((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])} /> {name}</label>
+        ))}
+      </div>
+      <p className="text-[11px] text-[#888]">Listing Agents: Casey Archibald · Partner</p>
+      <div className="mt-2 flex justify-end gap-2">
+        <button type="button" onClick={() => { setBody(""); setPinned(false); setPeople([]); setKind("Call"); }}>Clear</button>
+        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(`${kind}: ${body.trim()}${people.length ? ` (notify ${people.join(", ")})` : ""}`, pinned); setBody(""); setOpen(false); }}>Save & Next</button>
+        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(`${kind}: ${body.trim()}${people.length ? ` (notify ${people.join(", ")})` : ""}`, pinned); setBody(""); setOpen(false); }}>Save</button>
+      </div>
+    </div>
+  );
+}
+
+function ApplyLabels({ selected, onClose, onApply }: { selected: string[]; onClose: () => void; onApply: (labels: string[]) => void }) {
+  const [picked, setPicked] = useState(selected);
+  const [group, setGroup] = useState(LABEL_GROUPS[0]?.name ?? "");
+  const [query, setQuery] = useState("");
+  const [selectedOnly, setSelectedOnly] = useState(false);
+  const labels = (LABEL_GROUPS.find((item) => item.name === group)?.labels ?? []).filter((label) => label.toLowerCase().includes(query.toLowerCase()) && (!selectedOnly || picked.includes(label)));
+  return (
+    <ModalFrame title="Apply Labels" onClose={onClose} wide>
+      <div className="grid grid-cols-[180px_1fr] gap-3 text-[13px]">
+        <div>
+          <p className="font-bold">Groups</p>
+          <p className="text-[11px] text-[#888]">Name A–Z</p>
+          <label className="text-[12px]"><input type="checkbox" checked={selectedOnly} onChange={(event) => setSelectedOnly(event.target.checked)} /> Selected only ({picked.length})</label>
+          {LABEL_GROUPS.map((item) => (
+            <button key={item.name} type="button" className={`mt-1 block w-full px-2 py-1 text-left ${group === item.name ? "bg-[#e7f4f8]" : ""}`} onClick={() => setGroup(item.name)}>{item.name}</button>
+          ))}
+        </div>
+        <div>
+          <input className={inputCls} placeholder="Search labels" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <div className="mt-2 max-h-64 overflow-auto">
+            {labels.map((label) => (
+              <label key={label} className="block py-1"><input type="checkbox" checked={picked.includes(label)} onChange={() => setPicked((current) => current.includes(label) ? current.filter((item) => item !== label) : [...current, label])} /> {label}</label>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex justify-between text-[13px]">
+        <button type="button" className="text-[#1c93b5]" onClick={() => onClose()}>Manage labels</button>
+        <div className="flex gap-2">
+          <Btn onClick={onClose}>Cancel</Btn>
+          <Btn kind="teal" onClick={() => onApply(picked)}>Apply</Btn>
+        </div>
       </div>
     </ModalFrame>
   );
@@ -1638,39 +1700,52 @@ function LeadDealModal({ client, onClose }: { client: string; onClose: () => voi
   );
 }
 
-function ReminderModal({ leadId, onClose, reminderId, initialTitle = "", initialDue = "" }: { leadId: string; onClose: () => void; reminderId?: string; initialTitle?: string; initialDue?: string }) {
+function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", initialDue = "" }: { leadId: string; onClose: () => void; reminderId?: string; initialTitle?: string; initialDue?: string }) {
   const { update } = useCinc();
   const chrome = useChrome();
-  const [title, setTitle] = useState(initialTitle);
-  const [date, setDate] = useState(initialDue && initialDue.includes("-") ? initialDue : "");
-  const [time, setTime] = useState("09:00");
+  const { leads } = useLeads();
+  const lead = leads.find((item) => item.id === leadId);
   const [kind, setKind] = useState("Call");
-  const [note, setNote] = useState("");
+  const [name, setName] = useState(initialTitle || "Call");
+  const [details, setDetails] = useState("");
+  const [date, setDate] = useState(initialDue.includes("-") ? initialDue : new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState("12:00");
+  const [meridiem, setMeridiem] = useState("AM");
+  const [anytime, setAnytime] = useState(false);
+  const [notify, setNotify] = useState("Casey Archibald");
+  const [timing, setTiming] = useState("On Time");
   return (
-    <ModalFrame title={reminderId ? "Edit Reminder" : "Add a Reminder"} onClose={onClose}>
-      <Field label="Type">
-        <select className={inputCls} value={kind} onChange={(event) => setKind(event.target.value)}>
-          {["Call", "Email", "Text", "To-do", "Appointment"].map((item) => <option key={item}>{item}</option>)}
-        </select>
-      </Field>
+    <ModalFrame title="Add Reminder" onClose={onClose}>
+      <Field label="Lead"><input className={inputCls} value={lead?.name || "Lead"} readOnly /></Field>
+      <div className="mb-2 text-[13px]">
+        {["Call", "Email", "Other"].map((item) => <label key={item} className="mr-3"><input type="radio" checked={kind === item} onChange={() => { setKind(item); if (!reminderId) setName(item); }} /> {item}</label>)}
+      </div>
+      <Field label="Name"><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+      <Field label="Details"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" placeholder="Enter a detailed description of the reminder..." value={details} onChange={(event) => setDetails(event.target.value)} /></Field>
       <Field label="Date"><input className={inputCls} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Field>
-      <Field label="Time"><input className={inputCls} type="time" value={time} onChange={(event) => setTime(event.target.value)} /></Field>
-      <Field label="Title"><input className={inputCls} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
-      <Field label="Note"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={note} onChange={(event) => setNote(event.target.value)} /></Field>
+      <div className="mb-2 flex items-center gap-2 text-[13px]">
+        <select className={inputCls} disabled={anytime} value={time} onChange={(event) => setTime(event.target.value)}>{clockTimes().map((item) => <option key={item}>{item}</option>)}</select>
+        <select className={inputCls} disabled={anytime} value={meridiem} onChange={(event) => setMeridiem(event.target.value)}><option>AM</option><option>PM</option></select>
+        <label><input type="checkbox" checked={anytime} onChange={(event) => setAnytime(event.target.checked)} /> Anytime</label>
+      </div>
+      <Field label="Notify">
+        <select className={inputCls} value={notify} onChange={(event) => setNotify(event.target.value)}>{OFFICE_ROSTER.map((item) => <option key={item}>{item}</option>)}</select>
+      </Field>
+      <Field label="Reminder timing">
+        <select className={inputCls} value={timing} onChange={(event) => setTiming(event.target.value)}>{REMINDER_TIMING.map((item) => <option key={item}>{item}</option>)}</select>
+      </Field>
       <div className="flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          const label = title.trim() || kind;
-          if (!label) return;
-          const due = [date, time].filter(Boolean).join(" ") || "Today";
-          const full = note.trim() ? `${kind}: ${label} — ${note.trim()}` : `${kind}: ${label}`;
+          const due = anytime ? `${date} Anytime` : `${date} ${time} ${meridiem}`;
+          const title = `${kind}: ${name}${details ? ` — ${details}` : ""} (${notify}, ${timing})`;
           update((current) => ({
             ...current,
             reminders: reminderId
-              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title: full, due } : item)
-              : [...current.reminders, { id: uid("rem"), leadId, title: full, due, done: false, day: kind.toUpperCase() }],
+              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title, due } : item)
+              : [...current.reminders, { id: uid("rem"), leadId, title, due, done: false, day: kind.toUpperCase() }],
           }));
-          chrome.toast(reminderId ? "Reminder updated." : "Reminder added.");
+          chrome.toast("Reminder saved.");
           onClose();
         }}>Save</Btn>
       </div>

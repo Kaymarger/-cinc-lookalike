@@ -1,4 +1,5 @@
 import { officeDb } from "@/lib/leads-db";
+import { ENGAGEMENTS } from "./cinc-options";
 import {
   EMPTY_CRITERIA,
   type AlertFrequency,
@@ -28,10 +29,7 @@ function asCriteria(value: unknown): SearchCriteria {
   return {
     ...EMPTY_CRITERIA,
     ...raw,
-    county: typeof raw.county === "string" ? raw.county : "",
-    keywords: typeof raw.keywords === "string" ? raw.keywords : "",
-    status: typeof raw.status === "string" ? raw.status : "Any",
-    garage: typeof raw.garage === "string" ? raw.garage : "Any",
+    tags: Array.isArray(raw.tags) ? raw.tags.filter((tag): tag is string => typeof tag === "string") : [],
   };
 }
 
@@ -42,11 +40,9 @@ function iso(value: Date | string): string {
 }
 
 function fromRow(row: SearchRow): LeadSavedSearch {
-  const frequency = (["Off", "Instant", "Daily", "Weekly", "Monthly"] as const).includes(
-    row.frequency as AlertFrequency
-  )
+  const frequency = (ENGAGEMENTS as readonly string[]).includes(row.frequency)
     ? (row.frequency as AlertFrequency)
-    : "Daily";
+    : "Daily (Best for default search)";
   return {
     id: row.id,
     leadId: row.lead_id,

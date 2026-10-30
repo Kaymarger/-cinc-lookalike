@@ -4,6 +4,7 @@ export const SPA = "/dashboard/spa";
 
 export const href = {
   launchpad: `${SPA}#launchpad/agent`,
+  broker: `${SPA}#launchpad/broker`,
   call: `${SPA}#launchpad/dialersummary`,
   leads: `${SPA}#leads`,
   leadsReturn: `${SPA}#leads/overviewreturn`,
@@ -17,6 +18,7 @@ export const href = {
   drafts: `${SPA}#inbox/drafts`,
   trashed: `${SPA}#inbox/trashed`,
   templates: `${SPA}#inbox/templates`,
+  gmail: `${SPA}#inbox/gmail`,
   autotracks: `${SPA}#automations/autotracks`,
   behavioral: `${SPA}#automations/behavioralcomms`,
   ai: `${SPA}#automations/ai`,
@@ -34,14 +36,20 @@ export const href = {
   notifications: `${SPA}#settings/profile/notifications/agent`,
   customLinks: `${SPA}#settings/profile/customlinks/agent`,
   advanced: `${SPA}#settings/profile/advanced/agent`,
-  contacts: `${SPA}#contacts`,
+  contacts: `${SPA}#contacts/vendors`,
+  contactList: `${SPA}#contacts/people`,
   agents: `${SPA}#agents`,
+  leadRouting: `${SPA}#agents/routing`,
   users: `${SPA}#agents`,
+  officeGeneral: `${SPA}#settings/office/general`,
+  officeSearch: `${SPA}#settings/office/search`,
+  officeDialer: `${SPA}#settings/office/dialer`,
+  officeFields: `${SPA}#settings/office/fields`,
   plans: `${SPA}#plans`,
   dialer: `${SPA}#dialer`,
   calendar: `${SPA}#calendar`,
   tasks: `${SPA}#tasks`,
-  marketing: `${SPA}#marketing`,
+  marketing: `${SPA}#marketing/leadsreport`,
   reports: `${SPA}#reports`,
   publicSite: "/",
   faq: "/faq",
@@ -62,9 +70,11 @@ export type CincRoute =
   | { view: "properties"; sub: "list" | "text" | "open" | "virtual" | "add" }
   | { view: "seller" }
   | { view: "landing"; category: "all" | "buyers" | "sellers" | "contact" }
-  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "notifications" | "customlinks" | "advanced" }
-  | { view: "contacts" }
-  | { view: "users" }
+  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" }
+  | { view: "contacts"; mode: "vendors" | "people" }
+  | { view: "users"; mode: "manage" | "routing" }
+  | { view: "gmail" }
+  | { view: "broker" }
   | { view: "plans" }
   | { view: "dialer" }
   | { view: "calendar" }
@@ -72,7 +82,7 @@ export type CincRoute =
   | { view: "marketing" }
   | { view: "reports" };
 
-export type NavSection = "launchpad" | "leads" | "contacts" | "deals" | "comms" | "auto" | "props" | "web" | "marketing" | "agents" | "settings" | "other";
+export type NavSection = "launchpad" | "leads" | "deals" | "contacts" | "comms" | "auto" | "calendar" | "props" | "web" | "agents" | "settings" | "marketing" | "other";
 
 const LEAD_TABS: LeadTab[] = ["activity", "info", "plans", "appointments", "conversations", "plips"];
 
@@ -97,6 +107,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
 
   if (!a || a === "launchpad") {
     if (b === "dialersummary") return { view: "callsummary" };
+    if (b === "broker") return { view: "broker" };
     return { view: "launchpad" };
   }
   if (a === "leads") {
@@ -107,6 +118,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "leads", mode: "list", tab: "activity" };
   }
   if (a === "inbox") {
+    if (b === "gmail") return { view: "gmail" };
     if (b === "sent" || b === "drafts" || b === "trashed" || b === "templates") {
       return { view: "inbox", folder: b };
     }
@@ -124,9 +136,15 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (b === "add") return { view: "properties", sub: "add" };
     return { view: "properties", sub: "list" };
   }
-  if (a === "settings" && b === "users") return { view: "users" };
-  if (a === "agents") return { view: "users" };
-  if (a === "contacts") return { view: "contacts" };
+  if (a === "settings" && b === "users") return { view: "users", mode: "manage" };
+  if (a === "agents") return { view: "users", mode: b === "routing" ? "routing" : "manage" };
+  if (a === "contacts") return { view: "contacts", mode: b === "people" ? "people" : "vendors" };
+  if (a === "settings" && b === "office") {
+    if (c === "search") return { view: "settings", tab: "searchpage" };
+    if (c === "dialer") return { view: "settings", tab: "dialer" };
+    if (c === "fields") return { view: "settings", tab: "fields" };
+    return { view: "settings", tab: "general" };
+  }
   if (a === "settings") {
     const tab = c === "settings" || c === "integrations" || c === "notifications" || c === "customlinks" || c === "advanced" || c === "profile" ? c : "profile";
     return { view: "settings", tab };
@@ -143,6 +161,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
 export function sectionOf(route: CincRoute): NavSection {
   switch (route.view) {
     case "launchpad":
+    case "broker":
     case "callsummary":
       return "launchpad";
     case "leads":
@@ -150,6 +169,7 @@ export function sectionOf(route: CincRoute): NavSection {
     case "deals":
       return "deals";
     case "inbox":
+    case "gmail":
       return "comms";
     case "autotracks":
     case "behavioral":
@@ -157,6 +177,8 @@ export function sectionOf(route: CincRoute): NavSection {
       return "auto";
     case "properties":
       return "props";
+    case "calendar":
+      return "calendar";
     case "seller":
     case "landing":
       return "web";
@@ -177,6 +199,12 @@ export function titleOf(route: CincRoute): string {
   switch (route.view) {
     case "launchpad":
       return "Agent Launchpad";
+    case "broker":
+      return "Broker Launchpad";
+    case "gmail":
+      return "Gmail Inbox";
+    case "contacts":
+      return route.mode === "people" ? "Contact List" : "Vendors";
     case "callsummary":
       return "Call Summary";
     case "leads":
@@ -201,10 +229,8 @@ export function titleOf(route: CincRoute): string {
       return "Landing Pages";
     case "settings":
       return "Settings";
-    case "contacts":
-      return "Contacts";
     case "users":
-      return "Agents";
+      return route.mode === "routing" ? "Lead Routing" : "Agents";
     case "plans":
       return "Plans";
     case "dialer":

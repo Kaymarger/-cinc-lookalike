@@ -30,7 +30,7 @@ const blank = (): Draft => ({
   active: true,
 });
 
-export function UsersView() {
+export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) {
   const office = useOfficeSession();
   const [users, setUsers] = useState<OfficeProfile[]>([]);
   const [editing, setEditing] = useState<OfficeProfile | null>(null);
@@ -38,6 +38,8 @@ export function UsersView() {
   const [draft, setDraft] = useState<Draft>(blank());
   const [message, setMessage] = useState<string | null>(null);
   const [linkBox, setLinkBox] = useState<LinkBox | null>(null);
+  const [pondOnly, setPondOnly] = useState(false);
+  const [showDisabled, setShowDisabled] = useState(false);
 
   async function load() {
     const response = await fetch("/api/office/users", { cache: "no-store" });
@@ -180,10 +182,23 @@ export function UsersView() {
 
   return (
     <div className="p-4">
+      {mode === "routing" ? (
+        <div>
+          <h1 className="mb-3 text-[18px] font-semibold">Lead Routing</h1>
+          {office.canManageUsers ? <RoutingPanel users={users} /> : <p className="text-[13px] text-[#666]">Only an admin or broker can change lead routing.</p>}
+        </div>
+      ) : null}
+      {mode === "manage" ? (
+      <>
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-[#243238]">Agents</h1>
-          <p className="text-[12px] text-[#777]">Manage the team, lead routing, and Become. This is the CINC Agents area, not a Settings tab.</p>
+          <h1 className="text-[18px] font-semibold text-[#243238]">Manage Agents</h1>
+          <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
+            <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
+            <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={startCreate}>+ Add Pond</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={startCreate}>+ Add Agent</button>
+          </div>
         </div>
         {office.canManageUsers ? (
           <button type="button" className="h-[26px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={startCreate}>
@@ -212,55 +227,20 @@ export function UsersView() {
           </div>
         </div>
       ) : null}
-      {office.canManageUsers && !dbOff ? <RoutingPanel users={users} /> : null}
-      <div className="overflow-auto border border-[#e5e5e5] bg-white">
-        <table className="w-full text-left text-[13px]">
-          <thead className="bg-[#f6f6f6] text-[11px] tracking-wide text-[#666] uppercase">
-            <tr>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Email</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2">Cell</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-t border-[#eee]">
-                <td className="px-3 py-2">{user.name}</td>
-                <td className="px-3 py-2">{user.email}</td>
-                <td className="px-3 py-2">{user.roleLabel || roleLabel(user.role)}</td>
-                <td className="px-3 py-2">{user.cell || "—"}</td>
-                <td className="px-3 py-2">
-                  {user.active ? "Active" : "Inactive"}
-                  {user.mustSetPassword ? " · invite pending" : ""}
-                </td>
-                <td className="px-3 py-2 text-right whitespace-nowrap">
-                  {office.canManageUsers ? (
-                    <span className="inline-flex gap-2">
-                      <button type="button" className="text-[#1c93b5]" onClick={() => startEdit(user)}>Edit</button>
-                      <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "reset")}>Reset link</button>
-                      <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "invite")}>Invite link</button>
-                    </span>
-                  ) : null}
-                  {office.canBecome && user.id !== office.user?.id && user.active ? (
-                    <button type="button" className="ml-2 text-[#d9363e]" onClick={() => void become(user)}>
-                      Become
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
+      <div className="grid gap-3 sm:grid-cols-2">
+            {users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).map((user) => (
+              <article key={user.id} className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
+                <p className="font-semibold">{user.name}</p>
+                <p className="text-[#666]">{user.email}</p>
+                <p>{user.roleLabel || roleLabel(user.role)}{user.active ? "" : " · Disabled"}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {office.canManageUsers ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => startEdit(user)}>Edit Permissions</button> : null}
+                  {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => void become(user)}>Become User</button> : null}
+                  {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#ccc] px-2 py-1" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
+                  {office.canManageUsers ? <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "reset")}>Reset link</button> : null}
+                </div>
+              </article>
             ))}
-            {!users.length ? (
-              <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-[#888]">
-                  {dbOff ? "Users appear here after the database is connected." : "No users yet."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
       </div>
       {creating || editing ? (
         <form
@@ -316,6 +296,8 @@ export function UsersView() {
             <Btn kind="teal" onClick={() => void save()}>Save</Btn>
           </div>
         </form>
+      ) : null}
+      </>
       ) : null}
     </div>
   );
