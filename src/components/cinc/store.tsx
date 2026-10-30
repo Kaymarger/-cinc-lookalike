@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AutoTrackStep } from "@/lib/autotrack";
 
 const KEY = "gvhs-cinc-spa";
 
@@ -48,7 +49,7 @@ export type Template = {
   body: string;
 };
 
-export type TrackStep = { id: string; waitDays: number; action: "email" | "text" | "task"; detail: string };
+export type TrackStep = AutoTrackStep;
 
 export type Track = {
   id: string;
@@ -57,7 +58,21 @@ export type Track = {
   status: "active" | "paused" | "draft";
   trigger: string;
   stopTrigger?: string;
-  steps?: TrackStep[];
+  steps?: AutoTrackStep[];
+  leadTypes?: string[];
+  hours?: string;
+  includeWeekend?: boolean;
+  skipHolidays?: boolean;
+  startLabel?: string;
+  startStage?: string;
+  landing?: string;
+  customField?: string;
+  source?: string;
+  stopLabel?: string;
+  stopStage?: string;
+  stopReply?: boolean;
+  complete?: string;
+  share?: boolean;
 };
 
 export type Pocket = {

@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CRM_AGENT, CRM_AUTOTRACKS, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
-import { AUTOTRACK_LANDING_PAGES, AUTOTRACK_LEAD_TYPES, AUTOTRACK_PIPELINES, BLANK_TEMPLATES, EMAIL_TEMPLATES, LABEL_GROUPS, MERGE_TAGS, OFFICE_ROSTER } from "@/lib/cinc-options";
 import { useLeads } from "@/lib/leads";
+import { AutoTrackWizard, duplicateTrack, loadAutoTracks, persistTrackStatus, removeTrack } from "./autotrack-builder";
 import { useChrome } from "./chrome-context";
 import { useOfficeSession } from "./office-session";
 import { href } from "./route";
-import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template } from "./store";
+import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template, type Track } from "./store";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const AGENT_NUMBER = "4829103344556677";
@@ -726,12 +726,21 @@ export function AutoTracksView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const [cat, setCat] = useState("General");
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  useEffect(() => {
+    void loadAutoTracks().then((data) => {
+      if (!data) return;
+      setHiddenIds(data.hiddenIds);
+      update((current) => ({ ...current, tracks: data.tracks }));
+    });
+  }, [update]);
   const tracks = useMemo(() => {
-    const overrides = new Map(state.tracks.map((track) => [track.id, track]));
-    const base = CRM_AUTOTRACKS.filter((track) => !state.hiddenTracks.includes(track.id)).map((track) => overrides.get(track.id) ?? { ...track, trigger: "New lead" });
-    const extra = state.tracks.filter((track) => !CRM_AUTOTRACKS.some((item) => item.id === track.id) && !state.hiddenTracks.includes(track.id));
-    return [...extra, ...base];
-  }, [state.hiddenTracks, state.tracks]);
+    const hidden = new Set([...state.hiddenTracks, ...hiddenIds]);
+    const savedIds = new Set(state.tracks.map((track) => track.id));
+    const saved = state.tracks.filter((track) => !hidden.has(track.id));
+    const seeds: Track[] = CRM_AUTOTRACKS.filter((track) => !savedIds.has(track.id) && !hidden.has(track.id)).map((track) => ({ ...track, trigger: "New lead" }));
+    return [...saved, ...seeds];
+  }, [hiddenIds, state.hiddenTracks, state.tracks]);
   const trackQuery = chrome.leadSearch.trim().toLowerCase();
   const shown = tracks.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
   const active = tracks.filter((track) => track.status === "active").length;
@@ -751,7 +760,7 @@ export function AutoTracksView() {
             </div>
           ))}
         </div>
-        <button type="button" className="h-8 bg-[#1c93b5] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<TrackModal onClose={chrome.closeModal} onSaved={setCat} />)}>✚ Start/Edit an AutoTrack</button>
+        <button type="button" className="h-8 bg-[#1c93b5] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<AutoTrackWizard onClose={chrome.closeModal} onSaved={setCat} />)}>✚ Start/Edit an AutoTrack</button>
       </div>
       <div className="mb-3 flex flex-wrap gap-1">
         {["General", "Buyer", "Listing", "Nurture", "Past Client", "My AutoTracks"].map((label) => (
@@ -761,20 +770,20 @@ export function AutoTracksView() {
       <div className="border border-[#e5e5e5] bg-white shadow-sm">
         {shown.map((track) => {
           const seed = track.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-          const days = [7, 14, 21, 30, 45, 60][seed % 6];
+          const days = track.steps?.length ? Math.max(...track.steps.map((step) => step.day)) : [7, 14, 21, 30, 45, 60][seed % 6];
           const stats = [
             ["% Open Rate", `${seed % 40}`],
             ["% Click Rate", `${seed % 12}`],
             ["Leads", String((seed % 80) + 3)],
             ["Completed", String((seed % 400) + 4)],
             ["Touches", String((seed % 6) + 1)],
-            ["Steps", String((seed % 6) + 1)],
+            ["Steps", String(track.steps?.length || (seed % 6) + 1)],
           ];
           return (
             <article key={track.id} className="border-t border-[#eee]">
               <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => chrome.openModal(<TrackModal initial={track} onClose={chrome.closeModal} onSaved={setCat} />)}>
+                  <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => chrome.openModal(<AutoTrackWizard initial={track} onClose={chrome.closeModal} onSaved={setCat} />)}>
                     <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
                     {track.name}
                   </button>
@@ -803,16 +812,30 @@ export function AutoTracksView() {
                   items={[
                     { label: track.status === "active" ? "Pause" : "Resume", onClick: () => {
                       const status = track.status === "active" ? "paused" : "active";
-                      chrome.toast(status === "paused" ? `${track.name} paused.` : `${track.name} resumed.`);
-                      update((current) => ({
-                        ...current,
-                        tracks: current.tracks.some((item) => item.id === track.id)
-                          ? current.tracks.map((item) => item.id === track.id ? { ...item, status } : item)
-                          : [...current.tracks, { id: track.id, name: track.name, category: track.category, status, trigger: track.trigger }],
-                      }));
+                      void persistTrackStatus(track, status).then((saved) => {
+                        update((current) => ({
+                          ...current,
+                          tracks: current.tracks.some((item) => item.id === saved.id)
+                            ? current.tracks.map((item) => item.id === saved.id ? saved : item)
+                            : [saved, ...current.tracks],
+                        }));
+                        chrome.toast(status === "paused" ? `${track.name} paused.` : `${track.name} resumed.`);
+                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not update that AutoTrack."));
                     } },
-                    { label: "Duplicate", onClick: () => update((current) => ({ ...current, tracks: [...current.tracks, { ...track, id: uid("track"), name: `${track.name} copy`, trigger: track.trigger }] })) },
-                    { label: "Delete", danger: true, onClick: () => update((current) => ({ ...current, hiddenTracks: [...current.hiddenTracks, track.id], tracks: current.tracks.filter((item) => item.id !== track.id) })) },
+                    { label: "Duplicate", onClick: () => {
+                      void duplicateTrack(track).then((saved) => {
+                        update((current) => ({ ...current, tracks: [saved, ...current.tracks.filter((item) => item.id !== saved.id)] }));
+                        setCat(saved.category);
+                        chrome.toast(`${saved.name} duplicated.`);
+                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not duplicate that AutoTrack."));
+                    } },
+                    { label: "Delete", danger: true, onClick: () => {
+                      void removeTrack(track.id).then(() => {
+                        setHiddenIds((current) => [...current, track.id]);
+                        update((current) => ({ ...current, hiddenTracks: [...current.hiddenTracks, track.id], tracks: current.tracks.filter((item) => item.id !== track.id) }));
+                        chrome.toast(`${track.name} deleted.`);
+                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not delete that AutoTrack."));
+                    } },
                   ]}
                 />
               </div>
@@ -825,192 +848,6 @@ export function AutoTracksView() {
   );
 }
 
-function TrackModal({ onClose, onSaved, initial }: { onClose: () => void; onSaved?: (category: string) => void; initial?: { id: string; name: string; category: string; status: "active" | "paused" | "draft"; trigger: string; stopTrigger?: string; steps?: { id: string; waitDays: number; action: "email" | "text" | "task"; detail: string }[] } }) {
-  const { update } = useCinc();
-  const chrome = useChrome();
-  const [step, setStep] = useState(initial ? 2 : 1);
-  const [filter, setFilter] = useState("Blank Templates");
-  const [keyword, setKeyword] = useState("");
-  const [picked, setPicked] = useState("Blank Template");
-  const [name, setName] = useState(initial?.name ?? "Blank Template Copy");
-  const [category, setCategory] = useState(initial?.category === "My AutoTracks" ? "General" : initial?.category ?? "General");
-  const [leadTypes, setLeadTypes] = useState<string[]>(["Everyone"]);
-  const [hours, setHours] = useState("9 AM - 5 PM, Monday - Friday");
-  const [weekend, setWeekend] = useState(false);
-  const [holidays, setHolidays] = useState(false);
-  const [steps, setSteps] = useState(initial?.steps ?? []);
-  const [adding, setAdding] = useState<"email" | "text" | "task" | null>(null);
-  const [stepMenu, setStepMenu] = useState(false);
-  const [startLabel, setStartLabel] = useState("");
-  const [startStage, setStartStage] = useState("");
-  const [landing, setLanding] = useState("");
-  const [stopLabel, setStopLabel] = useState("");
-  const [stopStage, setStopStage] = useState("");
-  const [stopReply, setStopReply] = useState(true);
-  const [complete, setComplete] = useState("Take No Further Action");
-  const [share, setShare] = useState(false);
-  const templates = BLANK_TEMPLATES.filter((item) => item.toLowerCase().includes(keyword.toLowerCase()));
-  function saveTrack() {
-    if (!steps.length && step > 2) {
-      chrome.toast("There must be at least 1 step before you can continue to settings.");
-      return;
-    }
-    const next = {
-      id: initial?.id ?? uid("track"),
-      name: name.trim() || "Blank Template Copy",
-      category: category === "Select Type" ? "General" : category,
-      status: initial?.status ?? "draft" as const,
-      trigger: startStage || startLabel || landing || "New Lead",
-      stopTrigger: stopReply ? "When Lead Replies/Reaches Out" : stopStage || stopLabel,
-      steps,
-    };
-    update((current) => ({
-      ...current,
-      tracks: current.tracks.some((item) => item.id === next.id) ? current.tracks.map((item) => item.id === next.id ? next : item) : [...current.tracks, next],
-    }));
-    onSaved?.(next.category);
-    chrome.toast(`${next.name} saved.`);
-    onClose();
-  }
-  return (
-    <ModalFrame title="AutoTracks Template Builder" onClose={onClose} wide>
-      <p className="mb-3 text-[12px] text-[#666]">1. Select Template · 2. Edit Template · 3. Adjust Settings · 4. Review & Finalize</p>
-      {step === 1 ? (
-        <div>
-          <input className={`${inputCls} mb-2`} placeholder="Enter a Keyword to Search for Templates..." value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-          <div className="mb-2 flex flex-wrap gap-1">
-            {["Type", "My Templates", "Blank Templates", "CINC Templates"].map((item) => (
-              <button key={item} type="button" className={`border px-2 py-1 text-[12px] ${filter === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ddd]"}`} onClick={() => setFilter(item)}>{item}</button>
-            ))}
-          </div>
-          <p className="mb-1 text-[12px] font-bold">Blank (3)</p>
-          {templates.map((item) => (
-            <button key={item} type="button" className={`mb-1 block w-full border px-2 py-2 text-left ${picked === item ? "border-[#1c93b5]" : "border-[#eee]"}`} onClick={() => setPicked(item)}>{item}</button>
-          ))}
-          <div className="mt-2 flex justify-end gap-2">
-            <Btn onClick={onClose}>Exit Wizard</Btn>
-            <Btn kind="teal" onClick={() => { setName(`${picked} Copy`); setStep(2); }}>Copy this Template</Btn>
-          </div>
-        </div>
-      ) : null}
-      {step === 2 ? (
-        <div className="space-y-2 text-[13px]">
-          <Field label="Name"><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
-          <Field label="Category">
-            <select className={inputCls} value={category} onChange={(event) => setCategory(event.target.value)}>
-              {["Select Type", "General", "Buyer", "Listing", "Nurture", "Past Client"].map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </Field>
-          <p className="font-bold">1. Select Lead Type</p>
-          {AUTOTRACK_LEAD_TYPES.map((item) => (
-            <label key={item} className="mr-3"><input type="checkbox" checked={leadTypes.includes(item)} onChange={() => setLeadTypes((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])} /> {item}</label>
-          ))}
-          <p className="font-bold">2. Select Communication Time</p>
-          {["9 AM - 5 PM, Monday - Friday", "9 AM - 9 PM, Monday - Friday"].map((item) => (
-            <label key={item} className="mr-3"><input type="radio" checked={hours === item} onChange={() => setHours(item)} /> {item}</label>
-          ))}
-          <label className="block"><input type="checkbox" checked={weekend} onChange={(event) => setWeekend(event.target.checked)} /> Include Saturday and Sunday</label>
-          <label className="block"><input type="checkbox" checked={holidays} onChange={(event) => setHolidays(event.target.checked)} /> Skip Holidays</label>
-          <p className="font-bold">Day 1</p>
-          {steps.map((item) => <div key={item.id} className="border border-[#eee] px-2 py-1">{item.action === "email" ? "ADD EMAIL" : item.action === "text" ? "ADD TEXT" : "ADD REMINDER"} — {item.detail || "Untitled"} <button type="button" className="text-[#d9363e]" onClick={() => setSteps((current) => current.filter((stepItem) => stepItem.id !== item.id))}>Delete</button></div>)}
-          {adding ? (
-            <div className="border border-[#1c93b5] p-2">
-              <p className="font-semibold">{adding === "email" ? "ADD EMAIL" : adding === "text" ? "ADD TEXT" : "ADD REMINDER"}</p>
-              {adding === "task" ? <label className="block text-[12px]"><input type="checkbox" /> Set as a blocking reminder</label> : null}
-              {adding === "task" ? (
-                <Field label="Type"><select className={inputCls}><option>Call</option><option>Email</option><option>Other</option></select></Field>
-              ) : null}
-              {adding === "email" ? <Field label="Subject"><input className={inputCls} placeholder="Email Subject..." id="at-subject" /></Field> : null}
-              {adding === "task" ? <Field label="Reminder Name"><input className={inputCls} placeholder="Enter Reminder Name" id="at-subject" /></Field> : (
-                <Field label={adding === "email" ? "Email Template" : "Text Template"}>
-                  <select className={inputCls}>{EMAIL_TEMPLATES.map((item) => <option key={item}>{item}</option>)}</select>
-                </Field>
-              )}
-              <Field label={adding === "task" ? "Agent Assigned" : "To"}><select className={inputCls}>{adding === "task" ? null : <option>Lead</option>}<option>Buyer&apos;s Agent</option><option>Listing Agent</option><option>Partner</option>{OFFICE_ROSTER.map((agent) => <option key={agent}>{agent}</option>)}</select></Field>
-              {adding !== "task" ? <Field label="From"><select className={inputCls}><option>Buyer&apos;s Agent</option><option>Listing Agent</option><option>Partner</option>{OFFICE_ROSTER.map((agent) => <option key={`from-${agent}`}>{agent}</option>)}</select></Field> : <Field label="Note"><input className={inputCls} placeholder="Details" /></Field>}
-              <Field label="Merge tags"><select className={inputCls}>{MERGE_TAGS.map((tag) => <option key={tag}>{tag}</option>)}</select></Field>
-              <p className="font-bold">Set Schedule</p>
-              <label className="text-[12px]"><input type="radio" name="sched" defaultChecked /> Send immediately after AutoTrack is applied</label>
-              <label className="ml-2 text-[12px]"><input type="radio" name="sched" /> Send at Specific Time</label>
-              <div className="mt-2 flex justify-end gap-2">
-                <Btn onClick={() => setAdding(null)}>Cancel</Btn>
-                <Btn kind="teal" onClick={() => { const detail = (document.getElementById("at-subject") as HTMLInputElement | null)?.value || picked; setSteps((current) => [...current, { id: uid("step"), waitDays: 0, action: adding, detail }]); setAdding(null); }}>Update</Btn>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Btn onClick={() => setStepMenu((value) => !value)}>ADD STEP</Btn>
-                <Btn onClick={() => chrome.toast("Day added.")}>ADD NEW DAY</Btn>
-              </div>
-              {stepMenu ? (
-                <div className="flex gap-2">
-                  <Btn onClick={() => { setAdding("email"); setStepMenu(false); }}>ADD EMAIL</Btn>
-                  <Btn onClick={() => { setAdding("text"); setStepMenu(false); }}>ADD TEXT</Btn>
-                  <Btn onClick={() => { setAdding("task"); setStepMenu(false); }}>ADD REMINDER</Btn>
-                </div>
-              ) : null}
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Btn onClick={onClose}>Exit Wizard</Btn>
-            <Btn onClick={() => setStep(1)}>Back</Btn>
-            <Btn kind="teal" onClick={() => { if (!steps.length) { chrome.toast("There must be at least 1 step before you can continue to settings."); return; } setStep(3); }}>Continue</Btn>
-          </div>
-        </div>
-      ) : null}
-      {step === 3 ? (
-        <div className="space-y-2 text-[13px]">
-          <p className="font-bold">I want to start my AutoTrack...</p>
-          <label className="block"><input type="checkbox" checked disabled /> With a New Lead — New Lead</label>
-          <label className="block">Or, with a Label <select className="ml-2 border border-[#ccc]" value={startLabel} onChange={(event) => setStartLabel(event.target.value)}><option value="">Select Label</option>{LABEL_GROUPS.flatMap((group) => group.labels).map((label) => <option key={label}>{label}</option>)}</select></label>
-          <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={startStage} onChange={(event) => setStartStage(event.target.value)}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="block">Or, with a Landing Page <select className="ml-2 border border-[#ccc]" value={landing} onChange={(event) => setLanding(event.target.value)}><option value="">Select Landing Page</option>{AUTOTRACK_LANDING_PAGES.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <p>Or, with a Custom Field <select className="ml-2 border border-[#ccc]"><option>Select Custom Field</option><option>Birthdate</option></select></p>
-          <label className="block">And, with a Source <input className="ml-2 h-8 border border-[#ccc] px-2" placeholder="Type a lead source" /></label>
-          <p className="font-bold">I want to stop my AutoTrack...</p>
-          <label className="block">with a Label <select className="ml-2 border border-[#ccc]" value={stopLabel} onChange={(event) => setStopLabel(event.target.value)}><option value="">Select Label</option>{LABEL_GROUPS.flatMap((group) => group.labels).map((label) => <option key={label}>{label}</option>)}</select></label>
-          <label className="block">Or, with a Pipeline Stage <select className="ml-2 border border-[#ccc]" value={stopStage} onChange={(event) => setStopStage(event.target.value)}><option value="">Select Lead Pipeline Stage</option>{AUTOTRACK_PIPELINES.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="block"><input type="checkbox" checked={stopReply} onChange={(event) => setStopReply(event.target.checked)} /> When Lead Replies/Reaches Out</label>
-          <p className="font-bold">Select what happens when your AutoTrack COMPLETES</p>
-          {["Take No Further Action", "Automatically Start Another AutoTrack", "Automatically Restart This AutoTrack", "Apply a Label"].map((item) => (
-            <label key={item} className="mr-3"><input type="radio" checked={complete === item} onChange={() => setComplete(item)} /> {item}</label>
-          ))}
-          <label className="block"><input type="checkbox" checked={share} onChange={(event) => setShare(event.target.checked)} /> Allow team members to access this template</label>
-          {share ? (
-            <div className="max-h-40 overflow-auto border border-[#eee] p-2 text-[12px]">
-              {OFFICE_ROSTER.map((agent) => (
-                <div key={agent} className="flex flex-wrap gap-3 py-0.5">
-                  <span className="w-40">{agent}</span>
-                  <label><input type="checkbox" /> Can Copy</label>
-                  <label><input type="checkbox" /> Can Edit</label>
-                  <label><input type="checkbox" /> Is Owner</label>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <Btn onClick={onClose}>Exit Wizard</Btn>
-            <Btn onClick={() => setStep(2)}>Back</Btn>
-            <Btn kind="teal" onClick={() => setStep(4)}>Save Settings</Btn>
-          </div>
-        </div>
-      ) : null}
-      {step === 4 ? (
-        <div className="text-[13px]">
-          <p className="font-bold">{name}</p>
-          <p>Category: {category}. Lead types: {leadTypes.join(", ") || "Everyone"}.</p>
-          <p>Hours: {hours}{weekend ? ", weekends" : ""}{holidays ? ", skip holidays" : ""}.</p>
-          <p>Steps: {steps.length}. Completes with: {complete}. Shared: {share ? "yes" : "no"}.</p>
-          <div className="mt-3 flex justify-end gap-2">
-            <Btn onClick={() => setStep(3)}>Back</Btn>
-            <Btn kind="teal" onClick={saveTrack}>Save</Btn>
-          </div>
-        </div>
-      ) : null}
-    </ModalFrame>
-  );
-}
 
 const BEHAVIORS: { group: string; items: string[] }[] = [
   {

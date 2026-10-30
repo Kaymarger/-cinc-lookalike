@@ -65,7 +65,7 @@ test("saved search criteria", () => {
   if (ok.ok) {
     assert.equal(ok.value.leadEmail, "jordan.lee@email.com");
     assert.equal(ok.value.maxPrice, 900000);
-    assert.equal(ok.value.frequency, "Daily");
+    assert.equal(ok.value.frequency, "Daily (Best for default search)");
   }
   assert.equal(sanitizeSavedSearch({ name: "  ", frequency: "Daily" }).ok, false);
   assert.equal(sanitizeSavedSearch({ name: "X", frequency: "Hourly" }).ok, false);

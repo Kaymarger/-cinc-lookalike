@@ -107,3 +107,30 @@ ALTER TABLE lead_saved_searches ADD COLUMN IF NOT EXISTS criteria jsonb NOT NULL
 
 CREATE INDEX IF NOT EXISTS lead_saved_searches_email_idx ON lead_saved_searches (lower(lead_email));
 CREATE INDEX IF NOT EXISTS lead_saved_searches_lead_idx ON lead_saved_searches (lead_id);
+
+CREATE TABLE IF NOT EXISTS autotracks (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  category text NOT NULL,
+  status text NOT NULL,
+  document jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS autotrack_files (
+  id text PRIMARY KEY,
+  track_id text NOT NULL,
+  step_id text NOT NULL,
+  name text NOT NULL,
+  content_type text NOT NULL,
+  size_bytes integer NOT NULL,
+  bytes bytea NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS autotrack_files_step_idx ON autotrack_files (step_id);
+
+CREATE TABLE IF NOT EXISTS autotrack_hidden (
+  id text PRIMARY KEY
+);
