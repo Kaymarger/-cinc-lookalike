@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AutoTrackStep } from "@/lib/autotrack";
-import { PLACEHOLDER_AI_ALERTS, PLACEHOLDER_BEHAVIORAL_ALERTS, PLACEHOLDER_COMMUNICATION_ALERTS } from "@/lib/placeholders";
+import { TEMPLATE_GROUPS } from "@/lib/cinc-lists";
 
 const KEY = "gvhs-cinc-spa";
 
@@ -276,7 +276,7 @@ export const ADVANCED: AdvancedForm = {
   birthdate: "",
 };
 
-export const NOTIFY_GROUPS: { title: string; items: { id: string; description: string }[] }[] = [
+export const NOTIFY_GROUPS: { title: string; items: { id: string; description: string; channels?: ("cinc" | "email" | "text")[] }[] }[] = [
   {
     title: "ESSENTIAL ALERTS",
     items: [
@@ -302,15 +302,45 @@ export const NOTIFY_GROUPS: { title: string; items: { id: string; description: s
     title: "AGENT ALERTS",
     items: [
       { id: "Lead Reassign", description: "When a lead is reassigned to you." },
+      { id: "Appointment Request", description: "When a lead requests an appointment." },
       { id: "Direct Mail Activity", description: "When a lead scans a direct-mail piece." },
     ],
   },
-  { title: "AI ALERTS", items: [...PLACEHOLDER_AI_ALERTS] },
-  { title: "COMMUNICATION ALERTS", items: [...PLACEHOLDER_COMMUNICATION_ALERTS] },
-  { title: "BEHAVIORAL MESSAGE ALERTS", items: [...PLACEHOLDER_BEHAVIORAL_ALERTS] },
+  {
+    title: "AI ALERTS",
+    items: [
+      { id: "AI Disposition Conversation Alert", description: "Notification when a Lead is AI Agent Ready.", channels: ["cinc", "email", "text"] },
+      { id: "AI Interested Lead", description: "Notification when AI is conversing with an interested lead.", channels: ["cinc", "email", "text"] },
+    ],
+  },
+  {
+    title: "COMMUNICATION ALERTS",
+    items: [
+      { id: "Mass Action Confirmation", description: "", channels: ["email", "text"] },
+      { id: "Mass Email Confirmation", description: "", channels: ["email", "text"] },
+      { id: "Mass Text Confirmation", description: "", channels: ["email", "text"] },
+      { id: "Chat", description: "", channels: ["cinc", "email", "text"] },
+      { id: "Text", description: "New Text Message Notification.", channels: ["cinc"] },
+    ],
+  },
+  {
+    title: "BEHAVIORAL MESSAGE ALERTS",
+    items: [
+      { id: "Lead Viewed Same Property", description: "3 times within 5 days", channels: ["email", "text"] },
+      { id: "Lead Viewed Any Property", description: "10 times within 7 days", channels: ["email", "text"] },
+      { id: "Lead Updated CellPhone", description: "", channels: ["email", "text"] },
+      { id: "Lead Property Inquiry", description: "", channels: ["email", "text"] },
+      { id: "Lead Logs In", description: "not logged in 30 days", channels: ["email", "text"] },
+      { id: "Lead Favorited Properties", description: "3 within 14 days", channels: ["email", "text"] },
+      { id: "Lead Opened Email", description: "after 30 days inactivity", channels: ["email", "text"] },
+      { id: "Sold Lead Activity", description: "after a year+", channels: ["email", "text"] },
+      { id: "Contacted Lead Activity", description: "after 30+ days", channels: ["email", "text"] },
+      { id: "Home Evaluation Submitted", description: "after 7+ days", channels: ["email", "text"] },
+    ],
+  },
   {
     title: "MASTER SETTINGS",
-    items: [{ id: "Subscription", description: "CINCAgent, Email, Text" }],
+    items: [{ id: "Subscription", description: "", channels: ["cinc", "email", "text"] }],
   },
 ];
 
@@ -338,28 +368,23 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
-const DATA_VERSION = 6;
+const DATA_VERSION = 7;
 
 function buildTemplates(): Template[] {
   const rows: Template[] = [];
-  const counts: [string, number][] = [
-    ["ISA", 2],
-    ["Uncategorized", 1],
-    ["Shared Templates", 17],
-    ["CINC Templates", 54],
-  ];
-  for (const [group, count] of counts) {
-    for (let i = 1; i <= count; i++) {
+  for (const [group, names] of Object.entries(TEMPLATE_GROUPS)) {
+    names.forEach((name, index) => {
+      const text = /text|sms/i.test(name);
       rows.push({
-        id: `tpl-${group.replace(/\s+/g, "-").toLowerCase()}-${i}`,
+        id: `tpl-${group.slice(0, 3).toLowerCase()}-${index + 1}`,
         group,
-        name: group === "ISA" && i === 1 ? "Day 2 - Text" : group === "ISA" && i === 2 ? "Day 15 - Text" : `${group === "CINC Templates" ? "CINC" : group.split(" ")[0]} ${i}`,
-        type: group === "ISA" || i % 3 === 0 ? "Text" : "Email",
-        createdBy: group === "CINC Templates" ? "CINC" : group === "Shared Templates" ? "Team" : "Kayla Gerak",
-        edited: "09-14-2022",
-        body: "Thanks for registering with Archibald Real Estate Group. This sample template stays on this device.",
+        name,
+        type: text ? "Text" : "Email",
+        createdBy: group === "CINC Templates" ? "CINC" : "Kayla Gerak",
+        edited: "10-30-2026",
+        body: "",
       });
-    }
+    });
   }
   return rows;
 }
@@ -424,7 +449,7 @@ const DEFAULT: SpaState = {
   deals: [],
   mail: buildMail(),
   templates: buildTemplates(),
-  groups: ["ISA", "Uncategorized", "Shared Templates", "CINC Templates"],
+  groups: ["Uncategorized", "Shared Templates", "CINC Templates"],
   tracks: [],
   hiddenTracks: [],
   pocket: [],

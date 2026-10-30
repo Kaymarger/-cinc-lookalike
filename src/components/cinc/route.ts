@@ -61,7 +61,7 @@ export type LeadTab = "activity" | "info" | "plans" | "appointments" | "conversa
 export type CincRoute =
   | { view: "launchpad" }
   | { view: "callsummary" }
-  | { view: "leads"; mode: "list" | "export" | "history"; leadId?: string; tab: LeadTab }
+  | { view: "leads"; mode: "list" | "export" | "history" | "sources"; leadId?: string; tab: LeadTab }
   | { view: "deals"; board: "purchases" | "listings" }
   | { view: "inbox"; folder: "inbox" | "sent" | "drafts" | "trashed" | "templates" }
   | { view: "autotracks" }
@@ -111,7 +111,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "launchpad" };
   }
   if (a === "leads") {
-    if (b === "export") return { view: "leads", mode: "export", tab: "activity" };
+    if (b === "sources") return { view: "leads", mode: "sources", tab: "activity" };
     if (b === "dialer-history") return { view: "leads", mode: "history", tab: "activity" };
     if (b === "details" && c) return { view: "leads", mode: "list", leadId: decodeURIComponent(c), tab: asLeadTab(d) };
     if (b === "overviewreturn") return { view: "leads", mode: "list", tab: "activity" };

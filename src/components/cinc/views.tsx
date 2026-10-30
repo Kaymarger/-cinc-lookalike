@@ -10,6 +10,7 @@ import { useOfficeSession } from "./office-session";
 import { OfficeGeneralSettings } from "./office-general";
 import { href } from "./route";
 import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template } from "./store";
+import { MARKET_AREAS, templateAudience } from "@/lib/cinc-lists";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const AGENT_NUMBER = "4829103344556677";
@@ -450,7 +451,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const { state, update } = useCinc();
   const chrome = useChrome();
   const composer = useComposer();
-  const [group, setGroup] = useState("ISA");
+  const [group, setGroup] = useState("Uncategorized");
   const [picked, setPicked] = useState<string[]>([]);
   const [commType, setCommType] = useState("Any");
   const [messageType, setMessageType] = useState("Both");
@@ -577,10 +578,10 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                   <tr key={row.id} className="h-6 border-t border-[#eee]">
                     <td><input className={checkCls} type="checkbox" checked={picked.includes(row.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, row.id] : picked.filter((id) => id !== row.id))} /></td>
                     <td className="text-[#1c93b5]">{row.type === "Text" ? "☎ " : ""}<button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<TemplateModal group={row.group} initial={row} onClose={chrome.closeModal} />)}>{row.name}</button></td>
-                    <td>Buyers & Sellers</td>
+                    <td>{templateAudience(row.name)}</td>
                     <td>{row.createdBy}</td>
                     <td>{row.edited}</td>
-                    <td><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title={`${row.name} analytics`} onClose={chrome.closeModal}><p className="text-[13px]">Sends 0 · Opens 0 · Clicks 0. Sample template, nothing has been delivered.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>Analytics</button></td>
+                    <td><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title={`${row.name} analytics`} onClose={chrome.closeModal}><p className="text-[13px]">Sends 0 · Opens 0 · Clicks 0. Nothing has been sent from this template.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>Analytics</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1691,9 +1692,9 @@ function NotificationsTab() {
                   <p className="pr-10 text-[13px] font-bold">{item.id}</p>
                   <p className="mt-1 text-[12px] text-[#666]">{item.description}</p>
                   <div className="mt-2 flex gap-3 text-[11px]">
-                    <label><input type="checkbox" checked={pref.cinc} onChange={() => toggle("cinc")} /> CINCAgent</label>
-                    <label><input type="checkbox" checked={pref.email} onChange={() => toggle("email")} /> Email</label>
-                    <label><input type="checkbox" checked={pref.text} onChange={() => toggle("text")} /> Text</label>
+                    {(["cinc", "email", "text"] as const).filter((key) => !item.channels || item.channels.includes(key)).map((key) => (
+                      <label key={key}><input type="checkbox" checked={pref[key]} onChange={() => toggle(key)} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}</label>
+                    ))}
                   </div>
                 </article>
               );
@@ -1941,8 +1942,15 @@ export function MarketingView() {
     setYear(next.getFullYear());
     setMonth(next.getMonth());
   }
+  const known = new Set(MARKET_AREAS.map((name) => name.toLowerCase()));
+  const areaRows = MARKET_AREAS.map((location) => {
+    const leads = report.locations.filter((row) => row.location.toLowerCase() === location.toLowerCase()).reduce((sum, row) => sum + row.leads, 0);
+    return { location, leads, cost: report.searchBudget > 0 && leads > 0 ? Math.round(report.searchBudget / leads) : null };
+  });
+  const otherLeads = report.locations.filter((row) => !known.has(row.location.toLowerCase())).reduce((sum, row) => sum + row.leads, 0);
+  const areaTotal = areaRows.reduce((sum, row) => sum + row.leads, 0) + otherLeads;
   function exportCsv() {
-    const lines = ["LOCATION,LEADS,COST PER LEAD", ...report.locations.map((row) => `${row.location},${row.leads},${row.cost ?? ""}`), `Total,${report.totalLeads},`];
+    const lines = ["LOCATION,LEADS,COST PER LEAD", ...areaRows.map((row) => `${row.location},${row.leads},${row.cost ?? ""}`), `Total,${areaTotal},`];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -1992,14 +2000,14 @@ export function MarketingView() {
           <button type="button" className="mt-2 block text-[12px] uppercase" onClick={() => setDisclaimer((value) => !value)}>Disclaimer</button>
           {disclaimer ? <p className="mt-1 text-[12px] text-[#666]">Lead counts come from people who registered on the site this month. Cost per lead uses the saved buyer budget. No ads are purchased from this page.</p> : null}
           <p className="mt-3 font-semibold">Target Areas</p>
-          <p className="text-[12px] text-[#666]">Top 6 areas</p>
+          <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
+          <p className="text-[12px] text-[#666]">All other areas: {otherLeads}</p>
         </article>
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">
           <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>Cost per lead</th></tr></thead>
           <tbody>
-            {report.locations.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
-            {!report.locations.length ? <tr><td className="px-3 py-4 text-[#888]" colSpan={3}>No leads recorded for this month.</td></tr> : null}
-            <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{report.totalLeads}</td><td /></tr>
+            {areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
+            <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{areaTotal}</td><td /></tr>
           </tbody>
         </table>
       </div>

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { officeDb } from "./leads-db";
 import { channelMessage, publicOrigin, sendOfficeMail, sendOfficeSms, startOfficeCall } from "./office-mail";
-import { PLACEHOLDER_VENDOR_TYPES } from "./placeholders";
 import { EMPTY_SETTINGS, rate, sanitizeSettings, type OfficeSettings } from "./office-settings";
 
 export type { OfficeSettings };
@@ -14,6 +13,14 @@ export type Vendor = {
   preferred: boolean;
   phone: string;
   notes: string;
+  firstName: string;
+  lastName: string;
+  company: string;
+  cell: string;
+  officePhone: string;
+  email: string;
+  email2: string;
+  description: string;
 };
 
 export type TrackStats = {
@@ -61,8 +68,12 @@ export async function writeSettings(input: unknown): Promise<OfficeSettings> {
 export async function listVendors(): Promise<Vendor[]> {
   const sql = await officeDb();
   if (!sql) return [];
-  const rows = await sql<{ id: string; name: string; vendor_type: string; preferred: boolean; phone: string; notes: string }[]>`
-    SELECT id, name, vendor_type, preferred, phone, notes FROM office_vendors ORDER BY name
+  const rows = await sql<{
+    id: string; name: string; vendor_type: string; preferred: boolean; phone: string; notes: string;
+    first_name: string; last_name: string; company: string; cell_phone: string; office_phone: string; email: string; email2: string; description: string;
+  }[]>`
+    SELECT id, name, vendor_type, preferred, phone, notes, first_name, last_name, company, cell_phone, office_phone, email, email2, description
+    FROM office_vendors ORDER BY name
   `;
   return rows.map((row) => ({
     id: row.id,
@@ -71,24 +82,42 @@ export async function listVendors(): Promise<Vendor[]> {
     preferred: row.preferred,
     phone: row.phone,
     notes: row.notes,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    company: row.company,
+    cell: row.cell_phone,
+    officePhone: row.office_phone,
+    email: row.email,
+    email2: row.email2,
+    description: row.description,
   }));
 }
 
 export function sanitizeVendor(input: unknown, id = ""): Vendor | { error: string } {
   const raw = (input && typeof input === "object" ? input : {}) as Partial<Vendor>;
-  const name = clip(raw.name, 120).trim();
-  if (!name) return { error: "Enter a vendor name." };
-  const type = clip(raw.type, 80);
-  if (type && !PLACEHOLDER_VENDOR_TYPES.includes(type as (typeof PLACEHOLDER_VENDOR_TYPES)[number])) {
-    return { error: "Choose a vendor type." };
-  }
+  const firstName = clip(raw.firstName, 80).trim();
+  const lastName = clip(raw.lastName, 80).trim();
+  const type = clip(raw.type, 80).trim();
+  const email = clip(raw.email, 160).trim();
+  if (!type) return { error: "Enter a vendor type." };
+  if (!firstName || !lastName) return { error: "Enter a first and last name." };
+  if (!email) return { error: "Enter a primary email address." };
+  const name = `${firstName} ${lastName}`.trim();
   return {
     id: id || `vendor-${randomUUID().slice(0, 8)}`,
     name,
     type,
     preferred: Boolean(raw.preferred),
-    phone: clip(raw.phone, 40),
+    phone: clip(raw.cell || raw.phone, 40),
     notes: clip(raw.notes, 500),
+    firstName,
+    lastName,
+    company: clip(raw.company, 120),
+    cell: clip(raw.cell, 40),
+    officePhone: clip(raw.officePhone, 40),
+    email,
+    email2: clip(raw.email2, 160),
+    description: clip(raw.description, 1000),
   };
 }
 
@@ -98,14 +127,22 @@ export async function saveVendor(input: unknown, id = ""): Promise<Vendor> {
   const vendor = sanitizeVendor(input, id);
   if ("error" in vendor) throw new Error(vendor.error);
   await sql`
-    INSERT INTO office_vendors (id, name, vendor_type, preferred, phone, notes, created_at, updated_at)
-    VALUES (${vendor.id}, ${vendor.name}, ${vendor.type}, ${vendor.preferred}, ${vendor.phone}, ${vendor.notes}, now(), now())
+    INSERT INTO office_vendors (id, name, vendor_type, preferred, phone, notes, first_name, last_name, company, cell_phone, office_phone, email, email2, description, created_at, updated_at)
+    VALUES (${vendor.id}, ${vendor.name}, ${vendor.type}, ${vendor.preferred}, ${vendor.phone}, ${vendor.notes}, ${vendor.firstName}, ${vendor.lastName}, ${vendor.company}, ${vendor.cell}, ${vendor.officePhone}, ${vendor.email}, ${vendor.email2}, ${vendor.description}, now(), now())
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
       vendor_type = EXCLUDED.vendor_type,
       preferred = EXCLUDED.preferred,
       phone = EXCLUDED.phone,
       notes = EXCLUDED.notes,
+      first_name = EXCLUDED.first_name,
+      last_name = EXCLUDED.last_name,
+      company = EXCLUDED.company,
+      cell_phone = EXCLUDED.cell_phone,
+      office_phone = EXCLUDED.office_phone,
+      email = EXCLUDED.email,
+      email2 = EXCLUDED.email2,
+      description = EXCLUDED.description,
       updated_at = now()
   `;
   return vendor;
@@ -240,7 +277,6 @@ export async function marketingReport(year: number, month: number): Promise<{
     WHERE created_at >= ${start} AND created_at < ${end}
     GROUP BY 1
     ORDER BY count(*) DESC
-    LIMIT 6
   `;
   const totalLeads = rows.reduce((sum, row) => sum + row.leads, 0);
   const locations = rows.map((row) => ({
@@ -249,4 +285,24 @@ export async function marketingReport(year: number, month: number): Promise<{
     cost: settings.searchBudget > 0 && row.leads > 0 ? Math.round(settings.searchBudget / row.leads) : null,
   }));
   return { locations, totalLeads, searchBudget: settings.searchBudget, listcastBudget: settings.listcastBudget };
+}
+
+export async function loadLeadFields(leadId: string): Promise<Record<string, string>> {
+  const sql = await officeDb();
+  if (!sql) return {};
+  const rows = await sql<{ document: Record<string, string> }[]>`SELECT document FROM office_lead_fields WHERE lead_id = ${leadId}`;
+  return rows[0]?.document ?? {};
+}
+
+export async function saveLeadFields(leadId: string, document: Record<string, string>): Promise<string | null> {
+  const sql = await officeDb();
+  if (!sql) return "Office data is not connected.";
+  const clean: Record<string, string> = {};
+  for (const [key, value] of Object.entries(document)) clean[key.slice(0, 40)] = String(value ?? "").slice(0, 200);
+  await sql`
+    INSERT INTO office_lead_fields (lead_id, document, updated_at)
+    VALUES (${leadId.slice(0, 80)}, ${sql.json(clean)}, now())
+    ON CONFLICT (lead_id) DO UPDATE SET document = EXCLUDED.document, updated_at = now()
+  `;
+  return null;
 }

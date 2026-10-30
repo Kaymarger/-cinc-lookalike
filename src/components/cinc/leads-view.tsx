@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CRM_AGENT, CRM_AUTOTRACKS, CRM_LEADS } from "@/lib/cinc-crm";
 import { ACTIVITY_FILTER_GROUPS, LABEL_GROUPS, OFFICE_ROSTER, REMINDER_TIMING, clockTimes } from "@/lib/cinc-options";
+import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/lib/cinc-lists";
+import type { OfficeSettings } from "@/lib/office-settings";
 import { leadVisibleTo } from "@/lib/office-access";
 import { useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
@@ -313,12 +315,78 @@ function pipeColor(stage: string) {
   return "border-[#1c93b5] text-[#1c93b5]";
 }
 
+function LeadSources() {
+  const { leads } = useLeads();
+  const chrome = useChrome();
+  const [settings, setSettings] = useState<OfficeSettings | null>(null);
+  const [name, setName] = useState("");
+  useEffect(() => {
+    void fetch("/api/office/settings", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { settings?: OfficeSettings } | null;
+      if (data?.settings) setSettings(data.settings);
+    });
+  }, []);
+  async function persist(next: OfficeSettings, message: string) {
+    const response = await fetch("/api/office/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
+    if (!response.ok) { chrome.toast("Could not save lead sources."); return; }
+    setSettings(next);
+    chrome.toast(message);
+  }
+  if (!settings) return <p className="p-4 text-[13px]">Loading lead sources…</p>;
+  const created = [...MAPPED_SOURCES, ...settings.customSources.filter((item) => !MAPPED_SOURCES.includes(item as (typeof MAPPED_SOURCES)[number]))];
+  const counts = new Map<string, number>();
+  for (const lead of leads) counts.set(lead.source, (counts.get(lead.source) ?? 0) + 1);
+  return (
+    <div className="p-4 text-[13px]">
+      <h1 className="mb-3 text-[16px] font-bold">Edit Lead Sources</h1>
+      <form className="mb-4 flex gap-2" onSubmit={(event) => {
+        event.preventDefault();
+        const value = name.trim();
+        if (!value) return;
+        void persist({ ...settings, customSources: [...settings.customSources, value] }, "Source created.");
+        setName("");
+      }}>
+        <input className={inputCls} placeholder="Create a Source" value={name} onChange={(event) => setName(event.target.value)} />
+        <button type="submit" className="bg-[#1c93b5] px-3 text-white">Create</button>
+      </form>
+      <p className="mb-1 font-semibold">Remove Created Sources</p>
+      <ul className="mb-4">
+        {created.map((item) => (
+          <li key={item} className="flex items-center gap-2 py-1">
+            {item}
+            {settings.customSources.includes(item) ? <button type="button" className="text-[#d9363e]" onClick={() => void persist({ ...settings, customSources: settings.customSources.filter((source) => source !== item) }, "Source removed.")}>Remove</button> : null}
+          </li>
+        ))}
+      </ul>
+      <p className="mb-1 font-semibold">Map Manual Lead Sources</p>
+      <table className="w-full bg-white text-left">
+        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-2 py-1">Source Name</th><th>Number of Leads</th><th>Map To</th><th>Actions</th></tr></thead>
+        <tbody>
+          {LEAD_SOURCES.filter((item) => item !== "(Select a Source)").map((source) => (
+            <tr key={source} className="border-t border-[#eee]">
+              <td className="px-2 py-1">{source}</td>
+              <td>{counts.get(source) ?? 0}</td>
+              <td>
+                <select className="border border-[#ccc] px-1" value={settings.sourceMap[source] || "--No Mapping--"} onChange={(event) => setSettings({ ...settings, sourceMap: { ...settings.sourceMap, [source]: event.target.value } })}>
+                  <option>--No Mapping--</option>
+                  {MAPPED_SOURCES.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </td>
+              <td><button type="button" className="text-[#1c93b5]" onClick={() => void persist(settings, "Mapping updated.")}>Update</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function LeadsView({
   mode,
   leadId,
   tab,
 }: {
-  mode: "list" | "export" | "history";
+  mode: "list" | "export" | "history" | "sources";
   leadId?: string;
   tab: LeadTab;
 }) {
@@ -634,6 +702,8 @@ export function LeadsView({
       </div>
     );
   }
+
+  if (mode === "sources") return <LeadSources />;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -1315,8 +1385,17 @@ function InfoTab({
     timezone: saved.timezone || "America/Vancouver",
     recruit: saved.recruit || (row.type === "Recruit" ? "Yes" : "No"),
     sold: saved.sold || "",
-    timeframe: saved.timeframe || row.timeframe,
+    timeframe: TIMEFRAMES.includes(saved.timeframe as (typeof TIMEFRAMES)[number]) ? saved.timeframe : "Not specified",
+    source: saved.source || "(Select a Source)",
+    relation: saved.relation || "Not specified",
   });
+  useEffect(() => {
+    void fetch(`/api/office/lead-fields/${encodeURIComponent(row.id)}`, { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fields?: Record<string, string> } | null;
+      if (!data?.fields) return;
+      setForm((current) => ({ ...current, ...data.fields }));
+    });
+  }, [row.id]);
   const fields: [string, keyof typeof form][] = [
     ["First Name", "first"], ["Last Name", "last"], ["Email", "email"], ["Secondary Contact Email", "email2"],
     ["Cell Phone", "cell"], ["Home Phone", "home"], ["Work Phone", "work"], ["Address", "address"],
@@ -1330,7 +1409,14 @@ function InfoTab({
         <Btn kind="teal" onClick={() => {
           if (edit) {
             update((current) => ({ ...current, info: { ...current.info, [row.id]: form } }));
-            chrome.toast("Lead info saved on this device.");
+            void fetch(`/api/office/lead-fields/${encodeURIComponent(row.id)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fields: form }),
+            }).then(async (response) => {
+              const data = (await response.json().catch(() => null)) as { message?: string } | null;
+              chrome.toast(response.ok ? "Lead info saved." : data?.message || "Lead info stayed on this device.");
+            });
           }
           setEdit((value) => !value);
         }}>{edit ? "Save" : "Edit"}</Btn>
@@ -1363,11 +1449,23 @@ function InfoTab({
             </p>
           ))}
           <p className="mt-3 border-b border-[#ddd] pb-1 font-semibold">User Data</p>
+          {([
+            ["Source", "source", LEAD_SOURCES],
+            ["Timeframe to Buy", "timeframe", TIMEFRAMES],
+            ["Secondary contact relation", "relation", CONTACT_RELATIONS],
+          ] as const).map(([label, key, options]) => (
+            <div key={key} className="mb-1">
+              <p className="text-[10px] font-bold tracking-wide text-[#888] uppercase">{label}</p>
+              {edit ? (
+                <select className={inputCls} value={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.value })}>
+                  {options.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              ) : <p>{form[key] || "—"}</p>}
+            </div>
+          ))}
+          <a href="#leads/sources" className="text-[12px] text-[#1c93b5]">Edit Lead Sources</a>
           {[
             ["Registered", row.registered],
-            ["Source", row.source],
-            ["Source Page", "Homepage"],
-            ["Timeframe to Buy (original)", form.timeframe],
             ["Inquiry Count", String(row.inq)],
             ["Last Login", row.lastLogin],
             ["Login Count", String(row.logins)],
@@ -1494,7 +1592,7 @@ function FilterDrawer(props: {
           <button type="button" className="mt-1 text-[#1c93b5]" onClick={() => props.setShowAll(!props.showAll)}>{props.showAll ? "Show Fewer" : "+ Show All"}</button>
           {props.checks.includes("Assigned Agent") ? <select className={`${inputCls} mt-2`} value={props.agent} onChange={(event) => props.setAgent(event.target.value)}><option>Any</option>{TEAM.map((name) => <option key={name}>{name}</option>)}</select> : null}
           {props.checks.includes("Lead Type") ? <select className={`${inputCls} mt-2`} value={props.type} onChange={(event) => props.setType(event.target.value)}><option>Any</option><option>Buyer</option><option>Seller</option><option>Partial</option><option>Recruit</option></select> : null}
-          {props.checks.includes("Source") ? <select className={`${inputCls} mt-2`} value={props.source} onChange={(event) => props.setSource(event.target.value)}><option>Any</option><option>Referral Exchange</option><option>IDX Registration</option><option>Facebook Lead Ad</option><option>Home Valuation</option><option>Search Alert</option><option>Website</option></select> : null}
+          {props.checks.includes("Source") ? <select className={`${inputCls} mt-2`} value={props.source} onChange={(event) => props.setSource(event.target.value)}><option>Any</option>{LEAD_SOURCES.filter((item) => item !== "(Select a Source)").map((item) => <option key={item}>{item}</option>)}</select> : null}
           {props.checks.includes("Contact Validity") ? <select className={`${inputCls} mt-2`} value={props.valid} onChange={(event) => props.setValid(event.target.value)}><option>Any</option><option>Valid</option><option>Invalid</option></select> : null}
           {props.checks.includes("RealVerified Lead") ? <select className={`${inputCls} mt-2`} value={props.verified} onChange={(event) => props.setVerified(event.target.value)}><option>Any</option><option>Verified</option></select> : null}
           <p className="mt-3 font-semibold">Pipeline Stage</p>

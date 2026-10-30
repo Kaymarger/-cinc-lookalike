@@ -200,6 +200,19 @@ const SCHEMA_STATEMENTS = [
   created_at timestamptz NOT NULL DEFAULT now()
 )`,
   `CREATE INDEX IF NOT EXISTS office_send_events_send_idx ON office_send_events (send_id)`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS first_name text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS last_name text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS company text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS cell_phone text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS office_phone text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS email text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS email2 text NOT NULL DEFAULT ''`,
+  `ALTER TABLE office_vendors ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT ''`,
+  `CREATE TABLE IF NOT EXISTS office_lead_fields (
+  lead_id text PRIMARY KEY,
+  document jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
 ];
 
 const globalSql = globalThis as unknown as {

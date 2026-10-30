@@ -14,17 +14,54 @@ export type OfficeSettings = {
   welcomeBody: string;
   searchBudget: number;
   listcastBudget: number;
+  sellerSearches: "Enabled" | "Disabled";
+  crmLabel: string;
+  crmWelcome: "Enabled" | "Disabled";
+  homeBanner: string;
+  softenCover: boolean;
+  showHome: boolean;
+  showSearch: boolean;
+  showMap: boolean;
+  showFeatured: boolean;
+  showAbout: boolean;
+  showContact: boolean;
+  showBlog: boolean;
+  showSeller: boolean;
+  showHomeValue: boolean;
+  logoHeader: boolean;
+  logoFooter: boolean;
+  cobrand: boolean;
+  homeValueTagLine: string;
+  homeSearchUrl: string;
+  facebook: string;
+  googlePage: string;
+  pinterest: string;
+  twitter: string;
+  instagram: string;
+  youtube: string;
+  linkedin: string;
+  googlePlace: string;
+  propertyAlertBody: string;
+  mailerCampaigns: boolean;
+  reassignEnabled: "Enabled" | "Disabled";
+  reassignAmount: string;
+  reassignUnit: "minute(s)" | "hour(s)" | "day(s)";
+  reassignFrom: string;
+  reassignTo: string;
+  aiSeoNotes: string;
+  customSources: string[];
+  sourceMap: Record<string, string>;
 };
 
 export const EMPTY_SETTINGS: OfficeSettings = {
   sellerEnabled: false,
-  sellerLabel: "Placeholder — Seller",
+  sellerLabel: "-- None --",
   crmConnectEnabled: false,
   crmConnectUrl: "",
   websiteName: "Greater Vancouver Area Home Search",
   websiteIdx: false,
   autoLabelEnabled: false,
-  autoLabel: "Placeholder — New Lead",
+  autoLabel: "-- None --",
   autoSearchEnabled: false,
   autoSearchFrequency: "Daily (Best for default search)",
   welcomeEnabled: false,
@@ -32,6 +69,43 @@ export const EMPTY_SETTINGS: OfficeSettings = {
   welcomeBody: "Hi [FIRSTNAME], welcome.",
   searchBudget: 0,
   listcastBudget: 0,
+  sellerSearches: "Disabled",
+  crmLabel: "-- None --",
+  crmWelcome: "Disabled",
+  homeBanner: "",
+  softenCover: false,
+  showHome: true,
+  showSearch: true,
+  showMap: true,
+  showFeatured: true,
+  showAbout: true,
+  showContact: true,
+  showBlog: false,
+  showSeller: true,
+  showHomeValue: true,
+  logoHeader: true,
+  logoFooter: true,
+  cobrand: false,
+  homeValueTagLine: "",
+  homeSearchUrl: "",
+  facebook: "",
+  googlePage: "",
+  pinterest: "",
+  twitter: "",
+  instagram: "",
+  youtube: "",
+  linkedin: "",
+  googlePlace: "",
+  propertyAlertBody: "",
+  mailerCampaigns: false,
+  reassignEnabled: "Disabled",
+  reassignAmount: "1",
+  reassignUnit: "hour(s)",
+  reassignFrom: "12:00 AM (Midnight)",
+  reassignTo: "11:00 PM",
+  aiSeoNotes: "",
+  customSources: [],
+  sourceMap: {},
 };
 
 function clip(value: unknown, max: number): string {
@@ -57,7 +131,55 @@ export function sanitizeSettings(input: unknown): OfficeSettings {
     welcomeBody: clip(raw.welcomeBody, 4000),
     searchBudget: budget(raw.searchBudget),
     listcastBudget: budget(raw.listcastBudget),
+    sellerSearches: raw.sellerSearches === "Enabled" ? "Enabled" : "Disabled",
+    crmLabel: clip(raw.crmLabel, 80) || "-- None --",
+    crmWelcome: raw.crmWelcome === "Enabled" ? "Enabled" : "Disabled",
+    homeBanner: clip(raw.homeBanner, 300),
+    softenCover: Boolean(raw.softenCover),
+    showHome: raw.showHome !== false,
+    showSearch: raw.showSearch !== false,
+    showMap: raw.showMap !== false,
+    showFeatured: raw.showFeatured !== false,
+    showAbout: raw.showAbout !== false,
+    showContact: raw.showContact !== false,
+    showBlog: Boolean(raw.showBlog),
+    showSeller: raw.showSeller !== false,
+    showHomeValue: raw.showHomeValue !== false,
+    logoHeader: raw.logoHeader !== false,
+    logoFooter: raw.logoFooter !== false,
+    cobrand: Boolean(raw.cobrand),
+    homeValueTagLine: clip(raw.homeValueTagLine, 200),
+    homeSearchUrl: clip(raw.homeSearchUrl, 300),
+    facebook: clip(raw.facebook, 300),
+    googlePage: clip(raw.googlePage, 300),
+    pinterest: clip(raw.pinterest, 300),
+    twitter: clip(raw.twitter, 300),
+    instagram: clip(raw.instagram, 300),
+    youtube: clip(raw.youtube, 300),
+    linkedin: clip(raw.linkedin, 300),
+    googlePlace: clip(raw.googlePlace, 300),
+    propertyAlertBody: clip(raw.propertyAlertBody, 2000),
+    mailerCampaigns: Boolean(raw.mailerCampaigns),
+    reassignEnabled: raw.reassignEnabled === "Enabled" ? "Enabled" : "Disabled",
+    reassignAmount: clip(raw.reassignAmount, 3) || "1",
+    reassignUnit: raw.reassignUnit === "minute(s)" || raw.reassignUnit === "day(s)" ? raw.reassignUnit : "hour(s)",
+    reassignFrom: clip(raw.reassignFrom, 40) || EMPTY_SETTINGS.reassignFrom,
+    reassignTo: clip(raw.reassignTo, 40) || EMPTY_SETTINGS.reassignTo,
+    aiSeoNotes: clip(raw.aiSeoNotes, 2000),
+    customSources: (Array.isArray(raw.customSources) ? raw.customSources : []).map((item) => clip(item, 80)).filter(Boolean).slice(0, 40),
+    sourceMap: mapSources(raw.sourceMap),
   };
+}
+
+function mapSources(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const [key, mapped] of Object.entries(value as Record<string, unknown>)) {
+    const name = clip(key, 80);
+    const target = clip(mapped, 80);
+    if (name) out[name] = target;
+  }
+  return out;
 }
 
 export function rate(part: number, whole: number): number | null {
