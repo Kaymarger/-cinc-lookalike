@@ -80,7 +80,7 @@ Each line from the October 30 CINC vs replica audit. Checked means the replica n
 - [x] Pause switches the menu to Resume. Delete asks before it removes a vendor; AutoTrack delete removes the card and the total.
 - [x] Location chips are not duplicated. Enter on typed text adds a chip. Generate Link shows the URL. The saved line uses city, beds, baths, and price. A blank "New Search" row is not listed, and + Saved Search hides once a real search exists.
 - [x] A map button sits beside Location + Keyword Search.
-- [ ] The saved-search editor is still a wide dialog. CINC uses a full page with the same fields.
+- [x] The saved-search editor is a full page. Save and Cancel return to the lead.
 - [x] Changing pipeline shows today's date on the pipeline control.
 - [x] A saved deal shows price as well as the address.
 

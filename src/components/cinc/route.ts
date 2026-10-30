@@ -11,6 +11,7 @@ export const href = {
   exportLeads: `${SPA}#leads/export`,
   dialerHistory: `${SPA}#leads/dialer-history`,
   lead: (id: string, tab = "activity") => `${SPA}#leads/details/${encodeURIComponent(id)}/${tab}`,
+  leadSearch: (id: string, searchId?: string) => `${SPA}#leads/details/${encodeURIComponent(id)}/search${searchId ? `/${encodeURIComponent(searchId)}` : ""}`,
   dealsPurchases: `${SPA}/deals#/dashboard/purchases`,
   dealsListings: `${SPA}/deals#/dashboard/listings`,
   inbox: `${SPA}#inbox`,
@@ -62,6 +63,7 @@ export type CincRoute =
   | { view: "launchpad" }
   | { view: "callsummary" }
   | { view: "leads"; mode: "list" | "export" | "history" | "sources"; leadId?: string; tab: LeadTab }
+  | { view: "leadsearch"; leadId: string; searchId?: string }
   | { view: "deals"; board: "purchases" | "listings" }
   | { view: "inbox"; folder: "inbox" | "sent" | "drafts" | "trashed" | "templates" }
   | { view: "autotracks" }
@@ -115,6 +117,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   if (a === "leads") {
     if (b === "sources") return { view: "leads", mode: "sources", tab: "activity" };
     if (b === "dialer-history") return { view: "leads", mode: "history", tab: "activity" };
+    if (b === "details" && c && d === "search") return { view: "leadsearch", leadId: decodeURIComponent(c), searchId: parts[4] ? decodeURIComponent(parts[4]) : undefined };
     if (b === "details" && c) return { view: "leads", mode: "list", leadId: decodeURIComponent(c), tab: asLeadTab(d) };
     if (b === "overviewreturn") return { view: "leads", mode: "list", tab: "activity" };
     return { view: "leads", mode: "list", tab: "activity" };
@@ -169,6 +172,7 @@ export function sectionOf(route: CincRoute): NavSection {
     case "callsummary":
       return "launchpad";
     case "leads":
+    case "leadsearch":
       return "leads";
     case "deals":
       return "deals";
@@ -214,6 +218,8 @@ export function titleOf(route: CincRoute): string {
       return "Call Summary";
     case "leads":
       return "Leads Dashboard";
+    case "leadsearch":
+      return "Search Filters";
     case "deals":
       return "Deals Dashboard";
     case "inbox":

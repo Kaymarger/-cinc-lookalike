@@ -556,7 +556,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           </header>
           <div className="flex min-h-0 flex-1">
             <main className="min-w-0 flex-1 overflow-auto">{children}</main>
-            {rail && route.view !== "website" && route.view !== "settings" && route.view !== "seller" && route.view !== "landing" ? (
+            {rail && route.view !== "website" && route.view !== "settings" && route.view !== "seller" && route.view !== "landing" && route.view !== "leadsearch" ? (
               <aside className="flex w-[220px] shrink-0 flex-col border-l border-[#e5e5e5] bg-[#f4f4f4]">
                 <div className="border-b-2 border-[#1c93b5] bg-white px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">Activity</div>
                 <label className="px-2 py-2">

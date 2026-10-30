@@ -14,11 +14,14 @@ import {
   STORIES_EXACT,
   STORIES_MIN,
 } from "@/lib/cinc-options";
+import { CRM_LEADS } from "@/lib/cinc-crm";
 import { filterDemoListings } from "@/lib/demo-listings";
 import { savedSearchSummary, type AlertFrequency, type LeadSavedSearch } from "@/lib/office-access";
 import { chipValue, suggestSearch, type SuggestHit } from "@/lib/search-suggest";
+import { useLeads } from "@/lib/leads";
 import { useChrome } from "./chrome-context";
-import { Btn, Field, inputCls, ModalFrame } from "./ui";
+import { go, href } from "./route";
+import { Btn, Field, inputCls } from "./ui";
 
 type Draft = {
   name: string;
@@ -134,17 +137,6 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
   const [searches, setSearches] = useState<LeadSavedSearch[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function load() {
-    const response = await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, { cache: "no-store" });
-    const data = (await response.json().catch(() => null)) as { searches?: LeadSavedSearch[]; message?: string } | null;
-    if (!response.ok) {
-      setNotice(data?.message || "Saved searches need a connected database.");
-      return;
-    }
-    setNotice(null);
-    setSearches(data?.searches ?? []);
-  }
-
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, { cache: "no-store" })
@@ -181,53 +173,7 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
   }
 
   function openForm(initial?: LeadSavedSearch) {
-    chrome.openModal(
-      <SearchModal
-        initial={initial ? fromSearch(initial) : emptyDraft()}
-        onClose={chrome.closeModal}
-        onDelete={
-          initial
-            ? async () => {
-                const response = await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(initial.id)}`, { method: "DELETE" });
-                if (!response.ok) {
-                  chrome.toast("Could not delete that search.");
-                  return;
-                }
-                chrome.closeModal();
-                chrome.toast("Saved search deleted.");
-                await load();
-              }
-            : undefined
-        }
-        searchId={initial?.id ?? null}
-        onSave={async (draft, targetId, keepOpen) => {
-          const response = targetId
-            ? await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(targetId)}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...draft, leadEmail }),
-              })
-            : await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...draft, leadEmail }),
-              });
-          const data = (await response.json().catch(() => null)) as { search?: LeadSavedSearch; message?: string } | null;
-          if (!response.ok || !data?.search) {
-            chrome.toast(data?.message || "Could not save that search.");
-            return null;
-          }
-          setSearches((current) => [data.search!, ...current.filter((item) => item.id !== data.search!.id)]);
-          if (!keepOpen) {
-            chrome.closeModal();
-            chrome.toast(targetId ? "Saved search updated." : "Saved search created.");
-          } else {
-            chrome.toast("New search saved.");
-          }
-          return data.search;
-        }}
-      />
-    );
+    go(href.leadSearch(leadId, initial?.id));
   }
 
   return (
@@ -253,7 +199,93 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
   );
 }
 
-function SearchModal({
+export function LeadSearchPage({ leadId, searchId }: { leadId: string; searchId?: string }) {
+  const chrome = useChrome();
+  const { leads } = useLeads();
+  const lead = leads.find((item) => item.id === leadId);
+  const leadEmail = lead?.email || CRM_LEADS.find((item) => item.id === leadId)?.email || "";
+  const [initial, setInitial] = useState<Draft | null>(searchId ? null : emptyDraft());
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    if (!searchId) return;
+    let cancelled = false;
+    fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { searches?: LeadSavedSearch[]; message?: string } | null;
+        if (cancelled) return;
+        const found = data?.searches?.find((item) => item.id === searchId);
+        if (!response.ok || !found) setMissing(true);
+        else setInitial(fromSearch(found));
+      })
+      .catch(() => setMissing(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [leadId, searchId]);
+
+  function back() {
+    go(href.lead(leadId, "activity"));
+  }
+
+  async function save(draft: Draft, targetId: string | null, keepOpen?: boolean) {
+    const response = targetId
+      ? await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(targetId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...draft, leadEmail }),
+        })
+      : await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...draft, leadEmail }),
+        });
+    const data = (await response.json().catch(() => null)) as { search?: LeadSavedSearch; message?: string } | null;
+    if (!response.ok || !data?.search) {
+      chrome.toast(data?.message || "Could not save that search.");
+      return null;
+    }
+    if (keepOpen) {
+      chrome.toast("New search saved.");
+      go(href.leadSearch(leadId, data.search.id));
+    } else {
+      chrome.toast(targetId ? "Saved search updated." : "Saved search created.");
+      back();
+    }
+    return data.search;
+  }
+
+  async function remove(id: string) {
+    const response = await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!response.ok) {
+      chrome.toast("Could not delete that search.");
+      return;
+    }
+    chrome.toast("Saved search deleted.");
+    back();
+  }
+
+  if (missing) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px]">That saved search is not on this lead.</p>
+        <button type="button" className="mt-3 text-[#1c93b5]" onClick={back}>Back to lead</button>
+      </div>
+    );
+  }
+  if (!initial) return <p className="p-6 text-[13px] text-[#666]">Loading search…</p>;
+  return (
+    <SearchEditor
+      initial={initial}
+      searchId={searchId ?? null}
+      onClose={back}
+      onSave={save}
+      onDelete={searchId ? () => remove(searchId) : undefined}
+    />
+  );
+}
+
+function SearchEditor({
   initial,
   searchId,
   onClose,
@@ -317,14 +349,19 @@ function SearchModal({
   }
   const styles = HOME_STYLES.filter((style) => style.toLowerCase().includes(styleQuery.toLowerCase())).slice(0, 8);
   return (
-    <ModalFrame title="Search Filters" onClose={onClose} wide>
+    <div className="min-h-full bg-[#f5f5f5]">
+      <header className="flex flex-wrap items-center gap-4 border-b border-[#ddd] bg-white px-4 py-3">
+        <button type="button" className="text-[13px] text-[#1c93b5]" onClick={onClose}>← Lead</button>
+        <h1 className="text-[16px] font-semibold">Search Filters</h1>
+      </header>
+      <div className="mx-auto max-w-5xl p-4">
       <div className="mb-3 flex gap-4 border-b border-[#ddd] text-[13px]">
         <button type="button" className={tab === "filters" ? "border-b-2 border-[#1c93b5] pb-1 font-semibold" : "pb-1"} onClick={() => setTab("filters")}>Search Filters</button>
         <button type="button" className={tab === "results" ? "border-b-2 border-[#1c93b5] pb-1 font-semibold" : "pb-1"} onClick={() => setTab("results")}>Search Results</button>
         <span className="ml-auto text-[#888]">({matches.length}) Search Total</span>
       </div>
       {tab === "results" ? (
-        <div className="max-h-[60vh] overflow-auto text-[13px]">
+        <div className="text-[13px]">
           <p className="mb-2 font-semibold">{matches.length} listing{matches.length === 1 ? "" : "s"}</p>
           {matches.length ? matches.slice(0, 40).map((listing) => (
             <article key={listing.mls} className="mb-2 border border-[#eee] px-2 py-1">
@@ -335,7 +372,7 @@ function SearchModal({
           )) : <p className="text-[#666]">No listings match these filters.</p>}
         </div>
       ) : (
-        <div className="max-h-[60vh] space-y-3 overflow-auto pr-1 text-[13px]">
+        <div className="space-y-3 text-[13px]">
           <Field label="Search Name"><input className={inputCls} value={draft.name} onChange={(event) => set("name", event.target.value)} /></Field>
           <Field label="Engagement">
             <select className={inputCls} value={draft.frequency} onChange={(event) => set("frequency", event.target.value)}>
@@ -473,8 +510,10 @@ function SearchModal({
         <Btn onClick={() => setDraft(initial)}>Reset Original</Btn>
         <Btn onClick={() => setDraft(emptyDraft())}>Clear All</Btn>
         {targetId && onDelete ? <Btn kind="danger" onClick={() => void onDelete()}>DELETE</Btn> : null}
+        <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => void onSave(draft.name.trim() ? draft : { ...draft, name: "New Search" }, targetId)}>SAVE</Btn>
       </div>
-    </ModalFrame>
+      </div>
+    </div>
   );
 }
