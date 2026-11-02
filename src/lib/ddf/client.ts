@@ -177,6 +177,29 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   if (!nextUrl && rowsOf(payload).length === 0) {
     payload = await oauthGet(plain, active.token);
   }
+  if (!nextUrl && rowsOf(payload).length === 0) {
+    const replicated = await oauthGet(`${ODATA}/Property/PropertyReplication()?$top=100`, active.token);
+    const keys = rowsOf(replicated)
+      .map((row) => String(row.ListingKey || ""))
+      .filter(Boolean)
+      .slice(0, 25);
+    if (!keys.length) {
+      const creds = ddfCredentials();
+      if (!creds) throw new Error("DDF credentials are not set.");
+      resetDdfSession();
+      return fetchRetsPage(await retsSession(creds.username, creds.password), null);
+    }
+    const quoted = keys.map((key) => `'${key.replace(/'/g, "''")}'`).join(",");
+    payload = await oauthGet(
+      `${ODATA}/Property?$top=25&$filter=${encodeURIComponent(`ListingKey in (${quoted})`)}`,
+      active.token
+    );
+    if (rowsOf(payload).length === 0) {
+      const one = await oauthGet(`${ODATA}/Property('${encodeURIComponent(keys[0])}')`, active.token);
+      const record = one as { value?: unknown; ListingKey?: string };
+      if (record.ListingKey) payload = { value: [record] };
+    }
+  }
   const raw = rowsOf(payload);
   const listings = listingsFromJson(payload);
   if (!nextUrl && raw.length === 0) {
