@@ -178,7 +178,12 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
     payload = await oauthGet(plain, active.token);
   }
   if (!nextUrl && rowsOf(payload).length === 0) {
-    const replicated = await oauthGet(`${ODATA}/Property/PropertyReplication()?$top=100`, active.token);
+    let replicated: { value?: unknown; "@odata.nextLink"?: string } = { value: [] };
+    try {
+      replicated = await oauthGet(`${ODATA}/Property/PropertyReplication()`, active.token);
+    } catch {
+      replicated = { value: [] };
+    }
     const keys = rowsOf(replicated)
       .map((row) => String(row.ListingKey || ""))
       .filter(Boolean)
@@ -225,7 +230,7 @@ export async function fetchDdfMasterPage(nextUrl?: string | null): Promise<{ key
     const page = await fetchRetsPage(active, nextUrl, true);
     return { keys: page.keys, nextUrl: page.nextUrl };
   }
-  const url = nextUrl || `${ODATA}/Property/PropertyReplication()?$top=100`;
+  const url = nextUrl || `${ODATA}/Property/PropertyReplication()`;
   const payload = await oauthGet(url, active.token);
   const rows = Array.isArray(payload.value) ? payload.value : [];
   const keys = rows
