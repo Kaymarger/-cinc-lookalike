@@ -328,10 +328,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
             message: data.database.message,
           });
         }
-        if (!data.leads?.length) return;
-        const remote = data.leads.map((item) =>
+        const remote = (data.leads ?? []).map((item) =>
           normalizeLead(item as Lead)
         );
+        if (data.database?.connected) {
+          setLeads(remote);
+          return;
+        }
+        if (!remote.length) return;
         const remoteIds = new Set(remote.map((lead) => lead.id));
         setLeads((prev) => {
           const localOnly = prev.filter((lead) => !remoteIds.has(lead.id));
