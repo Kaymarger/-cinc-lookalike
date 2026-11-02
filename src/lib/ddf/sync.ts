@@ -74,7 +74,7 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
       await rememberMasterKeys(generation, page.keys);
       pages += 1;
       if (!page.nextUrl) {
-        if (masterKeys > 0 || state.masterComplete) {
+        if (masterKeys > 0) {
           deleted = await applyMasterDeletions(generation);
         }
         generation += 1;
@@ -88,7 +88,7 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
       detailUrl,
       masterUrl,
       masterGeneration: generation,
-      masterComplete: masterUrl === null,
+      masterComplete: masterKeys > 0 && masterUrl === null,
       listingCount,
       mode: mode === "oauth" || mode === "oauth-office" || mode === "oauth-fields" ? "oauth-named" : mode,
       lastError: sawOffice ? "" : (officeError || (fieldNames ? `Office name was empty. Fields: ${fieldNames}` : "")).slice(0, 300),
