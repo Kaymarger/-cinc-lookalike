@@ -10,6 +10,7 @@ export type DdfSyncState = {
   listingCount: number;
   mode: string;
   lastError: string;
+  updatedAt: string | null;
 };
 
 type ListingRow = {
@@ -164,6 +165,7 @@ export async function readSyncState(): Promise<DdfSyncState> {
     listingCount: 0,
     mode: "",
     lastError: "",
+    updatedAt: null,
   };
   if (!sql) return empty;
   const rows = await sql<{
@@ -174,6 +176,7 @@ export async function readSyncState(): Promise<DdfSyncState> {
     listing_count: number;
     mode: string;
     last_error: string;
+    updated_at: Date | string | null;
   }[]>`SELECT * FROM ddf_sync_state WHERE id = 'default'`;
   const row = rows[0];
   if (!row) return empty;
@@ -185,6 +188,7 @@ export async function readSyncState(): Promise<DdfSyncState> {
     listingCount: Number(row.listing_count) || 0,
     mode: row.mode || "",
     lastError: row.last_error || "",
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
   };
 }
 

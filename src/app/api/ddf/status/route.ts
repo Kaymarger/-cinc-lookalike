@@ -19,6 +19,7 @@ export async function GET() {
     configured: true,
     count,
     mode: state.mode,
+    client: "repl-1",
     deletedReady: state.masterComplete,
     message: state.lastError,
   });

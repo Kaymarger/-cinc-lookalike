@@ -1,18 +1,17 @@
 import { ddfConfigured } from "@/lib/ddf/credentials";
-import { countDdfListings, getDdfListing, searchDdfListings } from "@/lib/ddf/db";
+import { countDdfListings, getDdfListing, readSyncState, searchDdfListings } from "@/lib/ddf/db";
 import { syncDdfBatch } from "@/lib/ddf/sync";
 import { getPropertyById, searchProperties } from "@/lib/search";
 import type { Property, SearchFilters } from "@/lib/types";
-
-let bootstrapped = false;
 
 /** Pull one page when the feed is configured and Neon has no listings yet. */
 export async function ensureDdfListings(): Promise<boolean> {
   if (!ddfConfigured()) return false;
   if ((await countDdfListings()) > 0) return true;
-  if (bootstrapped) return false;
-  bootstrapped = true;
-  await syncDdfBatch({ budgetMs: 20_000, maxPages: 1 });
+  const state = await readSyncState();
+  const updated = state.updatedAt ? new Date(state.updatedAt).getTime() : 0;
+  if (updated && Date.now() - updated < 90_000) return false;
+  await syncDdfBatch({ budgetMs: 25_000, maxPages: 1 });
   return (await countDdfListings()) > 0;
 }
 
