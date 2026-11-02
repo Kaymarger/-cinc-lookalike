@@ -189,7 +189,10 @@ export function EmailComposer({
     onDraft(payload());
   }
   return (
-    <Frame title="Compose CINC Mail Message" onClose={onClose} onCancel={onClose} onTemplate={saveTemplate} onPreview={() => setPreviewHtml(editor.current?.innerHTML || SIGNATURE)} onSend={() => { if (!dest.trim()) { chrome.toast("Enter a recipient."); return; } onSend(payload()); }}>
+    <Frame title="Compose CINC Mail Message" onClose={onClose} onCancel={onClose} onTemplate={saveTemplate} onPreview={() => {
+      const raw = editor.current?.innerHTML || SIGNATURE;
+      setPreviewHtml(raw.replace(/<p>\s*(<(?:ul|ol)[\s\S]*?<\/(?:ul|ol)>)\s*<\/p>/gi, "$1"));
+    }} onSend={() => { if (!dest.trim()) { chrome.toast("Enter a recipient."); return; } onSend(payload()); }}>
       <div className="mb-2 flex items-center gap-2">
         <span className="w-16">To *</span>
         <span className="bg-[#e7f4f8] px-2 py-0.5">{leadName || dest || "Lead"} (lead) ×</span>
@@ -296,7 +299,7 @@ export function EmailComposer({
         </div>
       ) : null}
       <RichEditor initial={SIGNATURE} editorRef={editor} />
-      {previewHtml ? <div className="mt-2 border border-[#ddd] bg-[#fafafa] p-2" dangerouslySetInnerHTML={{ __html: fillMergeTags(previewHtml, SAMPLE_MERGE) }} /> : null}
+      {previewHtml ? <div className="mt-2 border border-[#ddd] bg-[#fafafa] p-2 [&_li]:list-item [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: fillMergeTags(previewHtml, SAMPLE_MERGE) }} /> : null}
       <button type="button" className="mt-2 block text-left text-[#1c93b5]" onClick={() => fileRef.current?.click()}>📎 Attachments: ({files.length ? files.join(", ") : "none"})</button>
       <input ref={fileRef} type="file" multiple className="mt-1 block text-[12px]" onChange={(event) => { setFiles([...(event.target.files ?? [])].map((file) => file.name)); }} />
       <p>🏠 Properties: ({property || "none"})</p>

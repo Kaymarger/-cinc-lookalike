@@ -103,7 +103,7 @@ export function LaunchpadView() {
   });
   return (
     <div className="p-4">
-      <h1 className="text-[15px] font-bold text-[#243238]">Welcome back, {CRM_AGENT.greetingName}.</h1>
+      <h1 className="text-[22px] font-bold text-[#243238]">Welcome back, {CRM_AGENT.greetingName}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
@@ -2032,14 +2032,25 @@ export function MarketingView() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [report, setReport] = useState<{ locations: { location: string; leads: number; cost: number | null }[]; totalLeads: number; searchBudget: number; listcastBudget: number }>({ locations: [], totalLeads: 0, searchBudget: 0, listcastBudget: 0 });
-  const [disclaimer, setDisclaimer] = useState(false);
   const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const [readyMonth, setReadyMonth] = useState(false);
   useEffect(() => {
+    void fetch("/api/office/marketing?latest=1", { cache: "no-store" }).then(async (response) => {
+      const data = await response.json().catch(() => null);
+      if (data?.ok && data.year && data.month) {
+        setYear(data.year);
+        setMonth(data.month - 1);
+      }
+      setReadyMonth(true);
+    });
+  }, []);
+  useEffect(() => {
+    if (!readyMonth) return;
     void fetch(`/api/office/marketing?year=${year}&month=${month + 1}`, { cache: "no-store" }).then(async (response) => {
       const data = await response.json().catch(() => null);
       if (data?.ok) setReport(data);
     });
-  }, [year, month]);
+  }, [year, month, readyMonth]);
   function shift(delta: number) {
     const next = new Date(year, month + delta, 1);
     const cap = new Date();
@@ -2095,40 +2106,57 @@ export function MarketingView() {
         <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">ListCast ($)</p><p className="text-[22px] text-[#1c93b5]">${report.listcastBudget}</p></article>
       </div>
       <h2 className="mb-2 font-bold">Search Marketing</h2>
-      <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-3 lg:grid-cols-[300px_1fr]">
         <article className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
           <p className="font-semibold">Budget</p>
-          <label className="mt-1 block">BUYER $<input className="ml-1 w-20 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
-          <label className="mt-1 block">ListCast $<input className="ml-1 w-20 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
-          <p className="mt-2">Need to discuss your campaign?</p>
-          <button type="button" className="text-[#1c93b5]" onClick={() => void contact()}>Contact Us</button>
-          <button type="button" className="mt-2 block text-[12px] uppercase" onClick={() => setDisclaimer((value) => !value)}>Disclaimer</button>
-          {disclaimer ? <p className="mt-1 text-[12px] text-[#666]">Lead counts come from people who registered on the site this month. Cost per lead uses the saved buyer budget. No ads are purchased from this page.</p> : null}
-          <p className="mt-3 font-semibold">Target Areas</p>
+          <p className="mt-2 text-[20px] font-semibold text-[#1c93b5]">BUYER ${report.searchBudget.toLocaleString("en-CA")}</p>
+          <label className="mt-2 block text-[12px]">BUYER $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
+          <label className="mt-1 block text-[12px]">ListCast $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
+          <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => void contact()}>Contact Us</button>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[12px] uppercase">Disclaimer</summary>
+            <p className="mt-1 text-[12px] text-[#666]">Lead counts are people who registered on the site during the selected month. Cost per lead divides the buyer budget by those leads. This page does not purchase advertising.</p>
+          </details>
+          <p className="mt-3 font-semibold">Target Areas <span title="The six areas with the most buyer and seller leads this month." className="text-[12px] text-[#1c93b5]">?</span></p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
-          <svg viewBox="0 0 120 120" className="mx-auto mt-2 h-28 w-28" aria-label="Target areas pie chart">
-            {areaRows.slice(0, 6).reduce<{ nodes: React.ReactNode[]; angle: number }>((acc, row, index) => {
-              const total = Math.max(1, areaRows.slice(0, 6).reduce((sum, item) => sum + item.leads, 0) + otherLeads);
-              const sweep = ((row.leads || 0.4) / total) * Math.PI * 2;
+          {(() => {
+            const pieRows = [...report.locations].filter((row) => row.leads > 0).sort((a, b) => b.leads - a.leads).slice(0, 6);
+            const pieTotal = pieRows.reduce((sum, row) => sum + row.leads, 0);
+            const colors = ["#1c93b5", "#16324f", "#2e9e5b", "#e39b2b", "#5c6b7a", "#8fd3e8"];
+            if (!pieTotal) return <p className="mt-3 text-[12px] text-[#888]">No leads in this month.</p>;
+            const slices = pieRows.reduce<{ nodes: React.ReactNode[]; angle: number }>((acc, row, index) => {
+              const sweep = (row.leads / pieTotal) * Math.PI * 2;
               const start = acc.angle;
               const end = start + sweep;
               const large = sweep > Math.PI ? 1 : 0;
-              const x1 = 60 + 48 * Math.cos(start);
-              const y1 = 60 + 48 * Math.sin(start);
-              const x2 = 60 + 48 * Math.cos(end);
-              const y2 = 60 + 48 * Math.sin(end);
-              const colors = ["#1c93b5", "#2e9e5b", "#e39b2b", "#d9363e", "#6b4eff", "#888"];
-              acc.nodes.push(<path key={row.location} d={`M60 60 L${x1} ${y1} A48 48 0 ${large} 1 ${x2} ${y2} Z`} fill={colors[index % colors.length]} />);
+              const x1 = 80 + 70 * Math.cos(start);
+              const y1 = 80 + 70 * Math.sin(start);
+              const x2 = 80 + 70 * Math.cos(end);
+              const y2 = 80 + 70 * Math.sin(end);
+              acc.nodes.push(<path key={row.location} d={`M80 80 L${x1} ${y1} A70 70 0 ${large} 1 ${x2} ${y2} Z`} fill={colors[index % colors.length]} />);
               acc.angle = end;
               return acc;
-            }, { nodes: [], angle: -Math.PI / 2 }).nodes}
-          </svg>
-          <p className="text-[12px] text-[#666]">All other areas: {otherLeads}</p>
+            }, { nodes: [], angle: -Math.PI / 2 });
+            return (
+              <>
+                <svg viewBox="0 0 160 160" className="mx-auto mt-2 h-56 w-56" aria-label="Target areas pie chart">{slices.nodes}</svg>
+                <ul className="mt-2 space-y-1 text-[12px]">
+                  {pieRows.map((row, index) => (
+                    <li key={row.location} className="flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5" style={{ background: colors[index % colors.length] }} />
+                      {row.location} ({row.leads} lead{row.leads === 1 ? "" : "s"})
+                    </li>
+                  ))}
+                </ul>
+              </>
+            );
+          })()}
+          <p className="mt-2 text-[12px] text-[#666]">All other areas: {otherLeads}</p>
         </article>
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">
-          <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>Cost per lead</th></tr></thead>
+          <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>%</th><th>Cost per lead</th></tr></thead>
           <tbody>
-            {areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
+            {areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{areaTotal ? `${Math.round((row.leads / areaTotal) * 100)}%` : "0%"}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
             <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{areaTotal}</td><td /></tr>
           </tbody>
         </table>

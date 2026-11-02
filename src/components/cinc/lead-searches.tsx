@@ -132,8 +132,7 @@ function fromSearch(search: LeadSavedSearch): Draft {
   };
 }
 
-export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail: string }) {
-  const chrome = useChrome();
+export function LeadSearches({ leadId }: { leadId: string; leadEmail: string }) {
   const [searches, setSearches] = useState<LeadSavedSearch[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -155,23 +154,6 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
     };
   }, [leadId]);
 
-  async function copySearch(search: LeadSavedSearch) {
-    const draft = fromSearch(search);
-    draft.name = `${search.name} copy`.slice(0, 80);
-    const response = await fetch(`/api/leads/${encodeURIComponent(leadId)}/searches`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, leadEmail }),
-    });
-    const data = (await response.json().catch(() => null)) as { search?: LeadSavedSearch; message?: string } | null;
-    if (!response.ok || !data?.search) {
-      chrome.toast(data?.message || "Could not copy that search.");
-      return;
-    }
-    setSearches((current) => [data.search!, ...current.filter((item) => item.id !== data.search!.id)]);
-    chrome.toast("Saved search copied.");
-  }
-
   function openForm(initial?: LeadSavedSearch) {
     go(href.leadSearch(leadId, initial?.id));
   }
@@ -188,10 +170,6 @@ export function LeadSearches({ leadId, leadEmail }: { leadId: string; leadEmail:
         {searches.filter((search) => savedSearchSummary(search) || (search.name && search.name !== "New Search")).map((search) => (
           <li key={search.id} className="px-1 py-1 text-center text-[12px]">
             <button type="button" className="text-[#1c93b5]" onClick={() => openForm(search)}>{savedSearchSummary(search) || search.name}</button>
-            <div>
-              <button type="button" className="mr-2 text-[11px] text-[#1c93b5]" onClick={() => openForm(search)}>Edit</button>
-              <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => void copySearch(search)}>Copy</button>
-            </div>
           </li>
         ))}
       </ul>

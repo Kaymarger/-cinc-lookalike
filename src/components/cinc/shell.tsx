@@ -21,7 +21,7 @@ const NAV: {
       { label: "Call Summary", href: href.call },
     ],
   },
-  { id: "leads", label: "Leads", href: href.leads, badge: true },
+  { id: "leads", label: "Leads", href: href.leads },
   { id: "deals", label: "Deals", href: href.dealsPurchases },
   {
     id: "contacts",
@@ -36,7 +36,6 @@ const NAV: {
     id: "comms",
     label: "Communications",
     href: href.inbox,
-    badge: true,
     children: [
       { label: "Inbox", href: href.inbox },
       { label: "Sent", href: href.sent },
@@ -192,13 +191,13 @@ function Logo() {
           <i className="block h-[3px] w-[7px] bg-white" />
         </span>
       </span>
-      <span className="text-[20px] leading-none font-semibold tracking-tight text-white">cinc</span>
+      <span className="text-[18px] leading-none font-semibold tracking-tight text-white">CINC</span>
     </span>
   );
 }
 
 function NavIcon({ id }: { id: NavSection }) {
-  const common = "h-4 w-4";
+  const common = "h-5 w-5";
   if (id === "launchpad") {
     return (
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -402,7 +401,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   return (
     <ChromeContext.Provider value={api}>
       <div className={`cinc-root relative flex overflow-hidden bg-[#f4f4f4] font-[Arial,Helvetica,sans-serif] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
-        <aside className="flex w-[228px] shrink-0 flex-col bg-[#2d3c4b] text-white">
+        <aside className="flex w-[196px] shrink-0 flex-col bg-[#2d3c4b] text-white">
           <div className="flex h-[58px] items-center bg-[#2d3c4b] px-4">
             <Logo />
           </div>
@@ -416,9 +415,8 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     href={item.href}
                     className={`flex h-[34px] items-center gap-2 px-4 text-[13px] whitespace-nowrap ${active ? "bg-[#243240] text-[#3db5d6]" : "text-[#f4f7f8] hover:bg-[#36485a]"}`}
                   >
-                    <span className="relative grid h-6 w-6 shrink-0 place-items-center">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center">
                       <NavIcon id={item.id} />
-                      {item.badge ? <span className="absolute top-0 left-0 h-[5px] w-[9px] rounded-[1px] bg-[#e23d45]" /> : null}
                     </span>
                     <span>{item.label}</span>
                   </a>
@@ -481,26 +479,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 </div>
               ) : null}
             </div>
-            <button
-                type="button"
-                title="Search"
-                className="grid h-7 w-7 place-items-center text-[#333]"
-                onClick={() => setSearchOpen((value) => !value)}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <circle cx="7" cy="7" r="4.2" />
-                  <path d="M10.5 10.5 14 14" />
-                </svg>
-              </button>
-            {searchOpen ? (
-              <input
-                autoFocus
-                value={leadSearch}
-                onChange={(event) => setLeadSearch(event.target.value)}
-                placeholder="Search leads..."
-                className="h-7 w-56 border border-[#d5d5d5] px-2 text-[13px] outline-none focus:border-[#1c93b5]"
-              />
-            ) : null}
             <div className="ml-auto flex items-center gap-3">
               {office.impersonating ? (
                 <button
@@ -512,7 +490,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#d9363e] uppercase">Get Leads</a>
+              <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>

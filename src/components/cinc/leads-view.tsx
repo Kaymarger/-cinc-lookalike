@@ -994,16 +994,13 @@ export function LeadsView({
                       <span className="text-[#1c93b5]">{row.inq} Inq</span>
                     </td>
                     <td className="px-2 text-[12px] leading-5 uppercase">
-                      {(["agent", "partner", "listing"] as const).map((slot) => (
-                        <Menu
-                          key={slot}
-                          label={<span className="block text-[#1c93b5]">{row.assigned[slot]} ▾</span>}
-                          items={(slot === "listing" ? assignChoices.listing : slot === "partner" ? assignChoices.partners : assignChoices.agents).map((name) => ({
-                            label: name,
-                            onClick: () => saveAssign(row.id, { ...row.assigned, [slot]: name }),
-                          }))}
-                        />
-                      ))}
+                      <Menu
+                        label={<span className="block text-[#1c93b5]">{row.assigned.agent} ▾</span>}
+                        items={assignChoices.agents.map((name) => ({
+                          label: name,
+                          onClick: () => saveAssign(row.id, { ...row.assigned, agent: name }),
+                        }))}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1133,6 +1130,7 @@ function LeadDetail({
   const verify = state.verify[row.id] ?? (row.verified ? "verified" : "locked");
   const [activityChecks, setActivityChecks] = useState<string[]>(["Assigned Agent", "Notes"]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [subsOpen, setSubsOpen] = useState(false);
   const [openSteps, setOpenSteps] = useState(false);
   const [trackMenu, setTrackMenu] = useState<string | null>(null);
   function setTrackStatus(leadId: string, trackId: string, status: "active" | "paused" | "stopped") {
@@ -1153,6 +1151,15 @@ function LeadDetail({
     ); }],
     ["Text", "💬", () => composer.text(row.phone, (value) => sendLead("sms", value))],
     ["Email", "✉", () => composer.email(row.email, (sent, value) => { if (!sent) { onLog(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", value); })],
+    ["Etta", "✦", () => chrome.openModal(
+      <ModalFrame title="Etta" onClose={chrome.closeModal}>
+        <p className="text-[13px]">Suggested for {row.name}: follow up on {row.city} and ask about {row.timeframe}.</p>
+        <div className="mt-3 flex justify-end gap-2">
+          <Btn onClick={() => { onLog(row, "note", "Etta note", `Etta suggested a follow-up for ${row.name}.`); chrome.closeModal(); chrome.toast("Etta note saved."); }}>Save note</Btn>
+          <Btn kind="teal" onClick={() => { onLog(row, "text", "Etta text", `Hi ${row.name.split(" ")[0]}, just checking in on your search.`); chrome.closeModal(); go(href.lead(row.id, "conversations")); chrome.toast("Etta text added to the thread."); }}>Send text</Btn>
+        </div>
+      </ModalFrame>,
+    )],
   ] as const;
   return (
     <div className="relative flex min-w-0 flex-1 bg-[#f5f5f5]">
@@ -1251,7 +1258,10 @@ function LeadDetail({
             )}>+ Label</button>
             <div className="mt-1 flex flex-wrap justify-center gap-1">
               {(state.labels[row.id] ?? []).map((label) => (
-                <span key={label} title={label} className="rounded-full bg-[#1c93b5] px-2 py-0.5 text-[10px] text-white">{label}</span>
+                <span key={label} className="inline-flex items-center gap-1 rounded-full bg-[#1c93b5] px-2 py-0.5 text-[10px] text-white">
+                  {label}
+                  <button type="button" aria-label={`Remove ${label}`} className="text-[12px] leading-none" onClick={() => update((current) => ({ ...current, labels: { ...current.labels, [row.id]: (current.labels[row.id] ?? []).filter((item) => item !== label) } }))}>×</button>
+                </span>
               ))}
             </div>
             <div className="mt-3 flex items-center justify-between text-left text-[12px] font-semibold">
@@ -1294,7 +1304,44 @@ function LeadDetail({
           <div>
             <div className="relative mb-2 flex items-center gap-3">
               <button type="button" className="text-[12px] font-bold" onClick={() => setFiltersOpen((value) => !value)}>Filters</button>
-              <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.toast("Subscriptions follow the office notification settings.")}>Subscriptions</button>
+              <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => setSubsOpen((value) => !value)}>Subscriptions</button>
+              {subsOpen ? (
+                <div className="absolute top-full left-24 z-20 w-72 border border-[#ddd] bg-white p-3 text-[13px] shadow">
+                  <p className="mb-2 font-semibold">Select the communications the lead is opted into.</p>
+                  {([
+                    ["email", "Email"],
+                    ["text", "Text"],
+                    ["alerts", "My Alerts"],
+                  ] as const).map(([key, label]) => {
+                    const subs = state.leadSubs[row.id] ?? { email: true, text: true, alerts: true, favorite: true, ai: true, property: true, signIn: false };
+                    const setSub = (field: keyof typeof subs, value: boolean) => update((current) => ({
+                      ...current,
+                      leadSubs: { ...current.leadSubs, [row.id]: { ...subs, [field]: value } },
+                    }));
+                    return (
+                      <div key={key} className="mb-2">
+                        <label className="flex items-center gap-2 font-semibold">
+                          <input type="checkbox" checked={subs[key]} onChange={(event) => setSub(key, event.target.checked)} /> {label}
+                        </label>
+                        {key === "alerts" && subs.alerts ? (
+                          <div className="mt-1 ml-5 space-y-1 text-[12px]">
+                            {([
+                              ["favorite", "Favorite Updates"],
+                              ["ai", "Artificial Intelligence (AI)"],
+                              ["property", "Property Alerts"],
+                              ["signIn", "Send Sign-In Alerts"],
+                            ] as const).map(([field, name]) => (
+                              <label key={field} className="flex items-center gap-2">
+                                <input type="checkbox" checked={subs[field]} onChange={(event) => setSub(field, event.target.checked)} /> {name}
+                              </label>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
               {filtersOpen ? (
                 <div className="absolute top-full left-0 z-20 mt-1 max-h-[560px] w-72 overflow-auto border border-[#ddd] bg-white p-2 text-[12px] shadow">
                   <div className="mb-1 flex justify-between">
@@ -1425,7 +1472,7 @@ function LeadDetail({
                 <button type="button" className="absolute top-1 right-2 px-1 text-[16px]" aria-label="Track menu" onClick={() => setTrackMenu(trackMenu === track.id ? null : track.id)}>⋮</button>
                 {trackMenu === track.id ? (
                   <div className="absolute top-7 right-2 z-10 border border-[#ddd] bg-white text-[13px] shadow">
-                    <button type="button" className="block w-full px-3 py-1 text-left hover:bg-[#f6f6f6]" onClick={() => { setTrackStatus(row.id, track.id, paused ? "active" : "paused"); setTrackMenu(null); }}>Pause</button>
+                    <button type="button" className="block w-full px-3 py-1 text-left hover:bg-[#f6f6f6]" onClick={() => { setTrackStatus(row.id, track.id, paused ? "active" : "paused"); setTrackMenu(null); }}>{paused ? "Resume" : "Pause"}</button>
                     <button type="button" className="block w-full px-3 py-1 text-left hover:bg-[#f6f6f6]" onClick={() => { update((current) => ({ ...current, leadTracks: { ...current.leadTracks, [row.id]: (current.leadTracks[row.id] ?? []).filter((item) => item.id !== track.id) } })); setTrackMenu(null); chrome.toast("AutoTrack deleted for this lead."); }}>Delete</button>
                   </div>
                 ) : null}
@@ -1720,23 +1767,24 @@ function FilterDrawer(props: {
 }
 
 function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input: { name: string; email: string; phone: string }) => void }) {
-  const chrome = useChrome();
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
   return (
     <ModalFrame title="Add New Lead" onClose={onClose}>
       <Field label="First name"><input className={inputCls} value={first} onChange={(event) => setFirst(event.target.value)} /></Field>
       <Field label="Last name"><input className={inputCls} value={last} onChange={(event) => setLast(event.target.value)} /></Field>
       <Field label="Email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
       <Field label="Cell phone"><input className={inputCls} value={phone} onChange={(event) => setPhone(event.target.value)} /></Field>
+      {error ? <p className="text-[12px] text-[#d9363e]">{error}</p> : null}
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          if (!first.trim() || !last.trim()) { chrome.toast("Enter a first and last name."); return; }
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { chrome.toast("Enter a valid email."); return; }
-          if (phone.replace(/\D/g, "").length < 10) { chrome.toast("Enter a 10-digit cell phone."); return; }
+          if (!first.trim() || !last.trim()) { setError("Enter a first and last name."); return; }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Enter a valid email."); return; }
+          if (phone.replace(/\D/g, "").length < 10) { setError("Enter a 10-digit cell phone."); return; }
           onSave({ name: `${first.trim()} ${last.trim()}`, email: email.trim(), phone });
         }}>Save</Btn>
       </div>

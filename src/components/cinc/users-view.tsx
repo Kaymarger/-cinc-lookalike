@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
-import { PERMISSION_COLUMNS, type OfficePermissions } from "@/lib/permission-options";
+import { PERMISSION_COLUMNS, defaultPermissions, type OfficePermissions } from "@/lib/permission-options";
 import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { Btn, Field, inputCls } from "./ui";
@@ -194,7 +194,8 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       <>
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-[#243238]">Manage Agents</h1>
+      <h1 className="mb-1 text-[18px] font-semibold text-[#243238]">Manage Agents</h1>
+      <p className="mb-2 text-[13px] text-[#666]">{users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length} Total Agents</p>
           <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
@@ -228,31 +229,21 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             {users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).map((user) => (
               <article key={user.id} className="relative border border-[#e5e5e5] bg-white p-3 text-[13px]">
                 <div className="flex gap-2">
-                  <img alt="" className="h-12 w-12 bg-[#eee] object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
+                  <div className="relative h-12 w-12 shrink-0">
+                    <div className="grid h-12 w-12 place-items-center rounded-full bg-[#1c93b5] text-[14px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
+                    <img alt="" className="absolute inset-0 h-12 w-12 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                  </div>
                   <div>
                     <p className="font-semibold">{user.name}</p>
                     <p className="text-[#666]">{user.email}</p>
-                    <p>{user.role === "isa" ? "(Pond Account) Agent" : user.role === "broker" || user.role === "admin" ? "Broker" : "Agent"}{user.active ? "" : " · Disabled"}</p>
+                    <p className="italic">{user.role === "isa" ? "(Pond Account) Agent" : user.role === "broker" || user.role === "admin" ? "Broker" : "Agent"}{user.active ? "" : " · Disabled"}</p>
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
                   {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user)}>Become User</button> : null}
-                  {office.canManageUsers && user.active && user.role !== "admin" ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
-                  {office.canManageUsers ? <label className="border border-[#ccc] px-2 py-1">Photo<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (!file) return;
-                    const body = new FormData();
-                    body.set("file", file);
-                    void fetch(`/api/office/users/${user.id}/photo`, { method: "POST", body }).then(async (response) => {
-                      const data = (await response.json().catch(() => null)) as { message?: string } | null;
-                      setMessage(response.ok ? "Photo saved." : data?.message || "Could not store that photo.");
-                      if (response.ok) await load();
-                    });
-                  }} /></label> : null}
-                  {office.canManageUsers ? <button type="button" className="text-[#1c93b5]" onClick={() => void makeLink(user, "reset")}>Reset link</button> : null}
+                  {office.canManageUsers && user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                 </div>
               </article>
             ))}
@@ -319,7 +310,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
 }
 
 function PermissionsPopover({ user, onClose, onSaved }: { user: OfficeProfile; onClose: () => void; onSaved: (message: string) => void }) {
-  const [flags, setFlags] = useState<OfficePermissions | null>(null);
+  const [flags, setFlags] = useState<OfficePermissions | null>(() => defaultPermissions(user.role));
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     void fetch(`/api/office/users/${user.id}/permissions`, { cache: "no-store" }).then(async (response) => {

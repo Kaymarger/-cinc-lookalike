@@ -287,6 +287,20 @@ export async function marketingReport(year: number, month: number): Promise<{
   return { locations, totalLeads, searchBudget: settings.searchBudget, listcastBudget: settings.listcastBudget };
 }
 
+export async function latestMarketingMonth(): Promise<{ year: number; month: number } | null> {
+  const sql = await officeDb();
+  if (!sql) return null;
+  const rows = await sql<{ year: number; month: number }[]>`
+    SELECT EXTRACT(YEAR FROM created_at)::int AS year, EXTRACT(MONTH FROM created_at)::int AS month
+    FROM captured_leads
+    GROUP BY 1, 2
+    HAVING count(*) > 0
+    ORDER BY 1 DESC, 2 DESC
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 export async function loadLeadFields(leadId: string): Promise<Record<string, string>> {
   const sql = await officeDb();
   if (!sql) return {};

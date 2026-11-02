@@ -110,7 +110,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   const [a, b, c, d] = parts;
 
   if (!a || a === "launchpad") {
-    if (b === "dialersummary") return { view: "callsummary" };
+    if (b === "dialersummary" || b === "callsummary") return { view: "callsummary" };
     if (b === "broker") return { view: "broker" };
     return { view: "launchpad" };
   }

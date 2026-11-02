@@ -216,6 +216,7 @@ export type SpaState = {
   buyerMatches: Record<string, boolean>;
   customFilters: string[];
   leadTracks: Record<string, { id: string; name: string; cancelled?: boolean; status?: "active" | "paused" | "stopped" }[]>;
+  leadSubs: Record<string, { email: boolean; text: boolean; alerts: boolean; favorite: boolean; ai: boolean; property: boolean; signIn: boolean }>;
   verify: Record<string, "verified" | "unlocked" | "locked">;
   dataVersion: number;
 };
@@ -450,6 +451,7 @@ const DEFAULT: SpaState = {
   buyerMatches: {},
   customFilters: [],
   leadTracks: {},
+  leadSubs: {},
   verify: {},
   dataVersion: DATA_VERSION,
 };
@@ -475,6 +477,7 @@ function load(raw: string | null): SpaState {
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
       notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
       leadTracks: parsed.leadTracks ?? {},
+      leadSubs: parsed.leadSubs ?? {},
       verify: parsed.verify ?? {},
       dataVersion: DATA_VERSION,
     };
