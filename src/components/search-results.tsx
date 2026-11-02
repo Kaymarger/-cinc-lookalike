@@ -37,7 +37,7 @@ export function SearchResults({
   showMap?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [visible, setVisible] = useState(24);
+  const [visible, setVisible] = useState(8);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const [wide, setWide] = useState(false);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -51,7 +51,7 @@ export function SearchResults({
   }, []);
 
   useEffect(() => {
-    setVisible(24);
+    setVisible(window.matchMedia("(min-width: 1024px)").matches ? 24 : 8);
   }, [properties.length, properties[0]?.id]);
 
   useEffect(() => {

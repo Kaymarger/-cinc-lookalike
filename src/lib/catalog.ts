@@ -21,7 +21,11 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
   if (ddfConfigured()) {
     await ensureDdfListings();
     const result = await searchDdfListings(filters);
-    return { ...result, live: true };
+    return {
+      properties: result.properties.map((property) => ({ ...property, images: property.images.slice(0, 1) })),
+      total: result.total,
+      live: true,
+    };
   }
   const properties = searchProperties(filters);
   return { properties, total: properties.length, live: false };
