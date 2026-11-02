@@ -73,8 +73,12 @@ function photosOf(record: Record<string, unknown>): DdfPhoto[] {
     if (!item || typeof item !== "object") return;
     const row = item as Record<string, unknown>;
     const url = text(row.MediaURL) || text(row.PhotoURL) || text(row.LargePhotoURL) || text(row.url);
-    if (!url.startsWith("http")) return;
-    const order = num(row.Order ?? row.SequenceId ?? row.PreferredPhotoYN) || index;
+    const category = text(row.MediaCategory) || text(row.MediaType);
+    const photo = !category || /photo/i.test(category);
+    const image = /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url) || url.includes("/highres/") || url.includes("/listing/");
+    if (!url.startsWith("http") || !photo || !image) return;
+    if (/youtube\.com|youtu\.be|\.pdf(\?|$)/i.test(url)) return;
+    const order = num(row.Order ?? row.SequenceId) || index;
     photos.push({ url, order });
   });
   photos.sort((a, b) => a.order - b.order);
@@ -87,12 +91,16 @@ function photosOf(record: Record<string, unknown>): DdfPhoto[] {
 }
 
 function officeName(record: Record<string, unknown>): string {
-  const direct = text(record.ListOfficeName);
+  const direct = text(record.ListOfficeName) || text(record.OfficeName);
   if (direct) return direct;
   const office = record.ListOffice;
-  if (office && typeof office === "object") {
+  if (office && typeof office === "object" && !Array.isArray(office)) {
     const row = office as Record<string, unknown>;
-    return text(row.OfficeName) || text(row.ListOfficeName);
+    const nested = text(row.OfficeName) || text(row.ListOfficeName);
+    if (nested) return nested;
+  }
+  for (const [key, value] of Object.entries(record)) {
+    if (/office.?name$/i.test(key) && text(value)) return text(value);
   }
   return "";
 }
@@ -134,7 +142,7 @@ export function listingFromOData(record: Record<string, unknown>): DdfListing | 
     propertyType: text(record.PropertySubType) || text(record.PropertyType),
     remarks: text(record.PublicRemarks),
     brokerage: officeName(record),
-    realtorUrl: realtorUrl(record),
+    realtorUrl: realtorUrl(record) || (listingKey ? `https://www.realtor.ca/real-estate/${listingKey}` : ""),
     latitude: num(record.Latitude),
     longitude: num(record.Longitude),
     listedAt: when(record.ListingContractDate ?? record.OriginalEntryTimestamp ?? record.OnMarketDate),

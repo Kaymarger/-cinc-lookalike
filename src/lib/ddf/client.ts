@@ -165,7 +165,7 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   const active = await session();
   if (active.mode === "rets") return fetchRetsPage(active, nextUrl);
   const filter = encodeURIComponent("StateOrProvince eq 'BC'");
-  const filtered = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$filter=${filter}&$expand=Media`;
+  const filtered = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$filter=${filter}&$expand=Media,ListOffice`;
   const plain = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc`;
   let payload: { value?: unknown; "@odata.nextLink"?: string };
   try {

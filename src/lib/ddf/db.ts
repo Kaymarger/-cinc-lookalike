@@ -92,6 +92,15 @@ const TYPE_SQL: Record<string, string> = {
   "half duplex": "duplex",
 };
 
+export async function countListingsMissingBrokerage(): Promise<number> {
+  const sql = await officeDb();
+  if (!sql) return 0;
+  const rows = await sql<{ count: string }[]>`
+    SELECT count(*)::text AS count FROM ddf_listings WHERE brokerage_name = ''
+  `;
+  return Number(rows[0]?.count || 0);
+}
+
 export async function countDdfListings(): Promise<number> {
   const sql = await officeDb();
   if (!sql) return 0;
