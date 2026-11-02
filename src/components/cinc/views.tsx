@@ -2278,20 +2278,21 @@ export function MarketingView() {
 }
 
 export function GmailView() {
-  const [loading, setLoading] = useState(true);
+  const [gmail, setGmail] = useState<boolean | null>(null);
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 400);
-    return () => window.clearTimeout(timer);
+    void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { channels?: { gmail?: boolean } } | null;
+      setGmail(Boolean(data?.channels?.gmail));
+    }).catch(() => setGmail(false));
   }, []);
   return (
-    <div className="flex h-full min-h-0">
-      <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[13px]">
-        <p className="mb-2 font-semibold text-[#1c93b5]">Gmail</p>
-        {["Inbox", "Sent", "Drafts"].map((label) => <p key={label} className="py-1">{label}</p>)}
-      </aside>
-      <div className="min-w-0 flex-1 p-4">
-        {loading ? <p className="text-[13px] text-[#666]">Loading Gmail…</p> : <p className="text-[13px] text-[#666]">Connected. No new Gmail messages.</p>}
-      </div>
+    <div className="p-6">
+      <h1 className="text-[18px] font-semibold">Gmail Inbox</h1>
+      {gmail ? (
+        <p className="mt-3 text-[13px] text-[#666]">No new Gmail messages.</p>
+      ) : (
+        <p className="mt-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">Gmail is not connected.</p>
+      )}
     </div>
   );
 }

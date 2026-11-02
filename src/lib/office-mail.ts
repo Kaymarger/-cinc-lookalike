@@ -32,13 +32,16 @@ function toE164(phone: string): string | null {
   return null;
 }
 
-export function channelStatus(): { email: boolean; sms: boolean; voice: boolean } {
+export function channelStatus(): { email: boolean; sms: boolean; voice: boolean; gmail: boolean } {
   const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const token = process.env.TWILIO_AUTH_TOKEN?.trim();
   const fromNumber = process.env.TWILIO_FROM_NUMBER?.trim();
   const twilio = Boolean(sid && token && fromNumber);
   const email = Boolean(fromAddress() && (process.env.RESEND_API_KEY?.trim() || process.env.SENDGRID_API_KEY?.trim()));
-  return { email, sms: twilio, voice: twilio };
+  const gmailId = process.env.GMAIL_CLIENT_ID?.trim() || process.env.GOOGLE_CLIENT_ID?.trim();
+  const gmailSecret = process.env.GMAIL_CLIENT_SECRET?.trim() || process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const gmailToken = process.env.GMAIL_REFRESH_TOKEN?.trim();
+  return { email, sms: twilio, voice: twilio, gmail: Boolean(gmailId && gmailSecret && gmailToken) };
 }
 
 export function channelMessage(channel: "email" | "sms" | "voice"): string {
