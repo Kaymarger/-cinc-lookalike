@@ -10,8 +10,7 @@ export function publicOrigin(request?: Request): string {
     const url = new URL(request.url);
     return `${url.protocol}//${url.host}`;
   }
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://cinc-lookalike.vercel.app";
+  return "https://vancouverpropertysearch.ca";
 }
 
 function fromAddress(): string {

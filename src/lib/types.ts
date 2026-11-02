@@ -22,13 +22,13 @@ export interface Property {
   mlsNumber: string;
   price: number;
   address: string;
-  city: City;
+  city: string;
   province: "BC";
   postalCode: string;
   beds: number;
   baths: number;
   sqft: number;
-  propertyType: PropertyType;
+  propertyType: string;
   yearBuilt: number;
   description: string;
   features: string[];
@@ -45,6 +45,9 @@ export interface Property {
   virtualTour?: boolean;
   /** IDX-style tags such as Waterfront or Renovated */
   tags?: string[];
+  /** Present when the record came from the CREA DDF feed. */
+  feed?: "ddf";
+  realtorUrl?: string;
 }
 
 export interface SearchFilters {

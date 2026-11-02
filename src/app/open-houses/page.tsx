@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 import { PropertyCard } from "@/components/property-card";
+import { ddfConfigured } from "@/lib/ddf/credentials";
 import { properties } from "@/lib/properties";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default function OpenHousesPage() {
-  const openHouses = properties.filter((p) => p.openHouse);
+  const openHouses = ddfConfigured() ? [] : properties.filter((p) => p.openHouse);
 
   return (
     <div className="bg-white">

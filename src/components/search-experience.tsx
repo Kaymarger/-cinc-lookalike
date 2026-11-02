@@ -27,7 +27,7 @@ export function SearchExperience({
     <div>
       <SearchFiltersBar
         initial={filters}
-        resultCount={properties.length}
+        resultCount={stats.count}
         showMap={showMap}
         onToggleMap={() => setShowMap((v) => !v)}
         heading={heading}

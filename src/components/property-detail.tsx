@@ -15,6 +15,7 @@ import { SaveHomeButton } from "@/components/save-home-button";
 import { ShareListing } from "@/components/share-listing";
 import { TrackView } from "@/components/track-view";
 import { ViewGate } from "@/components/view-gate";
+import { DdfDisclaimer, RealtorBadge } from "@/components/ddf-attribution";
 import { listingKeyFacts, formatPrice, formatSqft, fullAddress, getSimilarProperties } from "@/lib/search";
 import type { Property } from "@/lib/types";
 
@@ -138,10 +139,9 @@ export function PropertyDetail({ property }: { property: Property }) {
       label: "Ownership:",
       value: attached ? "Freehold Strata" : "Freehold",
     },
-    {
-      label: "Est. Annual Tax:",
-      value: formatPrice(facts.annualTax),
-    },
+    ...(facts.annualTax != null
+      ? [{ label: "Est. Annual Tax:", value: formatPrice(facts.annualTax) }]
+      : []),
     {
       label: "$ / SqFt:",
       value: formatPrice(facts.pricePerSqft),
@@ -199,10 +199,12 @@ export function PropertyDetail({ property }: { property: Property }) {
               <Bath className="size-4 text-[var(--cedar)]" />
               {property.baths} baths
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Maximize className="size-4 text-[var(--cedar)]" />
-              {property.sqft.toLocaleString("en-CA")} sqft
-            </span>
+            {property.sqft > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Maximize className="size-4 text-[var(--cedar)]" />
+                {property.sqft.toLocaleString("en-CA")} sqft
+              </span>
+            ) : null}
             <span className="hidden text-[#666] lg:inline">
               {property.address}
             </span>
@@ -264,10 +266,12 @@ export function PropertyDetail({ property }: { property: Property }) {
                 <Bath className="size-5 text-[var(--cedar)]" />
                 {property.baths} Baths
               </span>
-              <span className="inline-flex items-center gap-2">
-                <Maximize className="size-5 text-[var(--cedar)]" />
-                {formatSqft(property.sqft)}
-              </span>
+              {property.sqft > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                  <Maximize className="size-5 text-[var(--cedar)]" />
+                  {formatSqft(property.sqft)}
+                </span>
+              ) : null}
             </div>
 
             {property.openHouse && (
@@ -290,7 +294,15 @@ export function PropertyDetail({ property }: { property: Property }) {
                 Snapshot
               </h2>
               <dl className="mt-4 max-w-xl">
-                {snapshot.map((row) => (
+                {(property.feed === "ddf"
+                  ? snapshot.filter((row) => {
+                      if (row.label === "Year Built:" && property.yearBuilt <= 0) return false;
+                      if (row.label === "Square Footage:" && property.sqft <= 0) return false;
+                      if (row.label === "Community:") return false;
+                      return Boolean(row.value);
+                    })
+                  : snapshot
+                ).map((row) => (
                   <SnapshotRow
                     key={row.label}
                     label={row.label}
@@ -300,6 +312,13 @@ export function PropertyDetail({ property }: { property: Property }) {
               </dl>
             </section>
 
+            {property.feed === "ddf" ? (
+              <div className="mt-8 space-y-4">
+                <p className="text-[14px] text-[#333]">Listing brokerage: {property.brokerage}</p>
+                <RealtorBadge href={property.realtorUrl || ""} />
+                <DdfDisclaimer />
+              </div>
+            ) : (
             <div className="mt-10 grid gap-10 sm:grid-cols-2">
               <FactGroup title="Building" rows={building} />
               <FactGroup title="Listing" rows={listing} />
@@ -307,6 +326,7 @@ export function PropertyDetail({ property }: { property: Property }) {
               <FactGroup title="Structures" rows={structures} />
               <FactGroup title="Systems" rows={systems} />
             </div>
+            )}
 
             <section className="mt-10">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">

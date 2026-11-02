@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { PropertyDetail } from "@/components/property-detail";
+import { catalogListing } from "@/lib/catalog";
 import { propertyHref, propertySlug } from "@/lib/listing-url";
-import { formatPrice, getPropertyById } from "@/lib/search";
+import { formatPrice } from "@/lib/search";
 import { properties } from "@/lib/properties";
 
 type Params = Promise<{ city: string; id: string; slug: string }>;
@@ -28,7 +29,7 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const { id } = await params;
-  const property = getPropertyById(id);
+  const property = await catalogListing(id);
   if (!property) return { title: "Listing not found" };
   return {
     title: `${property.address}, ${property.city} ${property.province} ${property.postalCode} Home for Sale`,
@@ -42,7 +43,7 @@ export default async function HomeDetailsPage({
   params: Params;
 }) {
   const { id, slug } = await params;
-  const property = getPropertyById(id);
+  const property = await catalogListing(id);
   if (!property) notFound();
 
   const canonicalSlug = propertySlug(property);

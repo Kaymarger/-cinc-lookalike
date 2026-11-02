@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
-import { getFeaturedProperties, searchProperties } from "@/lib/search";
+import { catalogSearch } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Featured Listings",
   description: "Listings hand-picked by our agents.",
 };
 
-export default function FeaturedPage() {
-  const featured = getFeaturedProperties();
-  const more = searchProperties({ sort: "newest" }).slice(0, 9);
-  const list = featured.length ? featured : more;
+export default async function FeaturedPage() {
+  const { properties } = await catalogSearch({ sort: "newest" });
+  const list = properties.slice(0, 9);
 
   return (
     <div className="bg-white">

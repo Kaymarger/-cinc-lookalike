@@ -35,7 +35,7 @@ export function pricePerSqft(price: number, sqft: number): number {
   return Math.round(price / sqft);
 }
 
-/** Demo key facts — taxes/strata estimated when not on the listing. */
+/** Key facts. DDF listings only show numbers that came from the feed. */
 export function listingKeyFacts(property: Property) {
   const attached =
     property.propertyType === "Condo" ||
@@ -44,14 +44,16 @@ export function listingKeyFacts(property: Property) {
   const parkingFeature = property.features.find((f) =>
     /park|garage/i.test(f)
   );
+  const fromFeed = property.feed === "ddf";
   return {
     daysOnMarket: property.listedDaysAgo,
-    pricePerSqft: pricePerSqft(property.price, property.sqft),
-    annualTax: Math.round(property.price * 0.0028),
-    strataFee: attached
-      ? Math.round(180 + property.sqft * 0.32)
-      : null,
-    parking: parkingFeature ?? (attached ? "1 stall" : "Street / driveway"),
+    pricePerSqft: property.sqft > 0 ? pricePerSqft(property.price, property.sqft) : 0,
+    annualTax: fromFeed ? null : Math.round(property.price * 0.0028),
+    strataFee:
+      fromFeed || !attached
+        ? null
+        : Math.round(180 + property.sqft * 0.32),
+    parking: parkingFeature ?? (fromFeed ? "" : attached ? "1 stall" : "Street / driveway"),
   };
 }
 

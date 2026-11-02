@@ -6,7 +6,8 @@ import {
   quickSearchHref,
   QUICK_SEARCHES,
 } from "@/lib/quick-searches";
-import { marketStats, searchProperties } from "@/lib/search";
+import { catalogSearch } from "@/lib/catalog";
+import { marketStats } from "@/lib/search";
 
 type Params = Promise<{ id: string; slug: string }>;
 
@@ -40,8 +41,8 @@ export default async function QuickSearchPage({
   if (!byId) notFound();
   if (!byBoth) redirect(quickSearchHref(byId));
 
-  const results = searchProperties(byBoth.filters);
-  const stats = marketStats(results);
+  const { properties: results, total } = await catalogSearch(byBoth.filters);
+  const stats = { ...marketStats(results), count: total };
 
   return (
     <SearchExperience

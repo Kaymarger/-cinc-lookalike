@@ -5,7 +5,7 @@ Checked against the public lead path. A pass means the behaviour is in the app. 
 | Item | Result | Notes |
 | --- | --- | --- |
 | Gmail page stays not connected without a mailbox | Pass | Shows “Gmail is not connected.” A mailbox appears only when `GMAIL_CLIENT_ID` (or `GOOGLE_CLIENT_ID`), `GMAIL_CLIENT_SECRET` (or `GOOGLE_CLIENT_SECRET`), and `GMAIL_REFRESH_TOKEN` are all set. |
-| Home, search, and listing pages load | Pass | `/`, `/search`, and `/homedetails/bc/...` are real routes. |
+| Home, search, and listing pages load | Pass | `/`, `/search`, and `/homedetails/bc/...` read British Columbia listings synced from CREA DDF when `DDF_USERNAME` and `DDF_PASSWORD` are set. |
 | Registration after repeated listing views | Pass | The third distinct listing view opens Free Access signup when the visitor is not signed in. |
 | Sign-up creates a lead with source and UTM | Pass | `utm_source`, `utm_medium`, `utm_campaign`, and `utm_content` / `ad` / `utm_id` are stored with the lead. |
 | New lead is auto-assigned | Pass | `resolveNewLeadAssignee` runs on every public sign-up. Addresses at `example.com`, `example.org`, and `example.net` stay Unassigned and do not email or text anyone. |
@@ -38,5 +38,6 @@ Set these in Vercel. Leave a group empty and that channel stays off.
 - `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL`
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 - `AGENT_ALERT_EMAIL`, `AGENT_ALERT_PHONE`, `AGENT_ALERT_NAME`
-- `CRON_SECRET` (Vercel sends it as `Authorization: Bearer` on the saved-search cron)
+- `CRON_SECRET` (Vercel sends it as `Authorization: Bearer` on the saved-search cron and the daily DDF sync)
+- `DDF_USERNAME` and `DDF_PASSWORD` (CREA DDF destination credentials; never logged)
 - Gmail, only if a mailbox should appear: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`

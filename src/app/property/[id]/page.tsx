@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { catalogListing } from "@/lib/catalog";
 import { propertyHref } from "@/lib/listing-url";
-import { formatPrice, getPropertyById } from "@/lib/search";
+import { formatPrice } from "@/lib/search";
 
 export async function generateMetadata({
   params,
@@ -9,7 +10,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const property = getPropertyById(id);
+  const property = await catalogListing(id);
   if (!property) return { title: "Listing not found" };
   return {
     title: `${property.address}, ${property.city} ${property.province} ${property.postalCode} Home for Sale`,
@@ -24,7 +25,7 @@ export default async function PropertyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const property = getPropertyById(id);
+  const property = await catalogListing(id);
   if (!property) notFound();
   redirect(propertyHref(property));
 }

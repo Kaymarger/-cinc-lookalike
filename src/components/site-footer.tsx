@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { DDF_DISCLAIMER } from "@/components/ddf-attribution";
 import { SITE } from "@/lib/site";
 
 const MENU = [
@@ -135,10 +136,10 @@ export function SiteFooter() {
             unoptimized
             className="h-7 w-auto"
           />
+          <p>{DDF_DISCLAIMER}</p>
           <p>
-            Confirm price, status, and availability with {SITE.company} before you rely on a listing.
-            Greater Vancouver REALTORS® is a data provider only and has no affiliation with {SITE.company}.
-            All real estate services on this site are provided by {SITE.company}.
+            Each listing shows the listing brokerage. The Powered by REALTOR.ca mark links to that listing on REALTOR.ca.
+            Confirm price, status, and availability with the listing brokerage. Real estate services on this site are provided by {SITE.company}.
           </p>
         </div>
       </div>

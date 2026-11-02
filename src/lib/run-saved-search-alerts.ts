@@ -1,9 +1,11 @@
+import { ddfConfigured } from "@/lib/ddf/credentials";
+import { ddfListingsForAlert } from "@/lib/ddf/db";
 import { alertHits, listAlertSearches, markAlertChecked } from "@/lib/lead-searches-db";
 import { leadsDatabaseConfigured } from "@/lib/leads-db";
 import { propertyHref } from "@/lib/listing-url";
 import { sendLeadEmail, type AlertChannel } from "@/lib/notify-lead";
 import { properties } from "@/lib/properties";
-import { alertIsDue, newMatchesForSearch } from "@/lib/saved-search-alerts";
+import { alertIsDue, newListingWindowDays, newMatchesForSearch } from "@/lib/saved-search-alerts";
 import { formatPrice } from "@/lib/search";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
@@ -23,8 +25,7 @@ export type AlertRunReport = {
 function origin() {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://cinc-lookalike.vercel.app";
+  return "https://vancouverpropertysearch.ca";
 }
 
 function message(
@@ -75,7 +76,19 @@ export async function runSavedSearchAlerts(now = new Date()): Promise<AlertRunRe
     }
     if (!alertIsDue(search.frequency, search.lastAlertAt, now)) continue;
     report.due += 1;
-    const matches = newMatchesForSearch(search, properties, await alertHits(search.id), now, search.lastAlertAt);
+    const already = await alertHits(search.id);
+    const matches = ddfConfigured()
+      ? await ddfListingsForAlert({
+          city: search.city,
+          minPrice: search.minPrice,
+          maxPrice: search.maxPrice,
+          beds: search.beds,
+          baths: search.baths,
+          propertyType: search.propertyType,
+          windowDays: newListingWindowDays(search.frequency, search.lastAlertAt, now),
+          exclude: [...already],
+        })
+      : newMatchesForSearch(search, properties, already, now, search.lastAlertAt);
     if (!matches.length) {
       report.empty += 1;
       await markAlertChecked(search.id, [], now);

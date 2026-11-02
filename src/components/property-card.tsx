@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SaveHomeButton } from "@/components/save-home-button";
 import { propertyHref } from "@/lib/listing-url";
 import type { Property } from "@/lib/types";
+import { RealtorBadge } from "@/components/ddf-attribution";
 import { formatPrice, formatSqft } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
@@ -42,14 +43,19 @@ export function PropertyCard({
             "property-image-wrapper relative mx-2 mt-2 h-[200px] overflow-hidden bg-[#7b97aa]"
           )}
         >
-          <Image
-            src={property.images[0]}
-            alt={property.address}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="property-image object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            priority={priority}
-          />
+          {property.images[0] ? (
+            <Image
+              src={property.images[0]}
+              alt={property.address}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="property-image object-cover"
+              priority={priority}
+              unoptimized={property.images[0].startsWith("http")}
+            />
+          ) : (
+            <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>
+          )}
           {property.virtualTour && (
             <span className="badge--virtual-tour absolute bottom-2 left-2 z-[2] bg-black/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
               Virtual Tour
@@ -83,7 +89,7 @@ export function PropertyCard({
               {property.postalCode}
             </p>
             <div className="text-right text-[13px] leading-snug text-[#444]">
-              <p className="property-address">{formatSqft(property.sqft)}</p>
+              <p className="property-address">{property.sqft > 0 ? formatSqft(property.sqft) : ""}</p>
               <p className="property-bdba">
                 {bedsLabel} | {bathsLabel}
               </p>
@@ -92,12 +98,15 @@ export function PropertyCard({
 
           <p className="mt-2 text-[11px] leading-snug text-[#777]">
             {property.mlsNumber}
-            {property.neighborhood ? ` · ${property.neighborhood}` : ""} ·{" "}
-            {property.propertyType} · {property.yearBuilt} · {property.listedDaysAgo}{" "}
-            day{property.listedDaysAgo === 1 ? "" : "s"} on site
+            {property.neighborhood ? ` · ${property.neighborhood}` : ""}
+            {property.propertyType ? ` · ${property.propertyType}` : ""}
+            {property.yearBuilt > 0 ? ` · ${property.yearBuilt}` : ""}
+            {property.listedDaysAgo > 0
+              ? ` · ${property.listedDaysAgo} day${property.listedDaysAgo === 1 ? "" : "s"} on site`
+              : ""}
           </p>
 
-          <div className="property-mls mt-auto flex items-center gap-2 border-t border-[#eee] pt-2.5 text-[11px] text-[#777] mt-3">
+          <div className="property-mls relative z-[2] mt-3 flex items-center gap-2 border-t border-[#eee] pt-2.5 text-[11px] text-[#777]">
             <Image
               src="/brand/mls-vancouver.gif"
               alt="MLS®"
@@ -107,7 +116,12 @@ export function PropertyCard({
               className="h-[22px] w-auto"
             />
             <span className="leading-tight">
-              Listing Provided By {property.brokerage}
+              Listing brokerage: {property.brokerage || "See listing"}
+              {property.feed === "ddf" ? (
+                <span className="mt-1 block">
+                  <RealtorBadge href={property.realtorUrl || ""} />
+                </span>
+              ) : null}
             </span>
           </div>
         </div>

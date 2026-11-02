@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { HeroSearch } from "@/components/hero-search";
-import { getFeaturedProperties } from "@/lib/search";
+import { catalogSearch } from "@/lib/catalog";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 
 const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
@@ -31,8 +31,11 @@ const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
   ].includes(q.slug)
 );
 
-export default function HomePage() {
-  const featured = getFeaturedProperties();
+export const maxDuration = 60;
+
+export default async function HomePage() {
+  const { properties } = await catalogSearch({ sort: "newest" });
+  const featured = properties.slice(0, 8);
 
   return (
     <>

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { SearchExperience } from "@/components/search-experience";
-import {
-  marketStats,
-  parseFilters,
-  searchProperties,
-} from "@/lib/search";
+import { catalogSearch } from "@/lib/catalog";
+import { marketStats, parseFilters } from "@/lib/search";
+
+export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: "Vancouver, BC Homes for Sale",
@@ -19,8 +18,8 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const results = searchProperties(filters);
-  const stats = marketStats(results);
+  const { properties: results, total } = await catalogSearch(filters);
+  const stats = { ...marketStats(results), count: total };
 
   return (
     <SearchExperience

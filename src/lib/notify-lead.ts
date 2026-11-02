@@ -19,8 +19,7 @@ const INTENT_LABEL: Record<SanitizedLead["intent"], string> = {
 function siteOrigin() {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://cinc-lookalike.vercel.app";
+  return "https://vancouverpropertysearch.ca";
 }
 
 function toE164(phone: string): string | null {

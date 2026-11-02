@@ -11,14 +11,12 @@ export function KeyFacts({ property }: { property: Property }) {
           ? "Today"
           : String(facts.daysOnMarket),
     },
-    {
-      label: "$ / SqFt",
-      value: formatPrice(facts.pricePerSqft),
-    },
-    {
-      label: "Est. annual tax",
-      value: formatPrice(facts.annualTax),
-    },
+    ...(facts.pricePerSqft
+      ? [{ label: "$ / SqFt", value: formatPrice(facts.pricePerSqft) }]
+      : []),
+    ...(facts.annualTax != null
+      ? [{ label: "Est. annual tax", value: formatPrice(facts.annualTax) }]
+      : []),
     ...(facts.strataFee != null
       ? [
           {
@@ -27,10 +25,7 @@ export function KeyFacts({ property }: { property: Property }) {
           },
         ]
       : []),
-    {
-      label: "Parking",
-      value: facts.parking,
-    },
+    ...(facts.parking ? [{ label: "Parking", value: facts.parking }] : []),
   ];
 
   return (

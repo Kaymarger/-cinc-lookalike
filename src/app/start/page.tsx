@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LeadCaptureForms } from "@/components/lead-capture-forms";
 import { PropertyCard } from "@/components/property-card";
+import { catalogSearch } from "@/lib/catalog";
 import { getFeaturedProperties, searchProperties } from "@/lib/search";
 import { SITE } from "@/lib/site";
 
@@ -19,14 +20,16 @@ export default async function StartPage({
   const params = await searchParams;
   const rawQuery = params.q;
   const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery)?.trim() ?? "";
-  const matches = query ? searchProperties({ q: query }) : [];
   const sent = params.sent === "1" || (Array.isArray(params.sent) && params.sent.includes("1"));
   const errorRaw = params.error;
   const error = Array.isArray(errorRaw) ? errorRaw[0] : errorRaw;
-  const listings = (query ? matches : getFeaturedProperties()).slice(0, 6);
+  const live = await catalogSearch(query ? { q: query } : { sort: "newest" });
+  const matches = live.live ? live.properties : query ? searchProperties({ q: query }) : [];
+  const listings = (live.live ? live.properties : query ? matches : getFeaturedProperties()).slice(0, 6);
+  const count = live.live ? (query ? live.total : listings.length) : matches.length;
   const heading = query
-    ? `${matches.length} ${matches.length === 1 ? "home" : "homes"} for “${query}”`
-    : "Homes across Greater Vancouver";
+    ? `${count} ${count === 1 ? "home" : "homes"} for “${query}”`
+    : "Homes across British Columbia";
 
   return (
     <div className="bg-white">

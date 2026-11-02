@@ -35,12 +35,14 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://vancouverpropertysearch.ca"),
+  alternates: { canonical: "/" },
   title: {
     default: "Greater Vancouver Area Home Search",
     template: "%s · Greater Vancouver Area Home Search",
   },
   description:
-    "Search homes for sale across Metro Vancouver with Archibald Real Estate Group — powered by CINC.",
+    "Search British Columbia homes for sale with Archibald Real Estate Group. Listing data is supplied through REALTOR.ca DDF.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
