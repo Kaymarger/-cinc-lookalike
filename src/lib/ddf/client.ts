@@ -179,6 +179,10 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   }
   const raw = rowsOf(payload);
   const listings = listingsFromJson(payload);
+  if (!nextUrl && raw.length === 0) {
+    const keys = Object.keys(payload).slice(0, 12).join(", ");
+    throw new Error(`DDF property query returned no rows. Payload keys: ${keys || "none"}.`);
+  }
   if (raw.length > 0 && listings.length === 0) {
     const fields = Object.keys(raw[0]).slice(0, 30).join(", ");
     throw new Error(`DDF returned ${raw.length} records and none were BC listings. Fields: ${fields}`);
