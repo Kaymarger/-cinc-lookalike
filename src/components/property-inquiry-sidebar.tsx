@@ -3,21 +3,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads } from "@/lib/leads";
 import type { Property } from "@/lib/types";
 import { fullAddress } from "@/lib/search";
 
 export function PropertyInquirySidebar({ property }: { property: Property }) {
-  const { add } = useLeads();
+  const { capture } = useLeads();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const defaultMessage = `I'm interested in ${fullAddress(property)}.`;
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const data = new FormData(e.currentTarget);
+    if (data.get("consent") !== "on") {
+      setError("Please agree to be contacted.");
+      return;
+    }
     const fullName = String(data.get("FullName") || "").trim();
-    add({
+    setPending(true);
+    const result = await capture({
       name: fullName,
       email: String(data.get("Email") || ""),
       phone: String(data.get("Phone") || ""),
@@ -26,7 +35,14 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
       propertyId: property.id,
       propertyAddress: property.address,
       notes: String(data.get("Message") || defaultMessage),
+      consent: true,
+      intent: "inquiry",
     });
+    setPending(false);
+    if (!result.ok) {
+      setError(result.message || "Please check the form and try again.");
+      return;
+    }
     setName(fullName);
     setSent(true);
   }
@@ -40,13 +56,6 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
         </p>
         <p className="mt-1 text-sm text-[#666]">
           Casey will follow up about this home.
-        </p>
-        <p className="mt-2 text-xs text-[#888]">
-          Also in the{" "}
-          <Link href="/agent/leads" className="text-[var(--cedar)] underline">
-            agent inbox
-          </Link>
-          .
         </p>
       </div>
     );
@@ -96,11 +105,20 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
           aria-label="Message"
           className="w-full border border-[#ddd] px-3 py-2 text-sm outline-none focus:border-[var(--cedar)]"
         />
+        <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
+          <input name="consent" type="checkbox" required className="mt-1" />
+          <span>
+            {LEAD_CONSENT_TEXT}{" "}
+            <Link href="/privacy" className="underline">Privacy</Link>
+          </span>
+        </label>
+        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
         <button
           type="submit"
-          className="h-11 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95"
+          disabled={pending}
+          className="h-11 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95 disabled:opacity-60"
         >
-          Send
+          {pending ? "Sending…" : "Send"}
         </button>
       </form>
     </div>

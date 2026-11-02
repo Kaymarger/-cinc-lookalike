@@ -142,6 +142,13 @@ export function sanitizeLeadInput(
     captureSource === "buyer_signup" ||
     captureSource === "seller_signup" ||
     captureSource === "home_valuation";
+  const needsConsent =
+    strict ||
+    captureSource === "registration" ||
+    captureSource === "search_alert" ||
+    captureSource === "showing_request" ||
+    captureSource === "ask_question" ||
+    captureSource === "photo_gate";
 
   if (name.length < 2) {
     return { ok: false, message: "Enter your full name." };
@@ -153,7 +160,7 @@ export function sanitizeLeadInput(
   if (strict && digits.length < 7) {
     return { ok: false, message: "Enter a phone number so an agent can reach you." };
   }
-  if (strict && raw.consent !== true) {
+  if (needsConsent && raw.consent !== true) {
     return { ok: false, message: "Consent is required before we can contact you." };
   }
 
@@ -194,7 +201,7 @@ export function readStoredAttribution(): LeadAttribution | undefined {
 }
 
 type AdsWindow = Window & {
-  __gvhsAds?: { meta?: string; google?: string; label?: string };
+  __gvhsAds?: { meta?: string; google?: string; ga4?: string; label?: string };
   fbq?: (...args: unknown[]) => void;
   gtag?: (...args: unknown[]) => void;
 };
@@ -206,7 +213,8 @@ export function trackLeadConversion() {
   const fbq = (window as AdsWindow).fbq;
   if (typeof fbq === "function") fbq("track", "Lead");
   const gtag = (window as AdsWindow).gtag;
-  if (typeof gtag === "function" && ads?.google && ads.label) {
-    gtag("event", "conversion", { send_to: `${ads.google}/${ads.label}` });
+  if (typeof gtag === "function") {
+    if (ads?.ga4) gtag("event", "generate_lead", { send_to: ads.ga4 });
+    if (ads?.google && ads.label) gtag("event", "conversion", { send_to: `${ads.google}/${ads.label}` });
   }
 }

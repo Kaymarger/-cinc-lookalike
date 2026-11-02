@@ -16,7 +16,7 @@ export default function OpenHousesPage() {
     <div className="bg-white">
       <CamelotPageHeader
         title="Open Houses"
-        subtitle="Homes with scheduled open houses in our sample inventory."
+        subtitle="Homes with a scheduled open house."
       />
       <div className="mx-auto max-w-[1200px] px-4 pb-14 sm:px-6 lg:px-8">
         <p className="mt-2 text-[15px] text-[#666]">
@@ -38,7 +38,7 @@ export default function OpenHousesPage() {
         {openHouses.length === 0 ? (
           <div className="mt-12 border border-[#e5e5e5] bg-[#fafafa] px-6 py-12 text-center">
             <p className="text-[#666]">
-              No open houses in the sample inventory right now.
+              No open houses are scheduled right now.
             </p>
             <Link
               href="/search"

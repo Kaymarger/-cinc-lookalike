@@ -19,19 +19,13 @@ export default function TermsPage() {
         </h1>
         <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-[#555]">
           <p>
-            By using this Greater Vancouver Area Home Search demonstration, you
-            agree to use the site for personal, non-commercial home-search
-            purposes. Listing data shown here is sample-only and is not a live
-            MLS® feed.
+            By using Greater Vancouver Area Home Search you agree to use it to look for homes and to request information from Archibald Real Estate Group. Listing information is provided for search. An agent confirms details before you rely on a price or status.
           </p>
           <p>
-            On the live CINC-powered website, use of the service is subject to
-            Archibald Real Estate Group and CINC Terms of Use and{" "}
-            <Link href="/privacy" className="text-[var(--cedar)] hover:underline">
-              Privacy Policy
-            </Link>
-            , which may include electronic consent, communication preferences,
-            and dispute-resolution terms.
+            Electronic messages are sent only with the consent you give on a form. You can withdraw that consent on the{" "}
+            <Link href="/unsubscribe" className="text-[var(--cedar)] hover:underline">unsubscribe page</Link>
+            . See the{" "}
+            <Link href="/privacy" className="text-[var(--cedar)] hover:underline">Privacy Policy</Link>.
           </p>
           <p>
             All real estate services referenced on this site are provided

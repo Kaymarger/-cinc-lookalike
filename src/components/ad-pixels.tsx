@@ -3,7 +3,7 @@ import Script from "next/script";
 const ATTRIBUTION_BOOTSTRAP = `
 try {
   var params = new URLSearchParams(location.search);
-  var keys = ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","fbclid"];
+  var keys = ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","utm_id","ad","gclid","fbclid"];
   var found = {};
   for (var i = 0; i < keys.length; i++) {
     var value = params.get(keys[i]);
@@ -17,7 +17,7 @@ try {
     utmMedium: hasCampaign ? (found.utm_medium || "") : (prev.utmMedium || ""),
     utmCampaign: hasCampaign ? (found.utm_campaign || "") : (prev.utmCampaign || ""),
     utmTerm: hasCampaign ? (found.utm_term || "") : (prev.utmTerm || ""),
-    utmContent: hasCampaign ? (found.utm_content || "") : (prev.utmContent || ""),
+    utmContent: hasCampaign ? (found.utm_content || found.ad || found.utm_id || "") : (prev.utmContent || ""),
     gclid: hasCampaign ? (found.gclid || "") : (prev.gclid || ""),
     fbclid: hasCampaign ? (found.fbclid || "") : (prev.fbclid || ""),
     landingPath: hasCampaign ? (location.pathname + location.search) : (prev.landingPath || location.pathname + location.search),
@@ -32,6 +32,10 @@ function metaId() {
   return /^\d{8,20}$/.test(value.trim()) ? value.trim() : "";
 }
 
+function ga4Id() {
+  const value = process.env.GA4_ID || process.env.NEXT_PUBLIC_GA4_ID || "";
+  return /^G-[A-Z0-9]{4,20}$/.test(value.trim()) ? value.trim() : "";
+}
 function googleId() {
   const value = process.env.GOOGLE_ADS_ID || process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
   return /^AW-[A-Za-z0-9]{4,32}$/.test(value.trim()) ? value.trim() : "";
@@ -49,8 +53,10 @@ function conversionLabel() {
 export function AdPixels() {
   const meta = metaId();
   const google = googleId();
+  const ga4 = ga4Id();
   const label = conversionLabel();
-  const config = JSON.stringify({ meta, google, label });
+  const tagId = ga4 || google;
+  const config = JSON.stringify({ meta, google, ga4, label });
 
   return (
     <>
@@ -61,14 +67,14 @@ export function AdPixels() {
           {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',${JSON.stringify(meta)});fbq('track','PageView');`}
         </Script>
       ) : null}
-      {google ? (
+      {tagId ? (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${google}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${tagId}`}
             strategy="afterInteractive"
           />
-          <Script id="google-ads" strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config',${JSON.stringify(google)});`}
+          <Script id="google-tags" strategy="afterInteractive">
+            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());${ga4 ? `gtag('config',${JSON.stringify(ga4)});` : ""}${google ? `gtag('config',${JSON.stringify(google)});` : ""}`}
           </Script>
         </>
       ) : null}

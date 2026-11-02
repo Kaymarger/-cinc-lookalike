@@ -26,7 +26,7 @@ export function MortgageCalculator({ price }: { price: number }) {
         Mortgage estimate
       </h2>
       <p className="mt-1 text-sm text-[var(--ink-muted)]">
-        Rough payment only — not a lender quote. Canadian demo rates.
+        Rough payment only. This is not a lender quote.
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-3">

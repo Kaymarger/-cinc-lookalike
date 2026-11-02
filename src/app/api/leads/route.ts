@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
 import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
 import { resolveNewLeadAssignee } from "@/lib/lead-routing";
-import { assignedAgentName, notifyAssignedAgent } from "@/lib/notify-lead";
+import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
 import { currentActor } from "@/lib/office-actor";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -222,6 +222,7 @@ export async function POST(request: Request) {
   const assignee = await resolveNewLeadAssignee();
   const lead = { ...parsed.lead, assignedTo: assignee.name };
   const alerts = await notifyAssignedAgent(lead);
+  await sendWelcomeAndAlert(lead);
 
   if (!leadsDatabaseConfigured()) {
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);

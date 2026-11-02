@@ -14,6 +14,7 @@ import { PropertyInquirySidebar } from "@/components/property-inquiry-sidebar";
 import { SaveHomeButton } from "@/components/save-home-button";
 import { ShareListing } from "@/components/share-listing";
 import { TrackView } from "@/components/track-view";
+import { ViewGate } from "@/components/view-gate";
 import { listingKeyFacts, formatPrice, formatSqft, fullAddress, getSimilarProperties } from "@/lib/search";
 import type { Property } from "@/lib/types";
 
@@ -181,6 +182,7 @@ export function PropertyDetail({ property }: { property: Property }) {
   return (
     <div className="bg-white">
       <TrackView propertyId={property.id} />
+      <ViewGate propertyId={property.id} />
 
       {/* Compact sticky summary — desktop/tablet */}
       <div className="details-toolbar sticky top-16 z-40 hidden border-b border-[#e8eef3] bg-white/95 shadow-sm backdrop-blur md:block sm:top-[72px]">
@@ -345,8 +347,8 @@ export function PropertyDetail({ property }: { property: Property }) {
                 className="mt-0.5 h-6 w-auto"
               />
               <p>
-                Listing Provided By {property.brokerage}. Sample data for
-                demonstration — not a live MLS® feed. Full address:{" "}
+                Listing provided by {property.brokerage}. Confirm price and
+                availability with the office before you rely on it. Full address:{" "}
                 {fullAddress(property)}.
               </p>
             </div>

@@ -17,7 +17,7 @@ export default function DashboardPage() {
       </h1>
       <p className="mt-2 text-sm text-[#354652]">
         {ready && user
-          ? `Signed in as ${user.name}. This demo account stays on this device.`
+          ? `Signed in as ${user.name}.`
           : "Sign in from the header to save this dashboard to your device."}
       </p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

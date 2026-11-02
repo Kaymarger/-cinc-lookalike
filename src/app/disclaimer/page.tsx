@@ -32,9 +32,9 @@ export default function DisclaimerPage() {
             the Real Estate Board of Greater Vancouver.
           </p>
           <p>
-            This demonstration uses sample listing inventory only and is not
-            connected to a live MLS® feed. This site is powered by CINC:
-            www.cincpro.com
+            Confirm price, status, and availability with Archibald Real Estate
+            Group before you rely on a listing. This site is not a substitute
+            for advice from your agent.
           </p>
         </div>
       </div>

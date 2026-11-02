@@ -6,12 +6,10 @@ import { useEffect, useState } from "react";
 import { AccountBenefits } from "@/components/account-benefits";
 import { PageAssist } from "@/components/page-assist";
 import { useDemoAuth } from "@/lib/demo-auth";
-import { useLeads } from "@/lib/leads";
 
 export default function AccountLoginPage() {
   const router = useRouter();
   const { signIn, user, ready } = useDemoAuth();
-  const { add } = useLeads();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -28,13 +26,6 @@ export default function AccountLoginPage() {
       return;
     }
     signIn(email);
-    add({
-      name: email.split("@")[0] || "Buyer",
-      email,
-      phone: "",
-      source: "registration",
-      notes: "Signed in (demo account — email only).",
-    });
     router.push("/account");
   }
 

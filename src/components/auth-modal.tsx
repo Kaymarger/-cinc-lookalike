@@ -66,35 +66,12 @@ function AuthDialog({
   onClose: () => void;
 }) {
   const { signUp, signInWithPassword } = useDemoAuth();
-  const { add, leads, appendActivity } = useLeads();
+  const { capture, leads } = useLeads();
   const router = useRouter();
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState("");
 
-  function rememberLead(name: string, email: string, phone: string, fresh: boolean) {
-    const existing = leads.find((l) => l.email.toLowerCase() === email.toLowerCase());
-    if (existing && !fresh) {
-      appendActivity(existing.id, {
-        kind: "system",
-        title: "Logged in",
-        body: "Signed in from the public site.",
-      });
-      return existing.name;
-    }
-    add({
-      name,
-      email,
-      phone,
-      smsOptIn: true,
-      source: "registration",
-      notes: fresh
-        ? "Free Access signup from the public site."
-        : "Signed in from the public site.",
-    });
-    return name;
-  }
-
-  function onSignup(e: React.FormEvent<HTMLFormElement>) {
+  async function onSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     const data = new FormData(e.currentTarget);
@@ -105,8 +82,25 @@ function AuthDialog({
       setError("Name, email, and phone are required.");
       return;
     }
+    if (data.get("consent") !== "on") {
+      setError("Please agree to be contacted. That consent is required.");
+      return;
+    }
+    const result = await capture({
+      name,
+      email,
+      phone,
+      smsOptIn: true,
+      source: "registration",
+      intent: "buyer",
+      consent: true,
+      notes: "Free Access signup from the public site.",
+    });
+    if (!result.ok) {
+      setError(result.message || "Please check the form and try again.");
+      return;
+    }
     signUp(name, email, phone);
-    rememberLead(name, email, phone, true);
     setConfirmed(name);
   }
 
@@ -122,7 +116,6 @@ function AuthDialog({
       return;
     }
     const known = leads.find((l) => l.email.toLowerCase() === email.toLowerCase());
-    rememberLead(known?.name || email.split("@")[0] || "Lead", email, password, !known);
     setConfirmed(known?.name || email);
   }
 
@@ -184,9 +177,7 @@ function AuthDialog({
               Free Access
             </h2>
             <p className="mt-2 text-center text-[13px] text-[#354652]">
-              Access full property details and exclusive listings.
-              <br />
-              <i>Sample inventory — not a live MLS feed.</i>
+              Access full property details and new listings.
             </p>
             <form onSubmit={onSignup} className="mt-5">
               <Field label="Full Name" name="name" required />
@@ -197,7 +188,14 @@ function AuthDialog({
                 type="tel"
                 required
               />
-              {error && <p className="mb-2 text-center text-sm text-red-600">{error}</p>}
+              {error && <p className="mb-2 text-center text-sm text-red-600" role="alert">{error}</p>}
+              <label className="mb-3 flex items-start gap-2 text-left text-[11px] leading-snug text-[#354652]">
+                <input name="consent" type="checkbox" required className="mt-0.5" />
+                <span>
+                  I agree that Archibald Real Estate Group may contact me by phone, email, or text about homes. Consent is not a condition of any purchase. Reply STOP to opt out of texts. See the{" "}
+                  <Link href="/privacy" className="underline" onClick={onClose}>Privacy Policy</Link>.
+                </span>
+              </label>
               <p className="text-center">
                 <button
                   type="submit"
@@ -212,7 +210,7 @@ function AuthDialog({
                 </button>
               </p>
               <p className="mt-4 text-center text-[10px] leading-snug text-[#354652]">
-                By clicking &quot;Continue To Photos&quot;, you agree to the demo{" "}
+                By clicking &quot;Continue To Photos&quot;, you agree to the{" "}
                 <Link href="/terms" className="font-bold underline" onClick={onClose}>
                   Terms of Use
                 </Link>{" "}

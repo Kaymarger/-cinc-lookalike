@@ -346,8 +346,7 @@ export function PhotoGallery({
                   id="photo-gate-desc"
                   className="mt-2 text-sm text-[var(--ink-muted)]"
                 >
-                  Optionally leave your email, or skip and keep viewing every
-                  photo.
+                  Register to keep viewing the rest of the photos.
                 </p>
                 <div className="mt-5 flex flex-col gap-2">
                   <LeadDialog
@@ -355,18 +354,19 @@ export function PhotoGallery({
                     propertyAddress={propertyAddress ?? alt}
                     propertyId={propertyId}
                     source="photo_gate"
+                    onSent={unlockGallery}
                   />
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      unlockGallery();
+                      setOpen(false);
+                      setGate(false);
                     }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="relative z-10 h-10 text-sm font-medium text-[var(--ink-muted)] underline-offset-2 hover:text-[var(--cedar)] hover:underline"
+                    className="h-10 text-sm font-medium text-[var(--ink-muted)] underline-offset-2 hover:text-[var(--cedar)] hover:underline"
                   >
-                    Skip for this demo
+                    Close photos
                   </button>
                 </div>
               </div>

@@ -1,25 +1,20 @@
 "use client";
 
-/**
- * CINC registration modals show Google / Facebook sign-in affordances.
- * Demo only — buttons explain they are not wired to OAuth.
- */
+/** Google and Facebook buttons stay visible. Sign-in uses email until those providers are connected. */
 export function SocialAuthButtons({
   onDemoHint,
 }: {
   onDemoHint?: (message: string) => void;
 }) {
-  function demo(provider: string) {
-    onDemoHint?.(
-      `${provider} sign-in is shown for layout parity with CINC — use email below for this demo.`
-    );
+  function unavailable(provider: string) {
+    onDemoHint?.(`${provider} sign-in is not available. Use your email below.`);
   }
 
   return (
     <div className="space-y-3">
       <button
         type="button"
-        onClick={() => demo("Google")}
+        onClick={() => unavailable("Google")}
         className="flex h-11 w-full items-center justify-center gap-3 border border-[#ddd] bg-white text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
       >
         <span
@@ -32,7 +27,7 @@ export function SocialAuthButtons({
       </button>
       <button
         type="button"
-        onClick={() => demo("Facebook")}
+        onClick={() => unavailable("Facebook")}
         className="flex h-11 w-full items-center justify-center gap-3 border border-[#ddd] bg-white text-sm font-medium text-[#444] hover:bg-[#f7f7f7]"
       >
         <span

@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "Where is Archibald Real Estate Group located?",
-    a: `${SITE.addressLine}, ${SITE.cityLine}. Phone: ${SITE.phoneDisplay}. Email: ${SITE.email}.`,
+    a: `${SITE.addressLine}, ${SITE.cityLine}. Phone: ${SITE.phoneDisplay}. Use the contact form to write the office.`,
   },
   {
     q: "How do I search for homes?",
@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "How do I request a showing?",
-    a: "Open any listing and choose Request a showing, or use Ask Casey Archibald on the listing page. You can also Contact us anytime. On this demo, inquiries also appear in the agent workspace inbox.",
+    a: "Open any listing and choose Request a showing, or use Ask Casey Archibald on the listing page. You can also use the contact form.",
   },
   {
     q: "Can I get a home estimate?",
@@ -36,11 +36,11 @@ const faqs = [
   },
   {
     q: "Is listing data live MLS® inventory?",
-    a: "On the live greatervancouverhomesearch.com site, listings are provided under license from Greater Vancouver REALTORS®. This demonstration uses sample listings only.",
+    a: "Listings on this site are for search and inquiry. Confirm price, status, and availability with Archibald Real Estate Group. This is not a live board feed.",
   },
   {
     q: "How do saved homes and alerts work?",
-    a: "Heart a listing to save it on this device, or save a search to create an alert. In production CINC, these sync to your agent CRM; here they stay in local browser storage for the demo.",
+    a: "Heart a listing to save it, or save a search to get email alerts. Creating an account or an alert sends your details to the office.",
   },
 ];
 

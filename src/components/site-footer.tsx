@@ -14,6 +14,7 @@ const MENU = [
 const LEGAL = [
   { href: "/terms", label: "Terms of Use" },
   { href: "/privacy", label: "Privacy Notice" },
+  { href: "/unsubscribe", label: "Unsubscribe" },
   { href: "/faq", label: "FAQ" },
   { href: "/disclaimer", label: "Disclaimer" },
 ];

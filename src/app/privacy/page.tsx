@@ -19,45 +19,15 @@ export default function PrivacyPage() {
         </h1>
         <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-[#555]">
           <p>
-            Greater Vancouver Area Home Search is a real estate search platform
-            powered by CINC for Archibald Real Estate Group. Search preferences
-            and saved homes stay in your browser. Inquiry details you submit
-            are sent to Archibald Real Estate Group and, when a database is
-            connected, stored so an agent can follow up. Ad click parameters
-            such as campaign names may be stored with that inquiry.
+            Archibald Real Estate Group collects the name, email, phone number, search preferences, and property address you submit so an agent can follow up. Ad click parameters from the page you landed on (source, medium, campaign, and ad) are stored with that inquiry.
           </p>
           <p>
-            On the live site at greatervancouverhomesearch.com, personal
-            information collected through registration, saved searches, and
-            contact forms is handled according to Archibald Real Estate Group
-            and CINC privacy practices, including how communications are sent
-            and how you may opt out.
+            This site serves people in British Columbia. Personal information is handled under the Personal Information Protection Act (British Columbia) and, where it applies, Canada&apos;s anti-spam law (CASL). We contact you by email or text only after you check the consent box. Consent is not a condition of buying or selling a home. You can withdraw consent at any time on the{" "}
+            <Link href="/unsubscribe" className="text-[var(--cedar)] hover:underline">unsubscribe</Link> page, or by replying STOP to a text.
           </p>
           <p>
-            You may contact Casey Archibald at{" "}
-            <a
-              href="mailto:agent@example.com"
-              className="text-[var(--cedar)] hover:underline"
-            >
-              agent@example.com
-            </a>{" "}
-            or{" "}
-            <a
-              href={`tel:${SITE.phoneTel}`}
-              className="text-[var(--cedar)] hover:underline"
-            >
-              {SITE.phoneDisplay}
-            </a>{" "}
-            with privacy questions, or use our{" "}
-            <Link href="/contact" className="text-[var(--cedar)] hover:underline">
-              Contact
-            </Link>{" "}
-            form.
-          </p>
-          <p>
-            For CINC technology-related privacy requests on the live platform,
-            CINC publishes contact options including postmaster@cincpro.com and
-            (855) 259-7277.
+            Questions: {SITE.company}, {SITE.addressLine}, {SITE.cityLine}, {SITE.phoneDisplay}, or the{" "}
+            <Link href="/contact" className="text-[var(--cedar)] hover:underline">contact form</Link>.
           </p>
         </div>
       </div>

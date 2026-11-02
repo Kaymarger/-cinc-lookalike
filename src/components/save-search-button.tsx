@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Bell, CheckCircle2 } from "lucide-react";
+import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads } from "@/lib/leads";
 import type { SearchFilters } from "@/lib/types";
 import {
@@ -11,26 +13,43 @@ import {
 
 export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   const { add } = useSavedSearches();
-  const { add: addLead } = useLeads();
+  const { capture } = useLeads();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
   const label = labelFromFilters(filters);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    if (!consent) {
+      setError("Please agree to be contacted.");
+      return;
+    }
     const trimmedEmail = email.trim();
     const trimmedName = name.trim() || trimmedEmail.split("@")[0];
-    add({ label, filters, email: trimmedEmail });
-    addLead({
+    setPending(true);
+    const result = await capture({
       name: trimmedName,
       email: trimmedEmail,
       phone: "",
-      smsOptIn: true,
+      smsOptIn: false,
       source: "search_alert",
+      intent: "buyer",
+      consent: true,
       searchLabel: label,
+      notes: `Saved search: ${label}`,
     });
+    setPending(false);
+    if (!result.ok) {
+      setError(result.message || "Please check the form and try again.");
+      return;
+    }
+    add({ label, filters, email: trimmedEmail });
     setSent(true);
   }
 
@@ -76,12 +95,12 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                   Alert saved
                 </h2>
                 <p className="text-sm text-[var(--ink-muted)]">
-                  We&apos;ll pretend to email <strong>{email}</strong> when new
-                  homes match <em>{label}</em>. Your agent also sees this in the{" "}
-                  <a href="/agent/alerts" className="text-[var(--cedar)] underline">
-                    alert inbox
-                  </a>
-                  .
+                  We&apos;ll email <strong>{email}</strong> when new homes match <em>{label}</em>.
+                  You can stop alerts on the{" "}
+                  <Link href="/unsubscribe" className="text-[var(--cedar)] underline">
+                    unsubscribe
+                  </Link>{" "}
+                  page.
                 </p>
                 <button
                   type="button"
@@ -131,11 +150,26 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                       className="h-10 w-full rounded-sm border border-[var(--border-soft)] px-3 text-sm outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25"
                     />
                   </div>
+                  <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(event) => setConsent(event.target.checked)}
+                      className="mt-1"
+                      required
+                    />
+                    <span>
+                      {LEAD_CONSENT_TEXT}{" "}
+                      <Link href="/privacy" className="underline">Privacy</Link>
+                    </span>
+                  </label>
+                  {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                   <button
                     type="submit"
-                    className="inline-flex h-10 w-full items-center justify-center rounded-sm bg-[var(--cedar)] text-sm font-medium text-white hover:brightness-95"
+                    disabled={pending}
+                    className="inline-flex h-10 w-full items-center justify-center rounded-sm bg-[var(--cedar)] text-sm font-medium text-white hover:brightness-95 disabled:opacity-60"
                   >
-                    Create alert
+                    {pending ? "Saving…" : "Create alert"}
                   </button>
                   <button
                     type="button"

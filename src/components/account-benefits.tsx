@@ -9,7 +9,7 @@ const BENEFITS = [
   },
   {
     title: "Get instant alerts on your phone.",
-    body: "Receive property alerts from your saved searches on this device (demo).",
+    body: "Receive property alerts from your saved searches.",
   },
   {
     title: "Claim a HomePulse Report.",

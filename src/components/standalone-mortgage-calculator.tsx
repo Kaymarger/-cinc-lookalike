@@ -27,8 +27,7 @@ export function StandaloneMortgageCalculator() {
         Mortgage Payment Calculator
       </h2>
       <p className="mt-1 text-sm text-[#666]">
-        Estimate a monthly payment for any purchase price. Rough Canadian demo
-        rates — not a lender quote.
+        Estimate a monthly payment for any purchase price. This is not a lender quote.
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">

@@ -476,3 +476,20 @@ export async function deleteCapturedLead(id: string): Promise<boolean> {
   const rows = await sql<{ id: string }[]>`DELETE FROM captured_leads WHERE id = ${id} RETURNING id`;
   return rows.length > 0;
 }
+
+export async function unsubscribeLeadEmail(email: string): Promise<number> {
+  const sql = await ready();
+  if (!sql) return 0;
+  const rows = await sql<{ id: string }[]>`
+    UPDATE captured_leads
+    SET sms_opt_in = false,
+        notes = CASE
+          WHEN notes ILIKE '%Unsubscribed%' THEN notes
+          ELSE concat_ws(E'\n', NULLIF(notes, ''), 'Unsubscribed from email and text.')
+        END,
+        updated_at = now()
+    WHERE lower(email) = ${email.toLowerCase()}
+    RETURNING id
+  `;
+  return rows.length;
+}

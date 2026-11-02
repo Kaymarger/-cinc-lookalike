@@ -8,7 +8,7 @@ import { SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Find a home or request an estimate",
   description:
-    "Search sample Greater Vancouver listings, or send a buyer, seller, or home-valuation request to Archibald Real Estate Group. No account required.",
+    "Search Greater Vancouver homes, or send a buyer, seller, or home-valuation request to Archibald Real Estate Group.",
 };
 
 export default async function StartPage({
@@ -25,8 +25,8 @@ export default async function StartPage({
   const error = Array.isArray(errorRaw) ? errorRaw[0] : errorRaw;
   const listings = (query ? matches : getFeaturedProperties()).slice(0, 6);
   const heading = query
-    ? `${matches.length} sample ${matches.length === 1 ? "home" : "homes"} for “${query}”`
-    : "Sample homes across Greater Vancouver";
+    ? `${matches.length} ${matches.length === 1 ? "home" : "homes"} for “${query}”`
+    : "Homes across Greater Vancouver";
 
   return (
     <div className="bg-white">
@@ -60,7 +60,7 @@ export default async function StartPage({
             </button>
           </form>
           <p className="mt-3 text-xs text-white/75">
-            Listings on this page are samples, not a live MLS feed.{" "}
+            Confirm price and availability with the office.{" "}
             <Link href="/search" className="underline">
               Open the full search
             </Link>
@@ -82,7 +82,7 @@ export default async function StartPage({
         </div>
         {listings.length === 0 ? (
           <p className="mt-6 text-sm text-[#555]">
-            No sample listings match that search. Try Vancouver, Kitsilano, or Burnaby — or send a request below and an agent will look with you.
+            No listings match that search. Try Vancouver, Kitsilano, or Burnaby, or send a request below and an agent will look with you.
           </p>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -93,7 +93,7 @@ export default async function StartPage({
         )}
         {query && matches.length > listings.length && (
           <p className="mt-4 text-sm text-[#666]">
-            Showing {listings.length} of {matches.length} sample matches.
+            Showing {listings.length} of {matches.length} matches.
           </p>
         )}
       </section>

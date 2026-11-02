@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
+import Link from "next/link";
+import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +14,7 @@ export function LeadDialog({
   source,
   variant = "default",
   className,
+  onSent,
 }: {
   triggerLabel?: string;
   propertyAddress?: string;
@@ -19,11 +22,14 @@ export function LeadDialog({
   source?: LeadSource;
   variant?: "default" | "outline" | "secondary";
   className?: string;
+  onSent?: () => void;
 }) {
   const panelId = useId().replace(/:/g, "");
-  const { add } = useLeads();
+  const { capture } = useLeads();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
   const resolvedSource: LeadSource =
     source ??
@@ -35,23 +41,35 @@ export function LeadDialog({
           ? "showing_request"
           : "registration");
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const data = new FormData(e.currentTarget);
+    if (data.get("consent") !== "on") {
+      setError("Please agree to be contacted.");
+      return;
+    }
     const fullName = String(data.get("name") || "").trim();
-    add({
+    setPending(true);
+    const result = await capture({
       name: fullName,
       email: String(data.get("email") || ""),
       phone: String(data.get("phone") || ""),
-      smsOptIn: data.get("optIn") === "on",
+      smsOptIn: true,
       source: resolvedSource,
       propertyAddress,
       propertyId,
       consent: true,
       intent: "inquiry",
     });
+    setPending(false);
+    if (!result.ok) {
+      setError(result.message || "Please check the form and try again.");
+      return;
+    }
     setName(fullName);
     setSent(true);
+    onSent?.();
   }
 
   function resetAndClose(el: HTMLElement | null) {
@@ -109,11 +127,7 @@ export function LeadDialog({
                 {propertyAddress ? ` about ${propertyAddress}` : ""}.
               </p>
               <p className="text-xs text-[var(--ink-muted)]">
-                Lead added to the{" "}
-                <a href="/agent/leads" className="text-[var(--cedar)] underline">
-                  agent inbox
-                </a>
-                .
+                An agent will follow up at the email you entered.
               </p>
               <button
                 type="button"
@@ -140,7 +154,7 @@ export function LeadDialog({
                   : resolvedSource === "ask_question"
                     ? "Send your question — Casey usually replies the same day"
                     : resolvedSource === "photo_gate"
-                      ? "Optional: leave your email to keep browsing, or skip below"
+                      ? "Leave your details to keep viewing the rest of the photos"
                       : "Share your contact info and we’ll follow up"}
                 {propertyAddress ? ` about ${propertyAddress}` : ""}.
               </p>
@@ -182,24 +196,27 @@ export function LeadDialog({
                     type="tel"
                     required={resolvedSource !== "photo_gate"}
                     autoComplete="tel"
-                    placeholder="(604) 363-7858"
+                    placeholder="Phone"
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />
                 </div>
                 <label className="flex items-start gap-3 text-sm text-[var(--ink-muted)]">
                   <input
                     type="checkbox"
-                    name="optIn"
-                    defaultChecked
+                    name="consent"
+                    required
                     className="mt-1 size-4 accent-[var(--cedar)]"
                   />
                   <span>
-                    Text me listing alerts and showing updates by text or email.
+                    {LEAD_CONSENT_TEXT}{" "}
+                    <Link href="/privacy" className="underline">Privacy</Link>
                   </span>
                 </label>
+                {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                 <button
                   type="submit"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[var(--cedar)] px-4 text-sm font-semibold text-white hover:brightness-95"
+                  disabled={pending}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[var(--cedar)] px-4 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
                 >
                   {resolvedSource === "showing_request"
                     ? "Request showing"
@@ -208,14 +225,14 @@ export function LeadDialog({
                       : "Continue"}
                 </button>
                 <p className="text-center text-xs text-[var(--ink-muted)]">
-                  By continuing you agree we may contact you about this home. See{" "}
-                  <a href="/terms" className="underline">
+                  See the{" "}
+                  <Link href="/terms" className="underline">
                     Terms
-                  </a>{" "}
+                  </Link>{" "}
                   and{" "}
-                  <a href="/privacy" className="underline">
-                    Privacy
-                  </a>
+                  <Link href="/privacy" className="underline">
+                    Privacy Policy
+                  </Link>
                   .
                 </p>
               </form>

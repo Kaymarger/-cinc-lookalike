@@ -151,6 +151,109 @@ export function assignedAgentName(): string {
   return process.env.AGENT_ALERT_NAME?.trim() || SITE.agent;
 }
 
+export async function sendLeadEmail(toRaw: string, subject: string, text: string): Promise<AlertChannel> {
+  const to = toRaw.trim();
+  if (!to) return "skipped";
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  const sendgridKey = process.env.SENDGRID_API_KEY?.trim();
+  const from =
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    process.env.SENDGRID_FROM_EMAIL?.trim() ||
+    process.env.LEAD_ALERT_FROM_EMAIL?.trim() ||
+    "";
+  if ((!resendKey && !sendgridKey) || !from) return "skipped";
+  try {
+    if (resendKey) {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to: [to], subject, text }),
+        signal: AbortSignal.timeout(8000),
+      });
+      return response.ok ? "sent" : "failed";
+    }
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sendgridKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: from, name: SITE.company },
+        subject,
+        content: [{ type: "text/plain", value: text }],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return response.ok ? "sent" : "failed";
+  } catch {
+    console.error("[leads] lead email failed");
+    return "failed";
+  }
+}
+
+export async function sendLeadSms(phone: string, body: string): Promise<AlertChannel> {
+  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const rawFrom = process.env.TWILIO_FROM_NUMBER?.trim() || "";
+  if (!sid || !token || !rawFrom || !phone) return "skipped";
+  const to = toE164(phone);
+  const from = toE164(rawFrom);
+  if (!to || !from) return "failed";
+  try {
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const payload = new URLSearchParams({ To: to, From: from, Body: body.slice(0, 320) });
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: payload,
+      signal: AbortSignal.timeout(8000),
+    });
+    return response.ok ? "sent" : "failed";
+  } catch {
+    console.error("[leads] lead sms failed");
+    return "failed";
+  }
+}
+
+export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertReport> {
+  const first = lead.name.split(" ")[0] || "there";
+  const origin = siteOrigin();
+  const unsubscribe = `Unsubscribe: ${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`;
+  const savedSearch = lead.source === "search_alert";
+  const subject = savedSearch
+    ? `Saved search: ${lead.searchLabel || "Greater Vancouver homes"}`
+    : `Welcome to ${SITE.name}`;
+  const welcome = savedSearch
+    ? [
+        `Hi ${first},`,
+        "",
+        `Your saved search is on: ${lead.searchLabel || "Greater Vancouver homes"}.`,
+        "We'll email you when homes that match are listed.",
+        unsubscribe,
+        "",
+        SITE.agent,
+        SITE.phoneDisplay,
+      ].join("\n")
+    : [
+        `Hi ${first},`,
+        "",
+        `Thanks for registering with ${SITE.company}.`,
+        "You can search homes and save a search for alerts.",
+        lead.searchLabel ? `Your saved search: ${lead.searchLabel}` : "",
+        unsubscribe,
+        "",
+        SITE.agent,
+        SITE.phoneDisplay,
+      ]
+        .filter((line) => line !== undefined)
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n");
+  const email = await sendLeadEmail(lead.email, subject, welcome);
+  const sms = lead.smsOptIn
+    ? await sendLeadSms(lead.phone, `${SITE.company}: you're signed up for home alerts. Reply STOP to opt out.`)
+    : "skipped";
+  return { email, sms };
+}
+
 export async function notifyAssignedAgent(lead: SanitizedLead): Promise<AlertReport> {
   const [email, sms] = await Promise.all([sendEmail(lead), sendSms(lead)]);
   return { email, sms };
