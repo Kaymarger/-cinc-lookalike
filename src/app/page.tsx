@@ -76,7 +76,7 @@ export default async function HomePage() {
             <Link
               href="/featured"
               aria-label="View More Featured Properties"
-              className="inline-flex h-10 items-center bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:bg-[#145ca4]"
+              className="inline-flex h-11 items-center bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:bg-[#145ca4]"
             >
               View More
             </Link>
