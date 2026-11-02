@@ -13,6 +13,7 @@ export type DdfPage = {
   nextUrl: string | null;
   keys: string[];
   rawCount: number;
+  fieldNames: string;
 };
 
 type Session = {
@@ -221,6 +222,7 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
     nextUrl: payload["@odata.nextLink"] || null,
     keys: listings.map((listing) => listing.listingKey),
     rawCount: raw.length,
+    fieldNames: raw[0] ? Object.keys(raw[0]).slice(0, 40).join(", ") : "",
   };
 }
 
@@ -277,5 +279,6 @@ async function fetchRetsPage(active: Session, nextUrl?: string | null, idsOnly =
     keys: listings.map((listing) => listing.listingKey),
     nextUrl: hasMore ? `${RETS_SEARCH}?Offset=${offset + returned}` : null,
     rawCount: listings.length,
+    fieldNames: "",
   };
 }

@@ -38,7 +38,9 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
   let masterKeys = 0;
   let mode = state.mode;
   let detailUrl = state.detailUrl;
-  if (state.mode !== "oauth-office") detailUrl = null;
+  let fieldNames = "";
+  let sawOffice = false;
+  if (state.mode !== "oauth-fields") detailUrl = null;
   let masterUrl = state.masterUrl;
   let generation = state.masterGeneration || 1;
   let pages = 0;
@@ -46,6 +48,8 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
     while (Date.now() - started < budget && pages < maxPages) {
       const page = await fetchDdfPropertyPage(detailUrl);
       mode = page.mode;
+      fieldNames = page.fieldNames || fieldNames;
+      if (page.listings.some((listing) => listing.brokerage)) sawOffice = true;
       upserted += await upsertDdfListings(page.listings);
       detailUrl = page.nextUrl;
       pages += 1;
@@ -76,8 +80,8 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
       masterGeneration: generation,
       masterComplete: masterUrl === null,
       listingCount,
-      mode: mode === "oauth" ? "oauth-office" : mode,
-      lastError: "",
+      mode: mode === "oauth" || mode === "oauth-office" ? "oauth-fields" : mode,
+      lastError: sawOffice || !fieldNames ? "" : `Office name was empty. Fields: ${fieldNames}`.slice(0, 300),
     });
     return {
       ok: true,
