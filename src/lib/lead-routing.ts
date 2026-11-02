@@ -8,7 +8,7 @@ export { nextPoolUser } from "@/lib/lead-routing-pick";
 
 export const ROUTABLE_ROLES: OfficeRole[] = ["admin", "broker", "agent", "isa"];
 
-export type RoutingMode = "default" | "fixed" | "round_robin";
+export type RoutingMode = "default" | "fixed" | "round_robin" | "source";
 
 export type RoutingSettings = {
   mode: RoutingMode;
@@ -43,7 +43,7 @@ export async function getLeadRouting(): Promise<RoutingSettings> {
   const row = rows[0];
   if (!row) return { mode: "default", fixedUserId: null, poolIds: [] };
   const mode: RoutingMode =
-    row.mode === "fixed" || row.mode === "round_robin" ? row.mode : "default";
+    row.mode === "fixed" || row.mode === "round_robin" || row.mode === "source" ? row.mode : "default";
   return {
     mode,
     fixedUserId: row.fixed_user_id,
@@ -74,6 +74,22 @@ export async function saveLeadRouting(settings: RoutingSettings): Promise<Routin
     `;
     return { mode: "fixed", fixedUserId: user.id, poolIds: [] };
   }
+  if (settings.mode === "source") {
+    const poolIds = [...new Set(settings.poolIds)].filter((id) => {
+      const user = byId.get(id);
+      return Boolean(user && eligible(user));
+    });
+    await sql`
+      INSERT INTO lead_routing (id, mode, fixed_user_id, pool_ids, rr_cursor)
+      VALUES ('default', 'source', null, ${sql.json(poolIds)}, 0)
+      ON CONFLICT (id) DO UPDATE SET
+        mode = 'source',
+        fixed_user_id = null,
+        pool_ids = ${sql.json(poolIds)},
+        updated_at = now()
+    `;
+    return { mode: "source", fixedUserId: null, poolIds };
+  }
   const poolIds = [...new Set(settings.poolIds)].filter((id) => {
     const user = byId.get(id);
     return Boolean(user && eligible(user));
@@ -103,6 +119,12 @@ export async function resolveNewLeadAssignee(): Promise<{ name: string; userId: 
     if (!sql) return { name: assignedAgentName(), userId: null };
     const current = await getLeadRouting();
     if (current.mode === "default") return officeDefault();
+    if (current.mode === "source") {
+      const users = await listUsers();
+      const user = users.find((item) => current.poolIds.includes(item.id) && eligible(item));
+      if (!user) return officeDefault();
+      return { name: user.name, userId: user.id };
+    }
     if (current.mode === "fixed") {
       const user = current.fixedUserId ? await findUserById(current.fixedUserId) : null;
       if (!user || !eligible(user)) return officeDefault();

@@ -1089,7 +1089,7 @@ function LeadDetail({
   const chrome = useChrome();
   const composer = useComposer();
   const office = useOfficeSession();
-  const { state, update } = useCinc();
+  const { state, update, ready } = useCinc();
   const { leads } = useLeads();
   async function sendLead(channel: "email" | "sms", value: { to: string; body: string; subject?: string; cc?: string; bcc?: string; attachments?: string[] }) {
     if (channel === "email" && !office.canSendEmail) { chrome.toast("Your permissions do not include email."); return; }
@@ -1410,20 +1410,21 @@ function LeadDetail({
               <h3 className="font-bold">Reminders</h3>
               <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add a Reminder</button>
             </div>
-            {reminders.filter((item) => item.day !== "PLAN").length ? reminders.filter((item) => item.day !== "PLAN").map((item) => (
-              <article key={item.id} className="mb-2 flex border border-[#eee] border-l-4 border-l-[#e39b2b] bg-white p-3 shadow-sm">
+            {!ready ? <p className="text-[13px] text-[#888]">Loading reminders…</p> : reminders.filter((item) => item.day !== "PLAN").length ? reminders.filter((item) => item.day !== "PLAN").map((item) => (
+              <article key={item.id} className={`mb-2 flex border border-[#eee] border-l-4 bg-white p-3 shadow-sm ${item.done ? "border-l-[#2e9e5b] opacity-80" : "border-l-[#e39b2b]"}`}>
                 <div className="flex-1">
                   <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
                   <p className="text-[11px] text-[#888]">Assigned to {item.title.match(/\(([^,]+),/)?.[1] || "the agent you chose"}</p>
                   <p className="text-[11px] text-[#888]">Due {item.due}</p>
-                  <p className="text-[13px]">{item.title}</p>
+                  <p className={`text-[13px] ${item.done ? "text-[#888] line-through" : ""}`}>{item.title}</p>
+                  {item.done ? <p className="mt-1 text-[12px] font-semibold text-[#2e9e5b]">Completed</p> : null}
                   <label className="mt-1 flex items-center gap-2 text-[12px]">
-                    <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
+                    <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
                     Mark as Completed
                   </label>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button type="button" className="border border-[#d9363e] px-2 py-1 text-[11px] text-[#d9363e]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) }))}>DELETE</button>
+                  <button type="button" className="border border-[#d9363e] px-2 py-1 text-[11px] text-[#d9363e]" onClick={() => { if (window.confirm("Delete this reminder?")) update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); }}>DELETE</button>
                   <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[11px] text-white" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} reminderId={item.id} initialTitle={item.title} initialDue={item.due} onClose={chrome.closeModal} />)}>EDIT</button>
                 </div>
               </article>
@@ -1441,7 +1442,19 @@ function LeadDetail({
         {tab === "appointments" ? (
           <div>
             <div className="mb-2 flex justify-between border-b border-[#ddd] pb-1"><h3 className="font-bold">Appointments</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} onClose={chrome.closeModal} />)}>⊕ Add Appointment</button></div>
-            {appts.filter((item) => !item.request).length ? appts.filter((item) => !item.request).map((item) => <p key={item.id} className="mb-1 bg-white p-2">{item.title} · {item.when}</p>) : <p className="text-[13px]">No Appointments.</p>}
+            {appts.filter((item) => !item.request).length ? appts.filter((item) => !item.request).map((item) => (
+              <article key={item.id} className="mb-2 flex items-start justify-between bg-white p-2">
+                <div>
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="text-[12px] text-[#666]">{item.when}{item.end ? ` – ${item.end}` : ""}{item.location ? ` · ${item.location}` : ""}{item.agent ? ` · ${item.agent}` : ""}</p>
+                  {item.isPrivate ? <p className="text-[11px] text-[#888]">Private</p> : null}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} appointment={item} onClose={chrome.closeModal} />)}>Edit</button>
+                  <button type="button" className="text-[12px] text-[#d9363e]" onClick={() => { if (window.confirm("Delete this appointment?")) update((current) => ({ ...current, appointments: current.appointments.filter((appt) => appt.id !== item.id) })); }}>Delete</button>
+                </div>
+              </article>
+            )) : <p className="text-[13px]">No Appointments.</p>}
             <div className="mt-4 mb-2 flex justify-between border-b border-[#ddd] pb-1"><h3 className="font-bold">Appointment Requests</h3><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ApptModal leadId={row.id} request onClose={chrome.closeModal} />)}>⊕ Add Appointment Request</button></div>
             {appts.filter((item) => item.request).map((item) => <p key={item.id} className="mb-1 bg-white p-2">{item.title}</p>)}
           </div>
@@ -1774,11 +1787,12 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
   const [error, setError] = useState("");
   return (
     <ModalFrame title="Add New Lead" onClose={onClose}>
+      {error ? <p role="alert" className="mb-3 bg-[#fde7ec] px-2 py-2 text-[13px] text-[#c62828]">{error}</p> : null}
       <Field label="First name"><input className={inputCls} value={first} onChange={(event) => setFirst(event.target.value)} /></Field>
       <Field label="Last name"><input className={inputCls} value={last} onChange={(event) => setLast(event.target.value)} /></Field>
       <Field label="Email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
       <Field label="Cell phone"><input className={inputCls} value={phone} onChange={(event) => setPhone(event.target.value)} /></Field>
-      {error ? <p className="text-[12px] text-[#d9363e]">{error}</p> : null}
+      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
@@ -1968,17 +1982,20 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
   const chrome = useChrome();
   const { leads } = useLeads();
   const lead = leads.find((item) => item.id === leadId);
-  const [kind, setKind] = useState("Call");
-  const [name, setName] = useState(initialTitle || "Call");
-  const [details, setDetails] = useState("");
-  const [date, setDate] = useState(initialDue.includes("-") ? initialDue : new Date().toISOString().slice(0, 10));
-  const [time, setTime] = useState("12:00");
-  const [meridiem, setMeridiem] = useState("AM");
-  const [anytime, setAnytime] = useState(false);
-  const [notify, setNotify] = useState("Casey Archibald");
-  const [timing, setTiming] = useState("On Time");
+  const parsed = initialTitle.match(/^(Call|Email|Other): (.*?)(?: — (.*))? \(([^,]+), ([^)]+)\)$/);
+  const [kind, setKind] = useState(parsed?.[1] || "Call");
+  const [name, setName] = useState(parsed?.[2] || (reminderId ? "" : initialTitle || "Call"));
+  const [details, setDetails] = useState(parsed?.[3] || "");
+  const dueParts = initialDue.match(/^(\d{4}-\d{2}-\d{2})(?: (\d{1,2}:\d{2}) (AM|PM)| Anytime)?/);
+  const [date, setDate] = useState(dueParts?.[1] || new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState(dueParts?.[2] || "12:00");
+  const [meridiem, setMeridiem] = useState(dueParts?.[3] || "AM");
+  const [anytime, setAnytime] = useState(initialDue.includes("Anytime"));
+  const [notify, setNotify] = useState(parsed?.[4] || "Casey Archibald");
+  const [timing, setTiming] = useState(parsed?.[5] || "On Time");
+  const [error, setError] = useState("");
   return (
-    <ModalFrame title="Add Reminder" onClose={onClose}>
+    <ModalFrame title={reminderId ? "Edit Reminder" : "Add Reminder"} onClose={onClose}>
       <Field label="Lead"><input className={inputCls} value={lead?.name || "Lead"} readOnly /></Field>
       <div className="mb-2 text-[13px]">
         {["Call", "Email", "Other"].map((item) => <label key={item} className="mr-3"><input type="radio" checked={kind === item} onChange={() => { setKind(item); if (!reminderId) setName(item); }} /> {item}</label>)}
@@ -1997,18 +2014,21 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
       <Field label="Reminder timing">
         <select className={inputCls} value={timing} onChange={(event) => setTiming(event.target.value)}>{REMINDER_TIMING.map((item) => <option key={item}>{item}</option>)}</select>
       </Field>
+      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
+          if (!name.trim()) { setError("Enter a reminder name."); return; }
+          if (!date) { setError("Choose a date."); return; }
           const due = anytime ? `${date} Anytime` : `${date} ${time} ${meridiem}`;
-          const title = `${kind}: ${name}${details ? ` — ${details}` : ""} (${notify}, ${timing})`;
+          const title = `${kind}: ${name.trim()}${details.trim() ? ` — ${details.trim()}` : ""} (${notify}, ${timing})`;
           update((current) => ({
             ...current,
             reminders: reminderId
-              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title, due } : item)
+              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title, due, day: kind.toUpperCase() } : item)
               : [...current.reminders, { id: uid("rem"), leadId, title, due, done: false, day: kind.toUpperCase() }],
           }));
-          chrome.toast("Reminder saved.");
+          chrome.toast(reminderId ? "Reminder updated." : "Reminder saved.");
           onClose();
         }}>Save</Btn>
       </div>
@@ -2016,22 +2036,56 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
   );
 }
 
-function ApptModal({ leadId, request, onClose }: { leadId: string; request?: boolean; onClose: () => void }) {
+function ApptModal({ leadId, request, appointment, onClose }: { leadId: string; request?: boolean; appointment?: { id: string; title: string; when: string; agent?: string; eventType?: string; location?: string; end?: string; message?: string; isPrivate?: boolean }; onClose: () => void }) {
   const { update } = useCinc();
   const chrome = useChrome();
-  const [title, setTitle] = useState("");
-  const [when, setWhen] = useState("");
+  const [title, setTitle] = useState(appointment?.title || "");
+  const [agent, setAgent] = useState(appointment?.agent || "Casey Archibald");
+  const [eventType, setEventType] = useState(appointment?.eventType || "Showing");
+  const [location, setLocation] = useState(appointment?.location || "");
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("10:00");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("11:00");
+  const [message, setMessage] = useState(appointment?.message || "");
+  const [isPrivate, setPrivate] = useState(Boolean(appointment?.isPrivate));
+  const [error, setError] = useState("");
   return (
-    <ModalFrame title={request ? "Add Appointment Request" : "Add Appointment"} onClose={onClose}>
+    <ModalFrame title={appointment ? "Edit Appointment" : request ? "Add Appointment Request" : "Add Appointment"} onClose={onClose}>
       <Field label="Title"><input className={inputCls} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
-      <Field label="When"><input className={inputCls} type="datetime-local" value={when} onChange={(event) => setWhen(event.target.value)} /></Field>
+      <Field label="Agent">
+        <select className={inputCls} value={agent} onChange={(event) => setAgent(event.target.value)}>{OFFICE_ROSTER.map((item) => <option key={item}>{item}</option>)}</select>
+      </Field>
+      <Field label="Event type">
+        <select className={inputCls} value={eventType} onChange={(event) => setEventType(event.target.value)}>
+          {["Showing", "Listing appointment", "Meeting", "Call", "Other"].map((item) => <option key={item}>{item}</option>)}
+        </select>
+      </Field>
+      <Field label="Location"><input className={inputCls} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Address or office" /></Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Start date"><input className={inputCls} type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></Field>
+        <Field label="Start time"><select className={inputCls} value={startTime} onChange={(event) => setStartTime(event.target.value)}>{clockTimes().map((item) => <option key={item}>{item}</option>)}</select></Field>
+        <Field label="End date"><input className={inputCls} type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></Field>
+        <Field label="End time"><select className={inputCls} value={endTime} onChange={(event) => setEndTime(event.target.value)}>{clockTimes().map((item) => <option key={item}>{item}</option>)}</select></Field>
+      </div>
+      <Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={message} onChange={(event) => setMessage(event.target.value)} /></Field>
+      <label className="mb-2 block text-[13px]"><input type="checkbox" checked={isPrivate} onChange={(event) => setPrivate(event.target.checked)} /> Private</label>
+      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          if (!title.trim() || !when) { chrome.toast("Enter a title and a date."); return; }
-          const formatted = new Date(when).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-          update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId, title, when: formatted, request }] }));
-          chrome.toast("Appointment saved.");
+          if (!title.trim()) { setError("Enter a title."); return; }
+          if (!startDate || !endDate) { setError("Choose a start and end date."); return; }
+          const when = `${startDate} ${startTime}`;
+          const end = `${endDate} ${endTime}`;
+          const next = { title: title.trim(), when, end, agent, eventType, location, message, isPrivate, leadId, request };
+          update((current) => ({
+            ...current,
+            appointments: appointment
+              ? current.appointments.map((item) => item.id === appointment.id ? { ...item, ...next } : item)
+              : [...current.appointments, { id: uid("appt"), ...next }],
+          }));
+          chrome.toast(appointment ? "Appointment updated." : "Appointment saved.");
           onClose();
         }}>Save</Btn>
       </div>

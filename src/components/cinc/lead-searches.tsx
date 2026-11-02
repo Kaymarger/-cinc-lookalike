@@ -166,13 +166,10 @@ export function LeadSearches({ leadId }: { leadId: string; leadEmail: string }) 
       </button>
       )}
       {notice ? <p className="mt-1 text-[11px] text-[#8a5a00]">{notice}</p> : null}
-      <ul className="mt-1 space-y-1">
-        {searches.filter((search) => savedSearchSummary(search) || (search.name && search.name !== "New Search")).map((search) => (
-          <li key={search.id} className="px-1 py-1 text-center text-[12px]">
-            <button type="button" className="text-[#1c93b5]" onClick={() => openForm(search)}>{savedSearchSummary(search) || search.name}</button>
-          </li>
-        ))}
-      </ul>
+      <p className="text-[11px] font-semibold uppercase text-[#888]">Saved search</p>
+      {searches.filter((search) => savedSearchSummary(search) || (search.name && search.name !== "New Search")).map((search) => (
+        <button key={search.id} type="button" className="mt-1 block w-full text-left text-[13px] text-[#1c93b5]" onClick={() => openForm(search)}>{savedSearchSummary(search) || search.name}</button>
+      ))}
     </div>
   );
 }

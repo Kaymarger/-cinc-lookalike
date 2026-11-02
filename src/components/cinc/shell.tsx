@@ -370,6 +370,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
 
   useEffect(() => {
     document.title = `${titleOf(route) || "CINC"} · CINC`;
+    setModal(null);
   }, [route]);
 
   useEffect(() => {

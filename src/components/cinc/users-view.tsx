@@ -36,6 +36,9 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
   const [users, setUsers] = useState<OfficeProfile[]>([]);
   const [editing, setEditing] = useState<OfficeProfile | null>(null);
   const [creating, setCreating] = useState(false);
+  const [pond, setPond] = useState(false);
+  const [pondName, setPondName] = useState("");
+  const [pondEmail, setPondEmail] = useState("");
   const [draft, setDraft] = useState<Draft>(blank());
   const [message, setMessage] = useState<string | null>(null);
   const [permUser, setPermUser] = useState<OfficeProfile | null>(null);
@@ -199,8 +202,8 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
           <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={startCreate}>+ Add Pond</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={startCreate}>+ Add Agent</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>+ Add Pond</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setPond(false); startCreate(); }}>+ Add Agent</button>
           </div>
         </div>
       </div>
@@ -248,6 +251,26 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
               </article>
             ))}
       </div>
+      {pond ? (
+        <form className="mb-4 max-w-xl border border-[#1c93b5] bg-white p-4" onSubmit={(event) => event.preventDefault()}>
+          <h2 className="mb-3 text-[16px] font-semibold">Add Pond</h2>
+          <Field label="Pond name"><input className={inputCls} value={pondName} onChange={(event) => setPondName(event.target.value)} /></Field>
+          <Field label="Pond email"><input className={inputCls} value={pondEmail} onChange={(event) => setPondEmail(event.target.value)} placeholder="optional" /></Field>
+          <p className="mb-3 text-[12px] text-[#666]">A pond is a shared account. Agents can be added to it after it is created.</p>
+          <div className="flex justify-end gap-2">
+            <Btn onClick={() => setPond(false)}>Cancel</Btn>
+            <Btn kind="teal" onClick={() => {
+              if (!pondName.trim()) { setMessage("Enter a pond name."); return; }
+              const email = pondEmail.trim() || `${pondName.trim().toLowerCase().replace(/\s+/g, ".")}@pond.local`;
+              void fetch("/api/office/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName: pondName.trim(), lastName: "Pond", email, role: "isa", active: true }) }).then(async (response) => {
+                const data = (await response.json().catch(() => null)) as { message?: string } | null;
+                setMessage(response.ok ? "Pond added." : data?.message || "Could not add that pond.");
+                if (response.ok) { setPond(false); await load(); }
+              });
+            }}>Save pond</Btn>
+          </div>
+        </form>
+      ) : null}
       {creating || editing ? (
         <form
           className="mt-4 max-w-xl border border-[#1c93b5] bg-white p-4"
@@ -256,7 +279,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             void save();
           }}
         >
-          <h2 className="mb-3 text-[16px] font-semibold">{editing ? "Edit user" : "Add user"}</h2>
+          <h2 className="mb-3 text-[16px] font-semibold">{editing ? "Edit user" : "Add Agent"}</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="First name">
               <input className={inputCls} value={draft.firstName} onChange={(event) => setDraft({ ...draft, firstName: event.target.value })} />

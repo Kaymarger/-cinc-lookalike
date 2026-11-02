@@ -98,7 +98,12 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "deals", board: hash.includes("listings") ? "listings" : "purchases" };
   }
   if (pathname.startsWith("/dashboard/sellersuite")) return { view: "seller" };
-  if (pathname === "/dashboard/settings" || pathname.startsWith("/dashboard/settings/")) return { view: "settings", tab: "general" };
+  if (pathname.startsWith("/dashboard/settings")) {
+    if (pathname.includes("/search")) return { view: "settings", tab: "searchpage" };
+    if (pathname.includes("/dialer")) return { view: "settings", tab: "dialer" };
+    if (pathname.includes("/customfields") || pathname.includes("/fields")) return { view: "settings", tab: "fields" };
+    return { view: "settings", tab: "general" };
+  }
   if (pathname.startsWith("/dashboard/landing")) {
     if (hash.includes("buyers")) return { view: "landing", category: "buyers" };
     if (hash.includes("sellers")) return { view: "landing", category: "sellers" };

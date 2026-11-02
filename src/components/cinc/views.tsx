@@ -364,14 +364,20 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
     .sort((a, b) => sort === "Price" ? a.price.localeCompare(b.price) : b.createdAt - a.createdAt);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#f5f5f5] p-4">
+    <div className="flex h-full min-h-0 flex-col bg-[#eef3f6]">
+      <div className="flex h-12 items-center gap-6 bg-[#16324f] px-4 text-white">
+        <span className="text-[18px] font-semibold tracking-wide">DEALS</span>
+        <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-2 border-white pb-1" : "opacity-80"}>Purchases</a>
+        <a href={href.dealsListings} className={board === "listings" ? "border-b-2 border-white pb-1" : "opacity-80"}>Listings</a>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex gap-5 text-[15px] font-semibold">
           <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Purchases</a>
           <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Listings</a>
         </div>
         <div className="flex gap-2">
-          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><p className="text-[13px]">Advertise the current listings to your leads. Email is not connected, so nothing will be sent.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Email is not connected."); chrome.closeModal(); }}>OK</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
           <button type="button" className="inline-flex h-[22px] items-center gap-1 rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
             <span className="grid h-3.5 w-3.5 place-items-center rounded-full border border-white text-[11px] leading-none">+</span>
             Add Deal
@@ -421,6 +427,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
             </div>
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   );
@@ -473,6 +480,12 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [booting, setBooting] = useState(true);
+  useEffect(() => {
+    setBooting(true);
+    const timer = window.setTimeout(() => setBooting(false), 350);
+    return () => window.clearTimeout(timer);
+  }, [folder]);
   const [sortKey, setSortKey] = useState<"name" | "type" | "by">("name");
   const query = chrome.leadSearch;
   const messages = state.mail.filter((mail) => {
@@ -610,6 +623,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const showCompose = folder === "inbox" || folder === "sent";
   const showFilters = folder === "inbox" || folder === "trashed";
   const countLabel = messages.length ? `${safePage * pageSize + 1} - ${Math.min(messages.length, (safePage + 1) * pageSize)} of ${messages.length}` : "1 - 0 of 0";
+  if (booting) return <p className="p-6 text-[13px] text-[#666]">Loading…</p>;
   const allPicked = slice.length > 0 && slice.every((mail) => picked.includes(mail.id));
   function needPick() {
     if (picked.length) return false;
@@ -998,25 +1012,52 @@ export function AiView() {
   );
 }
 
+function PropertyNav({ sub }: { sub: "list" | "text" | "open" | "virtual" | "add" }) {
+  const items = [
+    ["Listings Dashboard", href.properties, sub === "list"],
+    ["Text Responder", href.textResponder, sub === "text"],
+    ["Upcoming Open Houses", href.openHouses, sub === "open"],
+    ["Virtual Open Houses", href.virtualOpenHouses, sub === "virtual"],
+    ["Add Pocket Listing", href.addProperty, sub === "add"],
+  ] as const;
+  return (
+    <div className="flex flex-wrap gap-4 border-b border-[#e5e5e5] bg-white px-4 py-2 text-[13px]">
+      {items.map(([label, hrefValue, on]) => (
+        <a key={label} href={hrefValue} className={on ? "border-b-2 border-[#1c93b5] font-semibold text-[#1c93b5]" : "text-[#555]"}>{label}</a>
+      ))}
+    </div>
+  );
+}
+
 export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtual" | "add" }) {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const composer = useComposer();
   const [mode, setMode] = useState<"mls" | "pocket">("mls");
   const [office, setOffice] = useState("My Office/Agents Listings");
-  if (sub === "text") return <TextResponder />;
-  if (sub === "add") return <AddPocket />;
+  const [statusFilter, setStatusFilter] = useState("Any");
+  const [bedsFilter, setBedsFilter] = useState("Any");
+  const [typeFilter, setTypeFilter] = useState("Any");
+  const [priceFilter, setPriceFilter] = useState("Any");
+  const nav = <PropertyNav sub={sub} />;
+  if (sub === "text") return <div>{nav}<TextResponder /></div>;
+  if (sub === "add") return <div>{nav}<AddPocket /></div>;
   if (sub === "virtual") {
     return (
-      <div className="p-4">
-        <div className="bg-white px-3 py-2 text-[13px] text-[#444]">No Virtual Open Houses found.</div>
+      <div>
+        {nav}
+        <div className="p-4">
+          <div className="bg-white px-3 py-2 text-[13px] text-[#444]">No Virtual Open Houses found.</div>
+        </div>
       </div>
     );
   }
   if (sub === "open") {
     const extra = state.openHouses.filter((item) => !item.virtual);
     return (
-      <div className="space-y-3 p-4">
+      <div>
+        {nav}
+        <div className="space-y-3 p-4">
         {CRM_OPEN_HOUSES.map((item) => (
           <article key={item.id} className="border border-[#e5e5e5] bg-white">
             <div className="grid grid-cols-3 bg-[#d7eef3] py-1 text-center text-[12px] font-bold text-[#1c93b5]">
@@ -1046,6 +1087,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
           </article>
         ))}
       </div>
+      </div>
     );
   }
   const query = chrome.leadSearch.trim().toLowerCase();
@@ -1058,16 +1100,38 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         if (office === "Casey Archibald") return Number(item.mls.slice(-1)) % 2 === 1;
         return true;
       })
-  ).filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query));
+  ).filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query))
+    .filter((item) => statusFilter === "Any" || item.status === statusFilter)
+    .filter((item) => bedsFilter === "Any" || item.beds >= Number(bedsFilter))
+    .filter((item) => {
+      if (priceFilter === "Any") return true;
+      const price = Number(String(item.price).replace(/[^0-9.]/g, ""));
+      if (priceFilter === "Under $1M") return price > 0 && price < 1_000_000;
+      if (priceFilter === "$1M – $2M") return price >= 1_000_000 && price <= 2_000_000;
+      return price > 2_000_000;
+    });
   return (
-    <div className="p-4">
+    <div>
+      {nav}
+      <div className="flex">
+        <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[12px]">
+          <p className="mb-2 font-bold">Agents</p>
+          {["All", "Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"].map((name) => (
+            <button key={name} type="button" className={`block w-full py-1 text-left ${office === name || (name === "All" && office === "All MLS Listings") ? "font-semibold text-[#1c93b5]" : ""}`} onClick={() => setOffice(name === "All" ? "All MLS Listings" : name)}>{name}</button>
+          ))}
+        </aside>
+        <div className="min-w-0 flex-1 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2 bg-white p-3 shadow-sm">
-        <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("mls")}>Show MLS Listings</button>
-        <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setMode("pocket")}>Show Pocket Listings</button>
+        <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "mls" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("mls")}>Show MLS Listings</button>
+        <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "pocket" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("pocket")}>Show Pocket Listings</button>
+        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Any</option><option>Active</option><option>Pending</option><option>Sold</option></select>
+        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={bedsFilter} onChange={(event) => setBedsFilter(event.target.value)}><option>Any</option><option value="1">1+ beds</option><option value="2">2+ beds</option><option value="3">3+ beds</option><option value="4">4+ beds</option></select>
+        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option>Any</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
+        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)}><option>Any</option><option>Under $1M</option><option>$1M – $2M</option><option>Over $2M</option></select>
         <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["All MLS Listings", "My Office/Agents Listings", "Listed in the past 24 hours", "Featured Listings", "Casey Archibald", "Kayla Gerak"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
         <button type="button" className={toolBtn} onClick={() => chrome.toast(listings.length ? `${listings.length} listings selected for a mass action.` : "No listings to act on.")}>Mass Actions</button>
-        <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Advertise listings", body: `Advertising request for ${listings.length} listings.` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(response.ok ? "Advertising email sent." : data?.message || "That email was not sent."); }); }}>Advertise Listings</button>
-        {mode === "pocket" ? <a href={href.addProperty} className="text-[12px] text-[#1c93b5]">Add pocket listing</a> : null}
+        <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="New listings this week" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue={`Please review ${listings.length} listings.`} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+        {mode === "pocket" ? <a href={href.addProperty} className="h-[22px] bg-[#1c93b5] px-3 text-[12px] leading-[22px] text-white">Add Pocket Listing</a> : null}
       </div>
       <div className="space-y-3">
         {listings.map((item) => (
@@ -1097,11 +1161,14 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
               <div className="flex flex-col items-start gap-1">
                 <button type="button" className={toolBtn} onClick={() => update((current) => ({ ...current, buyerMatches: { ...current.buyerMatches, [item.id]: !current.buyerMatches[item.id] } }))}>{state.buyerMatches[item.id] ? "Matches on" : "Buyer Matches"}</button>
                 <a className={toolBtn} href={href.textResponder}>Text Responder</a>
+                {mode === "pocket" ? <button type="button" className="text-[#d9363e]" onClick={() => update((current) => ({ ...current, pocket: current.pocket.filter((pocket) => pocket.id !== item.id) }))}>Delete pocket</button> : null}
               </div>
             </div>
           </article>
         ))}
         {!listings.length ? <p className="bg-white p-6 text-center text-[13px] text-[#888]">{mode === "pocket" ? "No pocket listings yet." : "No listings match."}</p> : null}
+      </div>
+        </div>
       </div>
     </div>
   );
@@ -1112,16 +1179,29 @@ function CampaignModal({ onClose }: { onClose: () => void }) {
   const chrome = useChrome();
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
+  const [property, setProperty] = useState("Any listing");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
   return (
     <ModalFrame title="New Campaign" onClose={onClose}>
-      <Field label="Campaign"><input autoFocus className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
-      <Field label="Text response"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={message} onChange={(event) => setMessage(event.target.value)} /></Field>
+      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
+      <Field label="Campaign name"><input autoFocus className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+      <Field label="Texting number"><input className={inputCls} readOnly value="(604) 363-7858" /></Field>
+      <Field label="Text response"><textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Thanks for your interest. Reply STOP to opt out." /></Field>
+      <Field label="Property">
+        <select className={inputCls} value={property} onChange={(event) => setProperty(event.target.value)}>
+          <option>Any listing</option>
+          {CRM_PROPERTIES.map((item) => <option key={item.id}>{item.address}</option>)}
+        </select>
+      </Field>
+      <Field label="Property text code"><input className={inputCls} value={code} onChange={(event) => setCode(event.target.value)} placeholder="TXT10" /></Field>
+      <label className="mb-2 block text-[13px]"><input type="checkbox" defaultChecked /> Active</label>
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
-          if (!name.trim()) return;
-          update((current) => ({ ...current, campaigns: [...current.campaigns, { id: uid("camp"), name, message, active: true, number: "(604) 363-7858", property: "Any", code: `TXT${current.campaigns.length + 10}` }] }));
-          chrome.toast("Campaign saved on this device.");
+          if (!name.trim() || !message.trim()) { setError("Enter a campaign name and a text response."); return; }
+          update((current) => ({ ...current, campaigns: [...current.campaigns, { id: uid("camp"), name: name.trim(), message: message.trim(), active: true, number: "(604) 363-7858", property, code: code.trim() || `TXT${current.campaigns.length + 10}` }] }));
+          chrome.toast("Campaign saved.");
           onClose();
         }}>Save</Btn>
       </div>
@@ -1136,7 +1216,20 @@ function TextResponder() {
     <div className="p-4">
       <div className="mb-3 flex items-center">
         <h2 className="flex-1 text-center text-[16px] font-bold">Your texting number: (604) 363-7858</h2>
-        <a href={href.templates} className="mr-2 h-[22px] bg-[#1c93b5] px-3 text-[12px] leading-[22px] text-white">Templates</a>
+        <button type="button" className="mr-2 h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(
+          <ModalFrame title="Text templates" onClose={chrome.closeModal}>
+            <ul className="max-h-64 space-y-2 overflow-auto text-[13px]">
+              {state.templates.filter((item) => item.type === "Text").map((item) => (
+                <li key={item.id} className="border border-[#eee] p-2">
+                  <p className="font-semibold">{item.name}</p>
+                  <p className="text-[#666]">{item.body || "No body yet."}</p>
+                </li>
+              ))}
+              {!state.templates.some((item) => item.type === "Text") ? <li>No text templates yet.</li> : null}
+            </ul>
+            <div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div>
+          </ModalFrame>
+        )}>Templates</button>
         <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<CampaignModal onClose={chrome.closeModal} />)}>New Campaign</button>
       </div>
       <table className="w-full border border-[#e5e5e5] bg-white text-left text-[12px]">
@@ -1167,21 +1260,40 @@ function TextResponder() {
 function AddPocket() {
   const { update } = useCinc();
   const chrome = useChrome();
-  const [form, setForm] = useState({ address: "", price: "", beds: "3", baths: "2", sqft: "1400", status: "Active" });
+  const [form, setForm] = useState({ address: "", city: "Vancouver", postal: "", price: "", beds: "3", baths: "2", sqft: "1400", lot: "", type: "House", year: "1998", status: "Active", agent: "Kayla Gerak", description: "" });
+  const [error, setError] = useState("");
+  const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return (
-    <div className="mx-auto max-w-lg p-4">
+    <div className="mx-auto max-w-3xl p-4">
+      <h1 className="mb-3 text-[18px] font-semibold">Add Pocket Listing</h1>
       <div className="bg-white p-4">
-        <Field label="Address"><input className={inputCls} value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></Field>
-        <Field label="Price"><input className={inputCls} value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
-        <div className="grid grid-cols-3 gap-2">
-          <Field label="Beds"><input className={inputCls} value={form.beds} onChange={(event) => setForm({ ...form, beds: event.target.value })} /></Field>
-          <Field label="Baths"><input className={inputCls} value={form.baths} onChange={(event) => setForm({ ...form, baths: event.target.value })} /></Field>
-          <Field label="Sqft"><input className={inputCls} value={form.sqft} onChange={(event) => setForm({ ...form, sqft: event.target.value })} /></Field>
+        {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field label="Street address"><input className={inputCls} value={form.address} onChange={(event) => set("address", event.target.value)} /></Field>
+          <Field label="City"><input className={inputCls} value={form.city} onChange={(event) => set("city", event.target.value)} /></Field>
+          <Field label="Postal code"><input className={inputCls} value={form.postal} onChange={(event) => set("postal", event.target.value)} /></Field>
+          <Field label="Price"><input className={inputCls} value={form.price} onChange={(event) => set("price", event.target.value)} /></Field>
+          <Field label="Beds"><input className={inputCls} value={form.beds} onChange={(event) => set("beds", event.target.value)} /></Field>
+          <Field label="Baths"><input className={inputCls} value={form.baths} onChange={(event) => set("baths", event.target.value)} /></Field>
+          <Field label="Sqft"><input className={inputCls} value={form.sqft} onChange={(event) => set("sqft", event.target.value)} /></Field>
+          <Field label="Lot size"><input className={inputCls} value={form.lot} onChange={(event) => set("lot", event.target.value)} /></Field>
+          <Field label="Property type">
+            <select className={inputCls} value={form.type} onChange={(event) => set("type", event.target.value)}><option>House</option><option>Condo</option><option>Townhouse</option><option>Land</option></select>
+          </Field>
+          <Field label="Year built"><input className={inputCls} value={form.year} onChange={(event) => set("year", event.target.value)} /></Field>
+          <Field label="Status">
+            <select className={inputCls} value={form.status} onChange={(event) => set("status", event.target.value)}><option>Active</option><option>Pending</option><option>Sold</option></select>
+          </Field>
+          <Field label="Listing agent">
+            <select className={inputCls} value={form.agent} onChange={(event) => set("agent", event.target.value)}><option>Kayla Gerak</option><option>Casey Archibald</option><option>Anastasiia Borovyk</option><option>Kevin Barrett</option></select>
+          </Field>
         </div>
-        <div className="flex justify-end gap-2">
+        <Field label="Description"><textarea className="mt-2 h-24 w-full border border-[#ccc] p-2 text-[13px]" value={form.description} onChange={(event) => set("description", event.target.value)} /></Field>
+        <div className="mt-3 flex justify-end gap-2">
           <a href={href.properties} className="inline-flex h-6 items-center border border-[#ccc] px-2 text-[12px]">Cancel</a>
           <Btn kind="teal" onClick={() => {
-            update((current) => ({ ...current, pocket: [...current.pocket, { id: uid("pocket"), address: form.address || "Pocket listing", mls: "POCKET", status: form.status, price: form.price || "—", beds: Number(form.beds) || 0, baths: Number(form.baths) || 0, sqft: Number(form.sqft) || 0, feature: "Pocket" }] }));
+            if (!form.address.trim() || !form.price.trim()) { setError("Enter a street address and a price."); return; }
+            update((current) => ({ ...current, pocket: [...current.pocket, { id: uid("pocket"), address: `${form.address}, ${form.city}`, mls: "POCKET", status: form.status, price: form.price, beds: Number(form.beds) || 0, baths: Number(form.baths) || 0, sqft: Number(form.sqft) || 0, feature: form.type }] }));
             chrome.toast("Pocket listing saved.");
             window.location.href = href.properties;
           }}>Save</Btn>
@@ -2166,10 +2278,20 @@ export function MarketingView() {
 }
 
 export function GmailView() {
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoading(false), 400);
+    return () => window.clearTimeout(timer);
+  }, []);
   return (
-    <div className="p-6">
-      <h1 className="text-[18px] font-semibold">Gmail Inbox</h1>
-      <p className="mt-2 text-[13px] text-[#666]">Gmail is not connected. Connect a Google account from Settings, then messages from that inbox show here.</p>
+    <div className="flex h-full min-h-0">
+      <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[13px]">
+        <p className="mb-2 font-semibold text-[#1c93b5]">Gmail</p>
+        {["Inbox", "Sent", "Drafts"].map((label) => <p key={label} className="py-1">{label}</p>)}
+      </aside>
+      <div className="min-w-0 flex-1 p-4">
+        {loading ? <p className="text-[13px] text-[#666]">Loading Gmail…</p> : <p className="text-[13px] text-[#666]">Connected. No new Gmail messages.</p>}
+      </div>
     </div>
   );
 }

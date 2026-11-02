@@ -49,9 +49,9 @@ export function DialerPanel({
       <p className="text-[#1c93b5]">{phone || "No phone on file"}</p>
       {voice === false ? <p className="mt-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">Calling is not connected.</p> : null}
       {dial ? (
-        <a className="mt-3 inline-flex h-9 items-center border border-[#2e9e5b] px-3 text-[13px] font-semibold text-[#2e9e5b]" href={`tel:${dial}`}>
+        <button type="button" className="mt-3 inline-flex h-9 items-center border border-[#2e9e5b] px-3 text-[13px] font-semibold text-[#2e9e5b]" onClick={() => onLog(outcome, notes || "Call from this phone")}>
           Call from this phone
-        </a>
+        </button>
       ) : null}
       <div className="mt-3">
         <Field label="Outcome">

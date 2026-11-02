@@ -282,14 +282,14 @@ export function EmailComposer({
           <ToolButton title="Align right" onClick={() => format("justifyRight")}>➡</ToolButton>
           <ToolButton title="Justify" onClick={() => format("justifyFull")}>☰</ToolButton>
           <span className="relative inline-flex">
-            <ToolButton title="Bullet list" onClick={() => format("insertHTML", "<ul><li>List item</li></ul>")}>•</ToolButton>
+            <ToolButton title="Bullet list" onClick={() => format("insertHTML", "<ul><li></li></ul>")}>•</ToolButton>
             <button type="button" className="px-0.5 text-[10px]" onClick={() => setListMenu(listMenu === "bullet" ? "none" : "bullet")}>▾</button>
-            {listMenu === "bullet" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul><li>List item</li></ul>"); setListMenu("none"); }}>Disc</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul style='list-style:circle'><li>List item</li></ul>"); setListMenu("none"); }}>Circle</button></span> : null}
+            {listMenu === "bullet" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul><li></li></ul>"); setListMenu("none"); }}>Disc</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ul style='list-style:circle'><li></li></ul>"); setListMenu("none"); }}>Circle</button></span> : null}
           </span>
           <span className="relative inline-flex">
-            <ToolButton title="Numbered list" onClick={() => format("insertHTML", "<ol><li>List item</li></ol>")}>1.</ToolButton>
+            <ToolButton title="Numbered list" onClick={() => format("insertHTML", "<ol><li></li></ol>")}>1.</ToolButton>
             <button type="button" className="px-0.5 text-[10px]" onClick={() => setListMenu(listMenu === "number" ? "none" : "number")}>▾</button>
-            {listMenu === "number" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol><li>List item</li></ol>"); setListMenu("none"); }}>1. 2. 3.</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol type='a'><li>List item</li></ol>"); setListMenu("none"); }}>a. b. c.</button></span> : null}
+            {listMenu === "number" ? <span className="absolute top-6 left-0 z-10 border border-[#ddd] bg-white text-[12px] shadow"><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol><li></li></ol>"); setListMenu("none"); }}>1. 2. 3.</button><button type="button" className="block px-2 py-1" onClick={() => { format("insertHTML", "<ol type='a'><li></li></ol>"); setListMenu("none"); }}>a. b. c.</button></span> : null}
           </span>
           <ToolButton title="Decrease indent" onClick={() => format("outdent")}>⇤</ToolButton>
           <ToolButton title="Increase indent" onClick={() => format("indent")}>⇥</ToolButton>

@@ -15,7 +15,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/agent") ||
     pathname.startsWith("/dashboard/spa") ||
     pathname.startsWith("/dashboard/sellersuite") ||
-    pathname.startsWith("/dashboard/landing");
+    pathname.startsWith("/dashboard/landing") ||
+    pathname.startsWith("/dashboard/settings") ||
+    pathname.startsWith("/dashboard/pages");
 
   if (isAgent) {
     return <div className="flex min-h-full flex-1 flex-col">{children}</div>;

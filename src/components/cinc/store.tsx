@@ -116,7 +116,19 @@ export type LandingPage = {
 
 export type Note = { id: string; body: string; at: string };
 export type Reminder = { id: string; leadId: string; title: string; due: string; done: boolean; day: string };
-export type Appt = { id: string; leadId: string; title: string; when: string; request?: boolean };
+export type Appt = {
+  id: string;
+  leadId: string;
+  title: string;
+  when: string;
+  request?: boolean;
+  agent?: string;
+  eventType?: string;
+  location?: string;
+  end?: string;
+  message?: string;
+  isPrivate?: boolean;
+};
 export type CallLog = { id: string; leadId: string; name: string; at: string; kind: "call" | "text" | "voicemail" | "email"; body?: string };
 export type Assign = { agent: string; partner: string; listing: string };
 

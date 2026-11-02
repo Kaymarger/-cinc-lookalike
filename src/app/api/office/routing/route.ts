@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isMode(value: string): value is RoutingMode {
-  return value === "default" || value === "fixed" || value === "round_robin";
+  return value === "default" || value === "fixed" || value === "round_robin" || value === "source";
 }
 
 export async function GET() {

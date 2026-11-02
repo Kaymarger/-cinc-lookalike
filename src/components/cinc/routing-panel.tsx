@@ -7,7 +7,7 @@ import { Btn } from "./ui";
 
 const ROUTABLE: OfficeRole[] = ["admin", "broker", "agent", "isa"];
 
-type Mode = "default" | "fixed" | "round_robin";
+type Mode = "default" | "fixed" | "round_robin" | "source";
 
 export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidden?: boolean })[] }) {
   const eligible = users.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
@@ -83,6 +83,23 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
               </option>
             ))}
           </select>
+        ) : null}
+        <label className="flex items-start gap-2">
+          <input type="radio" name="routing" checked={mode === "source"} onChange={() => setMode("source")} />
+          <span>Route by lead source. Website, phone, and partner leads can go to different agents.</span>
+        </label>
+        {mode === "source" ? (
+          <div className="ml-6 space-y-1">
+            {["Website", "Phone", "Partner", "Open house"].map((source) => (
+              <label key={source} className="flex items-center gap-2">
+                <span className="w-28">{source}</span>
+                <select className="h-8 border border-[#ccc] bg-white px-2" value={poolIds[0] || ""} onChange={(event) => setPoolIds(event.target.value ? [event.target.value] : [])}>
+                  <option value="">Office default</option>
+                  {eligible.map((user) => <option key={`${source}-${user.id}`} value={user.id}>{user.name}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
         ) : null}
         <label className="flex items-start gap-2">
           <input type="radio" name="routing" checked={mode === "round_robin"} onChange={() => setMode("round_robin")} />
