@@ -14,19 +14,22 @@ import "./globals.css";
 const lato = Lato({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 const roboto = Roboto({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 const workSans = Work_Sans({
   variable: "--font-accent",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "600"],
+  display: "swap",
 });
 
 export const viewport = {
@@ -52,6 +55,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${lato.variable} ${roboto.variable} ${workSans.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
         <AdPixels />
         <SavedHomesProvider>
           <SavedSearchesProvider>

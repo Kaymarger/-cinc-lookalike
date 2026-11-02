@@ -158,7 +158,8 @@ export function PhotoGallery({
               key={src}
               type="button"
               onClick={() => openAt(i)}
-              className="relative aspect-[4/3] w-[86%] shrink-0 snap-center overflow-hidden rounded-2xl bg-[var(--mist)] first:ml-0"
+              aria-label={`${alt}, photo ${i + 1} of ${images.length}`}
+              className="relative aspect-[4/3] w-[86%] shrink-0 snap-center overflow-hidden rounded-2xl bg-[var(--mist)]"
             >
               <Image
                 src={src}
@@ -167,6 +168,7 @@ export function PhotoGallery({
                 priority={i === 0}
                 className="object-cover"
                 sizes="86vw"
+                unoptimized={src.startsWith("http")}
               />
               {i === 0 && virtualTour && (
                 <span className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white">

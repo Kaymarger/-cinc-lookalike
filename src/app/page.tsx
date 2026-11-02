@@ -45,6 +45,7 @@ export default async function HomePage() {
           alt="Greater Vancouver skyline"
           fill
           priority
+          quality={60}
           className="object-cover object-center"
           sizes="100vw"
         />

@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      { protocol: "https", hostname: "ddfcdn.realtor.ca" },
+      { protocol: "https", hostname: "www.realtor.ca" },
     ],
   },
 };

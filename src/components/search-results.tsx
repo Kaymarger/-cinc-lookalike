@@ -39,7 +39,16 @@ export function SearchResults({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(24);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [wide, setWide] = useState(false);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setWide(query.matches);
+    apply();
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     setVisible(24);
@@ -122,11 +131,12 @@ export function SearchResults({
 
         {showMap && (
           <div className="inline-flex border border-border bg-white p-0.5 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileView("list")}
+              <button
+                type="button"
+                aria-pressed={mobileView === "list"}
+                onClick={() => setMobileView("list")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium",
+                "inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium",
                 mobileView === "list"
                   ? "bg-[var(--cedar)] text-white"
                   : "text-[var(--ink-muted)]"
@@ -137,9 +147,10 @@ export function SearchResults({
             </button>
             <button
               type="button"
+              aria-pressed={mobileView === "map"}
               onClick={() => setMobileView("map")}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium",
+                "inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium",
                 mobileView === "map"
                   ? "bg-[var(--cedar)] text-white"
                   : "text-[var(--ink-muted)]"
@@ -184,7 +195,7 @@ export function SearchResults({
             >
               <PropertyCard
                 property={property}
-                priority={i < 4}
+              priority={i < 2}
                 layout="list"
               />
             </div>
@@ -200,7 +211,7 @@ export function SearchResults({
           )}
         </div>
 
-        {showMap && (
+        {showMap && (wide || mobileView === "map") ? (
           <div
             className={cn(
               "sticky top-[5.5rem] h-[min(70vh,640px)] overflow-hidden border border-border bg-[var(--mist)] lg:h-[calc(100vh-13rem)]",
@@ -216,7 +227,7 @@ export function SearchResults({
               }}
             />
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

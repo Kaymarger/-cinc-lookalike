@@ -28,7 +28,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       <div className={office.impersonating ? "pt-10" : undefined}>
         <SiteHeader />
       </div>
-      <main className="flex-1">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1">{children}</main>
       <SiteFooter />
       <CompareTray />
       <CookieBanner />

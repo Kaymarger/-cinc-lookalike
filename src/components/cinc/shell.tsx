@@ -358,6 +358,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const [leadSearch, setLeadSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [rail, setRail] = useState(true);
+  const [navOpen, setNavOpen] = useState(false);
   const [feed, setFeed] = useState("All");
   const [modal, setModal] = useState<ReactNode>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -371,7 +372,12 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   useEffect(() => {
     document.title = `${titleOf(route) || "CINC"} · CINC`;
     setModal(null);
+    setNavOpen(false);
   }, [route]);
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setRail(false);
+  }, []);
 
   useEffect(() => {
     if (!titleOpen) return;
@@ -402,11 +408,11 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   return (
     <ChromeContext.Provider value={api}>
       <div className={`cinc-root relative flex overflow-hidden bg-[#f4f4f4] font-[Arial,Helvetica,sans-serif] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
-        <aside className="flex w-[196px] shrink-0 flex-col bg-[#2d3c4b] text-white">
+        <aside className={`flex w-[196px] shrink-0 flex-col bg-[#2d3c4b] text-white max-md:fixed max-md:inset-y-0 max-md:z-40 max-md:transition-transform ${navOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"}`}>
           <div className="flex h-[58px] items-center bg-[#2d3c4b] px-4">
             <Logo />
           </div>
-          <nav className="pt-2">
+          <nav className="pt-2" onClick={() => setNavOpen(false)}>
             {NAV.map((item) => {
               const active = section === item.id;
               const kids = item.children ?? [];
@@ -450,7 +456,18 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[58px] shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-5">
+          <header className="relative z-50 flex h-[58px] shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-3 md:pl-5">
+            <button
+              type="button"
+              className="grid h-11 w-11 place-items-center text-[#2d3c4b] md:hidden"
+              aria-label={navOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={navOpen}
+              onClick={() => setNavOpen((value) => !value)}
+            >
+              <svg className="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                <path d="M2 4h12M2 8h12M2 12h12" />
+              </svg>
+            </button>
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
@@ -572,8 +589,16 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
           <button type="button" className="block w-full px-3 py-2 text-left hover:bg-[#f6f6f6]" onClick={() => setHelpOpen(false)}>Close</button>
         </div>
       ) : null}
+      {navOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-label="Close navigation"
+          onClick={() => setNavOpen(false)}
+        />
+      ) : null}
       {message ? (
-        <div className="fixed bottom-4 left-1/2 z-[90] -translate-x-1/2 bg-[#243238] px-4 py-2 text-[13px] text-white shadow-lg">
+        <div role="status" aria-live="polite" className="fixed bottom-4 left-1/2 z-[90] max-w-[90vw] -translate-x-1/2 rounded bg-[#243238] px-4 py-3 text-[14px] text-white shadow-lg">
           {message}
         </div>
       ) : null}
