@@ -14,6 +14,7 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
   const [mode, setMode] = useState<Mode>("default");
   const [fixedUserId, setFixedUserId] = useState("");
   const [poolIds, setPoolIds] = useState<string[]>([]);
+  const [sources, setSources] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -48,7 +49,7 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
       body: JSON.stringify({
         mode,
         fixedUserId: fixedUserId || null,
-        poolIds,
+        poolIds: mode === "source" ? [...new Set(Object.values(sources).filter(Boolean))] : poolIds,
       }),
     });
     const data = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -93,7 +94,7 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
             {["Website", "Phone", "Partner", "Open house"].map((source) => (
               <label key={source} className="flex items-center gap-2">
                 <span className="w-28">{source}</span>
-                <select className="h-8 border border-[#ccc] bg-white px-2" value={poolIds[0] || ""} onChange={(event) => setPoolIds(event.target.value ? [event.target.value] : [])}>
+                <select className="h-8 border border-[#ccc] bg-white px-2" value={sources[source] || ""} onChange={(event) => setSources((current) => ({ ...current, [source]: event.target.value }))}>
                   <option value="">Office default</option>
                   {eligible.map((user) => <option key={`${source}-${user.id}`} value={user.id}>{user.name}</option>)}
                 </select>
