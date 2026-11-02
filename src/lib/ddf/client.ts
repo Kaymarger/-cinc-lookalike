@@ -12,6 +12,7 @@ export type DdfPage = {
   listings: DdfListing[];
   nextUrl: string | null;
   keys: string[];
+  rawCount: number;
 };
 
 type Session = {
@@ -137,10 +138,15 @@ async function session(): Promise<Session> {
   return sessionPromise;
 }
 
+function rowsOf(payload: { value?: unknown }): Record<string, unknown>[] {
+  return Array.isArray(payload.value)
+    ? payload.value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
+    : [];
+}
+
 function listingsFromJson(payload: { value?: unknown }): DdfListing[] {
-  const rows = Array.isArray(payload.value) ? payload.value : [];
-  return rows
-    .map((row) => (row && typeof row === "object" ? listingFromOData(row as Record<string, unknown>) : null))
+  return rowsOf(payload)
+    .map((row) => listingFromOData(row))
     .filter((row): row is DdfListing => Boolean(row));
 }
 
@@ -159,23 +165,30 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   const active = await session();
   if (active.mode === "rets") return fetchRetsPage(active, nextUrl);
   const filter = encodeURIComponent("StateOrProvince eq 'BC'");
-  const first =
-    nextUrl ||
-    `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$expand=Media&$filter=${filter}`;
+  const filtered = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$filter=${filter}&$expand=Media`;
+  const plain = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc`;
   let payload: { value?: unknown; "@odata.nextLink"?: string };
   try {
-    payload = await oauthGet(first, active.token);
+    payload = await oauthGet(nextUrl || filtered, active.token);
   } catch (error) {
     if (nextUrl) throw error;
-    const fallback = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc`;
-    payload = await oauthGet(fallback, active.token);
+    payload = await oauthGet(plain, active.token);
   }
+  if (!nextUrl && rowsOf(payload).length === 0) {
+    payload = await oauthGet(plain, active.token);
+  }
+  const raw = rowsOf(payload);
   const listings = listingsFromJson(payload);
+  if (raw.length > 0 && listings.length === 0) {
+    const fields = Object.keys(raw[0]).slice(0, 30).join(", ");
+    throw new Error(`DDF returned ${raw.length} records and none were BC listings. Fields: ${fields}`);
+  }
   return {
     mode: "oauth",
     listings,
     nextUrl: payload["@odata.nextLink"] || null,
     keys: listings.map((listing) => listing.listingKey),
+    rawCount: raw.length,
   };
 }
 
@@ -231,5 +244,6 @@ async function fetchRetsPage(active: Session, nextUrl?: string | null, idsOnly =
     listings: idsOnly ? [] : listings,
     keys: listings.map((listing) => listing.listingKey),
     nextUrl: hasMore ? `${RETS_SEARCH}?Offset=${offset + returned}` : null,
+    rawCount: listings.length,
   };
 }
