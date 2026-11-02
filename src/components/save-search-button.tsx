@@ -43,6 +43,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
       consent: true,
       searchLabel: label,
       notes: `Saved search: ${label}`,
+      savedSearch: filters,
     });
     setPending(false);
     if (!result.ok) {

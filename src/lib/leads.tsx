@@ -16,6 +16,7 @@ import {
   type LeadAttribution,
   type LeadIntent,
 } from "@/lib/lead-intake";
+import type { SearchFilters } from "@/lib/types";
 
 const STORAGE_KEY = "gvhs-leads";
 
@@ -104,6 +105,7 @@ type CreateLeadInput = {
   intent?: LeadIntent;
   consent?: boolean;
   attribution?: LeadAttribution;
+  savedSearch?: SearchFilters;
 };
 
 export type DatabaseNotice = {
@@ -417,6 +419,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         notes: lead.notes,
         consent: input.consent,
         attribution: lead.attribution,
+        savedSearch: input.savedSearch,
       }),
     }).then(async (response) => {
       const data = (await response.json().catch(() => null)) as {

@@ -8,7 +8,10 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
 import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
 import { resolveNewLeadAssignee } from "@/lib/lead-routing";
+import { insertSearch } from "@/lib/lead-searches-db";
 import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
+import { publicSavedSearch } from "@/lib/saved-search-alerts";
+import { isTestLeadEmail } from "@/lib/test-lead";
 import { currentActor } from "@/lib/office-actor";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -219,10 +222,13 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, message: parsed.message }, { status: 400 });
   }
 
-  const assignee = await resolveNewLeadAssignee();
+  const testLead = isTestLeadEmail(parsed.lead.email);
+  const assignee = testLead ? { name: "Unassigned", userId: null } : await resolveNewLeadAssignee();
   const lead = { ...parsed.lead, assignedTo: assignee.name };
-  const alerts = await notifyAssignedAgent(lead);
-  await sendWelcomeAndAlert(lead);
+  const alerts = testLead
+    ? { email: "skipped" as const, sms: "skipped" as const }
+    : await notifyAssignedAgent(lead);
+  if (!testLead) await sendWelcomeAndAlert(lead);
 
   if (!leadsDatabaseConfigured()) {
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
@@ -237,6 +243,18 @@ export async function POST(request: Request) {
 
   try {
     const saved = await insertLead({ ...lead, assignedUserId: assignee.userId });
+    if (!testLead && lead.source === "search_alert" && body && typeof body === "object") {
+      const search = publicSavedSearch(
+        lead.email,
+        lead.searchLabel || "Saved search",
+        (body as { savedSearch?: unknown }).savedSearch
+      );
+      if (search) {
+        await insertSearch(saved.id, search).catch((error) => {
+          console.error("[leads] saved search", error instanceof Error ? error.name : "error");
+        });
+      }
+    }
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
     return Response.json({
       ok: true,

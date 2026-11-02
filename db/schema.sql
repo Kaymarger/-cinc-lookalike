@@ -105,9 +105,17 @@ CREATE TABLE IF NOT EXISTS lead_saved_searches (
 );
 
 ALTER TABLE lead_saved_searches ADD COLUMN IF NOT EXISTS criteria jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE lead_saved_searches ADD COLUMN IF NOT EXISTS last_alert_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS lead_saved_searches_email_idx ON lead_saved_searches (lower(lead_email));
 CREATE INDEX IF NOT EXISTS lead_saved_searches_lead_idx ON lead_saved_searches (lead_id);
+
+CREATE TABLE IF NOT EXISTS saved_search_alert_hits (
+  search_id text NOT NULL,
+  property_id text NOT NULL,
+  sent_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (search_id, property_id)
+);
 
 CREATE TABLE IF NOT EXISTS autotracks (
   id text PRIMARY KEY,

@@ -1,5 +1,6 @@
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
 import { SITE } from "@/lib/site";
+import { isTestLeadEmail } from "@/lib/test-lead";
 
 export type AlertChannel = "sent" | "skipped" | "failed";
 
@@ -215,6 +216,7 @@ export async function sendLeadSms(phone: string, body: string): Promise<AlertCha
 }
 
 export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertReport> {
+  if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
   const first = lead.name.split(" ")[0] || "there";
   const origin = siteOrigin();
   const unsubscribe = `Unsubscribe: ${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`;
@@ -255,6 +257,7 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
 }
 
 export async function notifyAssignedAgent(lead: SanitizedLead): Promise<AlertReport> {
+  if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
   const [email, sms] = await Promise.all([sendEmail(lead), sendSms(lead)]);
   return { email, sms };
 }

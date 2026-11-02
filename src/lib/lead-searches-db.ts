@@ -146,6 +146,69 @@ export async function deleteSearch(leadId: string, searchId: string): Promise<bo
   return rows.length > 0;
 }
 
+export type AlertSearch = LeadSavedSearch & {
+  contactEmail: string;
+  leadName: string;
+  unsubscribed: boolean;
+  lastAlertAt: string | null;
+};
+
+type AlertRow = SearchRow & {
+  contact_email: string;
+  lead_name: string;
+  lead_notes: string;
+  last_alert_at: Date | string | null;
+};
+
+export async function listAlertSearches(): Promise<AlertSearch[]> {
+  const sql = await officeDb();
+  if (!sql) return [];
+  const rows = await sql<AlertRow[]>`
+    SELECT s.*,
+           COALESCE(NULLIF(l.email, ''), s.lead_email) AS contact_email,
+           COALESCE(l.name, '') AS lead_name,
+           COALESCE(l.notes, '') AS lead_notes
+    FROM lead_saved_searches s
+    LEFT JOIN captured_leads l ON l.id = s.lead_id
+    ORDER BY s.created_at ASC
+  `;
+  return rows.map((row) => {
+    const search = fromRow(row);
+    const notes = row.lead_notes || "";
+    return {
+      ...search,
+      contactEmail: (row.contact_email || search.leadEmail).trim().toLowerCase(),
+      leadName: row.lead_name || "",
+      unsubscribed: notes.toLowerCase().includes("unsubscribed"),
+      lastAlertAt: row.last_alert_at ? iso(row.last_alert_at) : null,
+    };
+  });
+}
+
+export async function alertHits(searchId: string): Promise<Set<string>> {
+  const sql = await officeDb();
+  if (!sql) return new Set();
+  const rows = await sql<{ property_id: string }[]>`
+    SELECT property_id FROM saved_search_alert_hits WHERE search_id = ${searchId}
+  `;
+  return new Set(rows.map((row) => row.property_id));
+}
+
+export async function markAlertChecked(searchId: string, propertyIds: string[], when: Date): Promise<void> {
+  const sql = await officeDb();
+  if (!sql) return;
+  await sql`
+    UPDATE lead_saved_searches SET last_alert_at = ${when.toISOString()}::timestamptz WHERE id = ${searchId}
+  `;
+  for (const propertyId of propertyIds) {
+    await sql`
+      INSERT INTO saved_search_alert_hits (search_id, property_id, sent_at)
+      VALUES (${searchId}, ${propertyId}, ${when.toISOString()}::timestamptz)
+      ON CONFLICT (search_id, property_id) DO NOTHING
+    `;
+  }
+}
+
 export async function deleteSearchForEmail(email: string, searchId: string): Promise<boolean> {
   const sql = await officeDb();
   if (!sql) throw new Error("database_unconfigured");
