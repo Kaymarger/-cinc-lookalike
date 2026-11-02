@@ -25,7 +25,7 @@ export function FeaturedCarousel({ properties }: { properties: Property[] }) {
           <PropertyCard
             key={property.id}
             property={property}
-            priority={i === 0}
+            priority={false}
           />
         ))}
       </div>
