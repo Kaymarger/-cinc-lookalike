@@ -14,6 +14,7 @@ export type DdfListing = {
   propertyType: string;
   remarks: string;
   brokerage: string;
+  officeKey: string;
   realtorUrl: string;
   latitude: number;
   longitude: number;
@@ -142,6 +143,7 @@ export function listingFromOData(record: Record<string, unknown>): DdfListing | 
     propertyType: text(record.PropertySubType) || text(record.PropertyType),
     remarks: text(record.PublicRemarks),
     brokerage: officeName(record),
+    officeKey: text(record.ListOfficeKey),
     realtorUrl: realtorUrl(record) || (listingKey ? `https://www.realtor.ca/real-estate/${listingKey}` : ""),
     latitude: num(record.Latitude),
     longitude: num(record.Longitude),
@@ -197,6 +199,7 @@ export function listingFromRetsXml(block: string): DdfListing | null {
     propertyType: xmlText(block, "Type") || xmlText(block, "PropertyType"),
     remarks: xmlText(block, "PublicRemarks"),
     brokerage: xmlText(block, "OfficeName") || xmlText(block, "ListOfficeName"),
+    officeKey: xmlText(block, "ListOfficeKey"),
     realtorUrl: xmlText(block, "MoreInformationLink") || xmlText(block, "ListingURL"),
     latitude: num(xmlText(block, "Latitude")),
     longitude: num(xmlText(block, "Longitude")),

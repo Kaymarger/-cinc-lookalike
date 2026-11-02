@@ -13,7 +13,7 @@ export async function ensureDdfListings(): Promise<boolean> {
   const state = await readSyncState();
   const updated = state.updatedAt ? new Date(state.updatedAt).getTime() : 0;
   if (count === 0 && updated && Date.now() - updated < 20_000) return false;
-  await syncDdfBatch({ budgetMs: 25_000, maxPages: 1 });
+  await syncDdfBatch(missingOffice > 0 ? { budgetMs: 40_000, maxPages: 3 } : { budgetMs: 25_000, maxPages: 1 });
   return (await countDdfListings()) > 0;
 }
 

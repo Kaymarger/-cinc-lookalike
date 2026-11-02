@@ -226,6 +226,25 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   };
 }
 
+export async function fetchOfficeNames(officeKeys: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(officeKeys.map((key) => key.trim()).filter(Boolean))].slice(0, 40);
+  if (!unique.length) return new Map();
+  const active = await session();
+  if (active.mode !== "oauth") return new Map();
+  const quoted = unique.map((key) => `'${key.replace(/'/g, "''")}'`).join(",");
+  const payload = await oauthGet(
+    `${ODATA}/Office?$top=40&$filter=${encodeURIComponent(`OfficeKey in (${quoted})`)}`,
+    active.token
+  );
+  const names = new Map<string, string>();
+  for (const row of rowsOf(payload)) {
+    const key = String(row.OfficeKey || row.ListOfficeKey || "");
+    const name = String(row.OfficeName || row.ListOfficeName || "").trim();
+    if (key && name) names.set(key, name);
+  }
+  return names;
+}
+
 export async function fetchDdfMasterPage(nextUrl?: string | null): Promise<{ keys: string[]; nextUrl: string | null }> {
   const active = await session();
   if (active.mode === "rets") {

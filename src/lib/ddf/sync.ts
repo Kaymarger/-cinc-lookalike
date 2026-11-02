@@ -1,4 +1,4 @@
-import { fetchDdfMasterPage, fetchDdfPropertyPage } from "@/lib/ddf/client";
+import { fetchDdfMasterPage, fetchDdfPropertyPage, fetchOfficeNames } from "@/lib/ddf/client";
 import {
   applyMasterDeletions,
   countDdfListings,
@@ -40,7 +40,8 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
   let detailUrl = state.detailUrl;
   let fieldNames = "";
   let sawOffice = false;
-  if (state.mode !== "oauth-fields") detailUrl = null;
+  let officeError = "";
+  if (state.mode !== "oauth-named") detailUrl = null;
   let masterUrl = state.masterUrl;
   let generation = state.masterGeneration || 1;
   let pages = 0;
@@ -49,6 +50,15 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
       const page = await fetchDdfPropertyPage(detailUrl);
       mode = page.mode;
       fieldNames = page.fieldNames || fieldNames;
+      if (page.listings.some((listing) => !listing.brokerage && listing.officeKey)) {
+        const names = await fetchOfficeNames(page.listings.map((listing) => listing.officeKey)).catch((error: unknown) => {
+          officeError = error instanceof Error ? error.message : "Office lookup failed";
+          return new Map<string, string>();
+        });
+        for (const listing of page.listings) {
+          if (!listing.brokerage && listing.officeKey) listing.brokerage = names.get(listing.officeKey) || "";
+        }
+      }
       if (page.listings.some((listing) => listing.brokerage)) sawOffice = true;
       upserted += await upsertDdfListings(page.listings);
       detailUrl = page.nextUrl;
@@ -80,8 +90,8 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
       masterGeneration: generation,
       masterComplete: masterUrl === null,
       listingCount,
-      mode: mode === "oauth" || mode === "oauth-office" ? "oauth-fields" : mode,
-      lastError: sawOffice || !fieldNames ? "" : `Office name was empty. Fields: ${fieldNames}`.slice(0, 300),
+      mode: mode === "oauth" || mode === "oauth-office" || mode === "oauth-fields" ? "oauth-named" : mode,
+      lastError: sawOffice ? "" : (officeError || (fieldNames ? `Office name was empty. Fields: ${fieldNames}` : "")).slice(0, 300),
     });
     return {
       ok: true,
