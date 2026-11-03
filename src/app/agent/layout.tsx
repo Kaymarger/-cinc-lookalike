@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AgentGate } from "@/components/agent-gate";
+import { AgentWorkspaceProvider } from "@/lib/agent-workspace";
 
 export const metadata: Metadata = {
   title: {
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
-  return <AgentGate>{children}</AgentGate>;
+  return (
+    <AgentWorkspaceProvider>
+      <AgentGate>{children}</AgentGate>
+    </AgentWorkspaceProvider>
+  );
 }
