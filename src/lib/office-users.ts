@@ -38,6 +38,7 @@ export type OfficeUser = {
   bootstrap: boolean;
   mustSetPassword: boolean;
   routingHidden: boolean;
+  pondOwner: string;
 };
 
 type UserRow = {
@@ -67,6 +68,7 @@ type UserRow = {
   bootstrap: boolean;
   must_set_password: boolean;
   routing_hidden?: boolean;
+  pond_owner?: string;
 };
 
 export type PublicOfficeUser = Omit<OfficeUser, never> & { roleLabel: string };
@@ -109,6 +111,7 @@ function fromRow(row: UserRow): OfficeUser {
     bootstrap: Boolean(row.bootstrap),
     mustSetPassword: Boolean(row.must_set_password),
     routingHidden: Boolean(row.routing_hidden),
+    pondOwner: row.pond_owner || "",
   };
 }
 
@@ -140,6 +143,7 @@ export function syntheticBootstrap(): OfficeUser {
     bootstrap: true,
     mustSetPassword: false,
     routingHidden: false,
+    pondOwner: "",
   };
 }
 
@@ -205,9 +209,47 @@ export async function findUserByName(name: string): Promise<OfficeUser | null> {
   return users.find((user) => canonicalName(user.name) === target) ?? null;
 }
 
+/** CINC-style shared pond. Kayla Gerak owns it. It is not in automatic routing. */
+export async function ensureOfficePond(): Promise<void> {
+  const sql = await officeDb();
+  if (!sql) return;
+  const existing = await sql<{ id: string }[]>`
+    SELECT id FROM office_users WHERE role = 'isa' AND active = true LIMIT 1
+  `;
+  if (existing.length) {
+    await sql`
+      UPDATE office_users
+      SET pond_owner = 'Kayla Gerak'
+      WHERE role = 'isa' AND (pond_owner IS NULL OR pond_owner = '')
+    `;
+    return;
+  }
+  const hash = await hashPassword(crypto.randomUUID());
+  await sql`
+    INSERT INTO office_users (
+      id, email, password_hash, role, first_name, last_name, active, bootstrap, must_set_password, routing_hidden, pond_owner, title
+    ) VALUES (
+      'pond-kayla',
+      'kaylas.pond@archibald.local',
+      ${hash},
+      'isa',
+      'Kayla''s',
+      'Pond',
+      true,
+      false,
+      false,
+      true,
+      'Kayla Gerak',
+      'Pond'
+    )
+    ON CONFLICT (id) DO NOTHING
+  `;
+}
+
 export async function listUsers(): Promise<OfficeUser[]> {
   const sql = await officeDb();
   if (!sql) return [];
+  await ensureOfficePond();
   const rows = await sql<UserRow[]>`
     SELECT * FROM office_users ORDER BY first_name, last_name, email
   `;
@@ -242,6 +284,8 @@ export type UserDraft = {
   youtube?: string;
   linkedin?: string;
   active?: boolean;
+  pondOwner?: string;
+  routingHidden?: boolean;
 };
 
 function clean(value: string | undefined, max = 240): string {
@@ -260,7 +304,7 @@ export async function createUser(draft: UserDraft): Promise<OfficeUser> {
     INSERT INTO office_users (
       id, email, password_hash, role, first_name, last_name, cell, home_phone, office_phone,
       title, license_number, loan_url, bio, signature, subdomain, facebook, google, pinterest,
-      twitter, instagram, youtube, linkedin, active, bootstrap, must_set_password
+      twitter, instagram, youtube, linkedin, active, bootstrap, must_set_password, routing_hidden, pond_owner
     ) VALUES (
       ${crypto.randomUUID()},
       ${email},
@@ -286,7 +330,9 @@ export async function createUser(draft: UserDraft): Promise<OfficeUser> {
       ${clean(draft.linkedin, 240)},
       ${draft.active !== false},
       false,
-      ${inviteOnly}
+      ${inviteOnly},
+      ${draft.routingHidden ?? draft.role === "isa"},
+      ${draft.role === "isa" ? clean(draft.pondOwner || "Kayla Gerak", 80) : ""}
     )
     RETURNING *
   `;

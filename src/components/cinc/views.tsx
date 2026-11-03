@@ -1594,7 +1594,8 @@ function ProfileTab() {
       <div className="space-y-4">
       <Card title="Login Info">
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
-        <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell}</span></div>
+        <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell || "—"}</span></div>
+        <OfficeLine />
         <div className="flex justify-end gap-2">
           <Btn kind="blue" onClick={() => void sendRecovery("email")}>Send Email Recovery Link</Btn>
           <Btn kind="blue" onClick={() => void sendRecovery("text")}>Send Text Recovery Link</Btn>
@@ -1658,6 +1659,21 @@ function ProfileTab() {
       </Card>
       </div>
     </div>
+  );
+}
+
+function OfficeLine() {
+  const [line, setLine] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fromNumber?: string | null } | null;
+      setLine(data?.fromNumber || null);
+    }).catch(() => setLine(null));
+  }, []);
+  return (
+    <p className="mb-3 text-[13px]">
+      {line === undefined ? "Checking the calling line…" : line ? `Calls and texts from a lead use ${line}.` : "Calling and texting are not connected."}
+    </p>
   );
 }
 
@@ -1779,7 +1795,7 @@ function PondModal({ onClose }: { onClose: () => void }) {
   const names = ["Anastasiia Borovyk", "Casey Archibald", "Cassie Kang", "Kevin Barrett", "Chantel Machnik"];
   return (
     <ModalFrame title="Pond agent notifications" onClose={onClose}>
-      <p className="mb-2 text-[13px] text-[#666]">Choose which pond agents get a copy of Kayla&apos;s alerts. Saved on this device.</p>
+      <p className="mb-2 text-[13px] text-[#666]">Kayla Gerak owns the pond. A checked agent gets an in-office copy. Pond alerts are not texted.</p>
       {names.map((name) => {
         const on = Boolean(state.notifications[`pond:${name}`]?.cinc);
         return (
@@ -1789,7 +1805,7 @@ function PondModal({ onClose }: { onClose: () => void }) {
               checked={on}
               onChange={() => update((current) => ({
                 ...current,
-                notifications: { ...current.notifications, [`pond:${name}`]: { cinc: !on, email: false, text: true } },
+                notifications: { ...current.notifications, [`pond:${name}`]: { cinc: !on, email: false, text: false } },
               }))}
             />
             {name}
@@ -1804,8 +1820,32 @@ function PondModal({ onClose }: { onClose: () => void }) {
 function NotificationsTab() {
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const [dest, setDest] = useState<{ alertEmail: string | null; agentEmail: string; channels: { email: boolean; sms: boolean } } | null>(null);
+  const [alerts, setAlerts] = useState<{ id: string; title: string; body: string; createdAt: string }[]>([]);
+  function loadAlerts() {
+    void fetch("/api/office/notifications", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { alertEmail?: string | null; agentEmail?: string; channels?: { email: boolean; sms: boolean }; alerts?: { id: string; title: string; body: string; createdAt: string }[] } | null;
+      if (!response.ok || !data) return;
+      setDest({ alertEmail: data.alertEmail ?? null, agentEmail: data.agentEmail || "", channels: data.channels || { email: false, sms: false } });
+      setAlerts(data.alerts || []);
+    });
+  }
+  useEffect(() => { loadAlerts(); }, []);
   return (
     <div className="bg-white p-4">
+      <h2 className="text-[13px] font-bold tracking-wide">WHERE ALERTS GO</h2>
+      <div className="my-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px] leading-5">
+        <p><strong>New leads:</strong> an in-app office alert, plus one email to {dest?.alertEmail || "the office alert mailbox (not set yet)"}. No text is sent.</p>
+        <p className="mt-1"><strong>Other agent alerts:</strong> the office alert list on this page. Email, when that box is checked, goes to {dest?.agentEmail || "the signed-in agent"}. {dest?.channels.email ? "Email sending is connected." : "Email sending is not connected, so those boxes stay in the office list only."}</p>
+        <p className="mt-1"><strong>Text:</strong> agent notifications are not texted. Calling and texting a lead uses the office line{dest?.channels.sms ? "" : ", which is not connected"}.</p>
+      </div>
+      {alerts.length ? (
+        <ul className="mb-4 max-h-40 overflow-auto border border-[#eee]">
+          {alerts.slice(0, 8).map((item) => (
+            <li key={item.id} className="border-b border-[#f0f0f0] px-2 py-1 text-[12px]"><span className="font-semibold">{item.title}</span> <span className="text-[#666]">{item.body.slice(0, 140)}</span></li>
+          ))}
+        </ul>
+      ) : <p className="mb-3 text-[12px] text-[#666]">No office alerts yet.</p>}
       <h2 className="text-[13px] font-bold tracking-wide">MASTER SETTINGS</h2>
       <div className="my-3 border border-[#eee] p-3">
         <p className="mb-2 text-[12px] font-bold">Subscription</p>
@@ -1836,12 +1876,12 @@ function NotificationsTab() {
               };
               return (
                 <article key={item.id} className="relative bg-[#f3f3f3] p-3">
-                  <button type="button" className="absolute top-2 right-2 bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => { update((current) => ({ ...current, mail: [queuedMail({ folder: "inbox", unread: true, kind: pref.email ? "email" : "text", from: "System", to: CRM_AGENT.name, subject: `Test: ${item.id}`, body: `Test ${item.id} for ${CRM_AGENT.name}.` }), ...current.mail] })); chrome.toast(`Test ${item.id} is in the inbox.`); }}>TEST</button>
+                  <button type="button" className="absolute top-2 right-2 bg-[#1c93b5] px-1 text-[10px] text-white" onClick={() => { void fetch("/api/office/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: item.id, email: item.id === "New Leads" ? true : pref.email }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; chrome.toast(data?.message || "Test saved in the office alert list."); loadAlerts(); }); }}>TEST</button>
                   <p className="pr-10 text-[13px] font-bold">{item.id}</p>
                   <p className="mt-1 text-[12px] text-[#666]">{item.description}</p>
                   <div className="mt-2 flex gap-3 text-[11px]">
                     {(["cinc", "email", "text"] as const).filter((key) => !item.channels || item.channels.includes(key)).map((key) => (
-                      <label key={key}><input type="checkbox" checked={pref[key]} onChange={() => toggle(key)} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}</label>
+                      <label key={key} title={key === "text" ? "Agent alerts are not texted." : undefined}><input type="checkbox" checked={key === "text" ? false : pref[key]} disabled={key === "text"} onChange={() => { if (key !== "text") toggle(key); }} /> {key === "cinc" ? "In the office" : key === "email" ? "Email" : "Text off"}</label>
                     ))}
                   </div>
                 </article>
@@ -2010,12 +2050,14 @@ export function DialerView() {
   const chrome = useChrome();
   const [index, setIndex] = useState(0);
   const [voice, setVoice] = useState<boolean | null>(null);
+  const [fromNumber, setFromNumber] = useState<string | null>(null);
   const people = [...leads.map((lead) => ({ id: lead.id, name: lead.name, phone: lead.phone })), ...[{ id: "crm-1", name: "Morgan Ellis", phone: "(604) 555-0188" }]];
   const current = people[index];
   useEffect(() => {
     void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
-      const data = (await response.json().catch(() => null)) as { channels?: { voice?: boolean } } | null;
+      const data = (await response.json().catch(() => null)) as { channels?: { voice?: boolean }; fromNumber?: string | null } | null;
       setVoice(Boolean(data?.channels?.voice));
+      setFromNumber(data?.fromNumber || null);
     });
   }, []);
   async function call() {
@@ -2033,7 +2075,7 @@ export function DialerView() {
     <div className="mx-auto max-w-lg p-6">
       <div className="bg-white p-5 text-center">
         <p className="text-[12px] uppercase text-[#888]">Dialer</p>
-        {voice === false ? <p className="mt-2 bg-[#fff6e5] px-3 py-2 text-left text-[13px] text-[#8a5a00]">Calling is not connected.</p> : null}
+        {voice === false ? <p className="mt-2 bg-[#fff6e5] px-3 py-2 text-left text-[13px] text-[#8a5a00]">Calling is not connected.</p> : <p className="mt-2 text-[13px] text-[#555]">Calls leave from {fromNumber || "the office line"}.</p>}
         <p className="mt-2 text-[20px] font-semibold">{current?.name}</p>
         <p className="text-[#1c93b5]">{current?.phone}</p>
         <div className="mt-4 flex justify-center gap-2">

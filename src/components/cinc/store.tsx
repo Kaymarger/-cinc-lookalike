@@ -358,8 +358,8 @@ function defaultNotify(): Record<string, NotifyPref> {
   const all: Record<string, NotifyPref> = {};
   for (const group of NOTIFY_GROUPS) {
     for (const item of group.items) {
-      const emailOn = item.id === "Inquiry" || item.id === "Existing Lead Home Value Request";
-      all[item.id] = { cinc: false, email: emailOn, text: true };
+      const emailOn = item.id === "New Leads" || item.id === "Inquiry" || item.id === "Existing Lead Home Value Request";
+      all[item.id] = { cinc: item.id === "New Leads", email: emailOn, text: false };
     }
   }
   return all;

@@ -7,6 +7,7 @@ import { ACTIVITY_FILTER_GROUPS, LABEL_GROUPS, OFFICE_ROSTER, REMINDER_TIMING, c
 import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/lib/cinc-lists";
 import type { OfficeSettings } from "@/lib/office-settings";
 import { leadVisibleTo } from "@/lib/office-access";
+import { accountVerified, leadSide, quartScore, validEmail } from "@/lib/lead-signals";
 import { useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
 import { LeadSearches } from "./lead-searches";
@@ -146,7 +147,11 @@ type Row = {
   logins: number;
   lastTouch: string;
   nextReminder: string;
+  nextReminderId?: string;
+  nextReminderTitle?: string;
+  registeredAt: number;
   overdue: boolean;
+  emailValid: boolean;
   views: number;
   saved: number;
   fav: number;
@@ -216,17 +221,13 @@ function siteRow(lead: Lead): Row {
     email: lead.email,
     phone: lead.phone,
     phoneValid: digits(lead.phone),
-    verified: lead.source === "registration",
-    score: lead.score,
-    type:
-      lead.intent === "seller" ||
-      lead.intent === "valuation" ||
-      lead.source === "seller_signup" ||
-      lead.source === "home_valuation"
-        ? "Seller"
-        : "Buyer",
+    emailValid: validEmail(lead.email),
+    verified: accountVerified(lead.source),
+    score: quartScore(lead),
+    type: leadSide(lead),
     pipeline: SITE_PIPE[lead.status] ?? "New Lead",
     registered: ago(lead.createdAt),
+    registeredAt: new Date(lead.createdAt).getTime() || 0,
     source: [
       SOURCE[lead.source] ?? "Website",
       lead.attribution?.utmSource,
@@ -241,6 +242,8 @@ function siteRow(lead: Lead): Row {
     logins: 0,
     lastTouch: "—",
     nextReminder: lead.tasks.find((task) => !task.done)?.due || "n/a",
+    nextReminderId: lead.tasks.find((task) => !task.done)?.id,
+    nextReminderTitle: lead.tasks.find((task) => !task.done)?.title,
     overdue: false,
     views: 0,
     saved: 0,
@@ -272,11 +275,13 @@ function crmRows(): Row[] {
     email: lead.email,
     phone: lead.phone,
     phoneValid: digits(lead.phone),
+    emailValid: validEmail(lead.email),
     verified: Boolean(lead.verified),
     score: lead.rating,
     type: lead.type,
     pipeline: CRM_PIPE[lead.pipeline] ?? "New Lead",
     registered: lead.registeredAgo,
+    registeredAt: 0,
     source: lead.source,
     price: lead.price,
     city: lead.city,
@@ -285,6 +290,7 @@ function crmRows(): Row[] {
     logins: lead.logins,
     lastTouch: lead.lastTouch,
     nextReminder: lead.nextReminder,
+    nextReminderTitle: lead.nextReminder,
     overdue: Boolean(lead.reminderOverdue),
     views: lead.views,
     saved: lead.saved,
@@ -412,8 +418,8 @@ export function LeadsView({
   const [view, setView] = useState<"Roomy" | "Default" | "Compact">("Default");
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(0);
-  const [sortKey, setSortKey] = useState("");
-  const [sortDir, setSortDir] = useState<1 | -1>(1);
+  const [sortKey, setSortKey] = useState("Registered");
+  const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [showTrash, setShowTrash] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -520,18 +526,33 @@ export function LeadsView({
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
-    if (!sortKey) return 0;
-    const value = (row: Row) => {
-      if (sortKey === "Name/Info") return row.name;
-      if (sortKey === "Pipeline") return row.pipeline;
-      if (sortKey === "Registered") return row.registered;
-      if (sortKey === "Price/City") return row.city;
-      if (sortKey === "Timeframe") return row.timeframe;
-      if (sortKey === "Last Login") return row.lastLogin;
-      if (sortKey === "Assigned To") return row.assigned.agent;
-      return "";
-    };
-    return value(a).localeCompare(value(b)) * sortDir;
+    const dir = sortDir;
+    const cmp = (left: number | string, right: number | string) =>
+      typeof left === "number" && typeof right === "number" ? (left - right) * dir : String(left).localeCompare(String(right)) * dir;
+    switch (sortKey) {
+      case "Name/Info":
+        return cmp(a.score, b.score) || a.name.localeCompare(b.name);
+      case "Pipeline":
+        return cmp(a.pipeline, b.pipeline);
+      case "Registered":
+        return cmp(a.registeredAt, b.registeredAt);
+      case "Price/City":
+        return cmp(a.city, b.city);
+      case "Timeframe":
+        return cmp(a.timeframe, b.timeframe);
+      case "Last Login":
+        return cmp(a.logins, b.logins) || a.lastLogin.localeCompare(b.lastLogin) * dir;
+      case "Last Touch":
+        return cmp(a.lastTouch, b.lastTouch);
+      case "Next Reminder":
+        return cmp(a.nextReminder === "n/a" ? "" : a.nextReminder, b.nextReminder === "n/a" ? "" : b.nextReminder);
+      case "Activity":
+        return cmp(a.views + a.saved + a.fav + a.inq, b.views + b.saved + b.fav + b.inq);
+      case "Assigned To":
+        return cmp(a.assigned.agent, b.assigned.agent);
+      default:
+        return b.registeredAt - a.registeredAt;
+    }
   });
 
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -612,6 +633,48 @@ export function LeadsView({
         calls: [{ id: uid("call"), leadId: row.id, name: row.name, at: nowLabel(), kind, body: body || title }, ...current.calls],
       }));
     }
+  }
+
+  async function callLead(row: Row) {
+    if (!office.canDial) { chrome.toast("Your permissions do not include calling."); return; }
+    const response = await fetch("/api/office/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: "voice", to: row.phone, body: `Call ${row.name}` }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string } | null;
+    if (!response.ok) {
+      chrome.toast(data?.message || "Calling is not connected.");
+      return;
+    }
+    log(row, "call", "Call placed", `Twilio is calling ${row.phone}.`);
+    chrome.toast(`Twilio is calling ${row.phone}.`);
+  }
+
+  function openReminder(row: Row) {
+    if (row.origin === "site" && row.nextReminderId) {
+      chrome.openModal(
+        <ReminderModal
+          leadId={row.id}
+          reminderId={row.nextReminderId}
+          initialTitle={row.nextReminderTitle || "Call"}
+          initialDue={row.nextReminder === "n/a" ? "" : row.nextReminder}
+          onClose={chrome.closeModal}
+        />,
+      );
+      return;
+    }
+    chrome.openModal(
+      <ModalFrame title="Next reminder" onClose={chrome.closeModal}>
+        <p className="text-[14px] font-semibold">{row.nextReminderTitle || "No reminder"}</p>
+        <p className="mt-2 text-[13px] text-[#555]">{row.nextReminder === "n/a" ? "This lead has no upcoming reminder." : `Due ${row.nextReminder}`}</p>
+        {row.origin === "site" ? (
+          <div className="mt-3 text-right">
+            <Btn kind="teal" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />)}>Add reminder</Btn>
+          </div>
+        ) : null}
+      </ModalFrame>,
+    );
   }
 
   async function sendLead(channel: "email" | "sms", row: Row, value: { to: string; body: string; subject?: string; cc?: string; bcc?: string; attachments?: string[] }) {
@@ -921,13 +984,13 @@ export function LeadsView({
                         <Menu
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
                           items={[
-                            { label: "Call Lead", onClick: () => { log(row, "call", "Call logged"); chrome.toast(`Call to ${row.phone} logged.`); } },
+                            { label: "Call Lead", onClick: () => void callLead(row) },
                             { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
                           ]}
                         />
                       </div>
                       <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { if (!sent) { log(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", row, value); })}>
-                        {row.email} <span className="text-[#2e9e5b]">✓</span>
+                        {row.email} {row.emailValid ? <span className="text-[#2e9e5b]">✓</span> : <span className="text-[#e39b2b]">!</span>}
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
                         <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[12px] text-white">★ {row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
@@ -992,7 +1055,9 @@ export function LeadsView({
                         </>
                       )}
                     </td>
-                    <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>{row.nextReminder}</td>
+                    <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>
+                      <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
+                    </td>
                     <td className="px-2 text-[11px] leading-5">
                       <span className="text-[#2e9e5b]">{row.views} Views</span><br />
                       <span className="text-[#e39b2b]">{row.saved} Saved</span><br />
@@ -1231,7 +1296,7 @@ function LeadDetail({
               <Menu
                 label={<span className="ml-1 text-[12px] text-[#888]">▾</span>}
                 items={[
-                  { label: "Call Lead", onClick: () => { onLog(row, "call", "Call logged", "Connected"); chrome.toast(`Call to ${row.phone} logged.`); } },
+                  { label: "Call Lead", onClick: () => { void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "voice", to: row.phone, body: `Call ${row.name}` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; if (!response.ok) { chrome.toast(data?.message || "Calling is not connected."); return; } onLog(row, "call", "Call placed", `Twilio is calling ${row.phone}.`); chrome.toast(`Twilio is calling ${row.phone}.`); }); } },
                   { label: "Text Lead", onClick: () => composer.text(row.phone, (value) => sendLead("sms", value)) },
                   { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                 ]}

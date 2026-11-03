@@ -39,6 +39,7 @@ export type OfficeProfile = {
   active: boolean;
   bootstrap: boolean;
   mustSetPassword?: boolean;
+  pondOwner?: string;
 };
 
 export type RosterUser = {

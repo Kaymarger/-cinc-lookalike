@@ -102,6 +102,14 @@ const SCHEMA_STATEMENTS = [
   `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS must_set_password boolean NOT NULL DEFAULT false`,
   `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb`,
   `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS routing_hidden boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE office_users ADD COLUMN IF NOT EXISTS pond_owner text NOT NULL DEFAULT ''`,
+  `CREATE TABLE IF NOT EXISTS office_notifications (
+  id text PRIMARY KEY,
+  kind text NOT NULL,
+  title text NOT NULL,
+  body text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+)`,
   `CREATE TABLE IF NOT EXISTS office_access_tokens (
   id text PRIMARY KEY,
   user_id text NOT NULL,

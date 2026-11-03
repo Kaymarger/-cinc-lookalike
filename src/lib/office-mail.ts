@@ -31,6 +31,22 @@ function toE164(phone: string): string | null {
   return null;
 }
 
+export function twilioFromDisplay(): string | null {
+  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const raw = process.env.TWILIO_FROM_NUMBER?.trim() || "";
+  if (!sid || !token || !raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length === 10) return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+  return raw;
+}
+
+/** New-lead email goes here. Empty when that mailbox is not set. */
+export function alertInbox(): string | null {
+  return process.env.AGENT_ALERT_EMAIL?.trim() || null;
+}
+
 export function channelStatus(): { email: boolean; sms: boolean; voice: boolean; gmail: boolean } {
   const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const token = process.env.TWILIO_AUTH_TOKEN?.trim();

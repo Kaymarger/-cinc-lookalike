@@ -5,6 +5,7 @@ import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import { PERMISSION_COLUMNS, defaultPermissions, type OfficePermissions } from "@/lib/permission-options";
 import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
+import { href } from "./route";
 import { Btn, Field, inputCls } from "./ui";
 
 const ROLES: OfficeRole[] = ["admin", "broker", "agent", "isa", "lender"];
@@ -157,7 +158,11 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
     setMessage(data.message || "Link ready.");
   }
 
-  async function become(user: OfficeProfile) {
+  async function become(user: OfficeProfile, dest: "leads" | "profile") {
+    if (user.id === office.user?.id) {
+      window.location.href = dest === "profile" ? href.profile : href.leads;
+      return;
+    }
     const response = await fetch("/api/office/become", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -168,9 +173,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       setMessage(data?.message || "Could not switch to that user.");
       return;
     }
-    // Full load so the become cookie is applied before the lead list renders.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = "/agent/leads";
+    window.location.href = dest === "profile" ? href.profile : href.leads;
   }
 
   async function copyLink() {
@@ -237,15 +240,17 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                     <img alt="" className="absolute inset-0 h-12 w-12 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   </div>
                   <div>
-                    <p className="font-semibold">{user.name}</p>
+                    <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => office.canManageUsers ? startEdit(user) : void become(user, "leads")}>{user.name}</button>
                     <p className="text-[#666]">{user.email}</p>
                     <p className="italic">{user.role === "isa" ? "(Pond Account) Agent" : user.role === "broker" || user.role === "admin" ? "Broker" : "Agent"}{user.active ? "" : " · Disabled"}</p>
+                    {user.role === "isa" ? <p className="text-[#243238]">Pond owner: {user.pondOwner || "Kayla Gerak"}</p> : null}
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
-                  {office.canBecome && user.id !== office.user?.id && user.active ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user)}>Become User</button> : null}
+                  {office.canBecome && user.active ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Their leads</button> : null}
+                  {office.canBecome && user.active ? <button type="button" className="border border-[#1c93b5] bg-white px-2 py-1 text-[#1c93b5]" onClick={() => void become(user, "profile")}>Their profile</button> : null}
                   {office.canManageUsers && user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                 </div>
               </article>
@@ -256,13 +261,13 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
           <h2 className="mb-3 text-[16px] font-semibold">Add Pond</h2>
           <Field label="Pond name"><input className={inputCls} value={pondName} onChange={(event) => setPondName(event.target.value)} /></Field>
           <Field label="Pond email"><input className={inputCls} value={pondEmail} onChange={(event) => setPondEmail(event.target.value)} placeholder="optional" /></Field>
-          <p className="mb-3 text-[12px] text-[#666]">A pond is a shared account. Agents can be added to it after it is created.</p>
+          <p className="mb-3 text-[12px] text-[#666]">A pond is a shared lead account. Kayla Gerak owns the office pond. New ponds are also owned by Kayla, and they stay out of automatic routing.</p>
           <div className="flex justify-end gap-2">
             <Btn onClick={() => setPond(false)}>Cancel</Btn>
             <Btn kind="teal" onClick={() => {
               if (!pondName.trim()) { setMessage("Enter a pond name."); return; }
               const email = pondEmail.trim() || `${pondName.trim().toLowerCase().replace(/\s+/g, ".")}@pond.local`;
-              void fetch("/api/office/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName: pondName.trim(), lastName: "Pond", email, role: "isa", active: true }) }).then(async (response) => {
+              void fetch("/api/office/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName: pondName.trim(), lastName: "Pond", email, role: "isa", active: true, pondOwner: "Kayla Gerak", routingHidden: true, title: "Pond" }) }).then(async (response) => {
                 const data = (await response.json().catch(() => null)) as { message?: string } | null;
                 setMessage(response.ok ? "Pond added." : data?.message || "Could not add that pond.");
                 if (response.ok) { setPond(false); await load(); }

@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
+import { officeDb } from "@/lib/leads-db";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
 
@@ -97,52 +99,6 @@ async function sendEmail(lead: SanitizedLead): Promise<AlertChannel> {
     return response.ok ? "sent" : "failed";
   } catch {
     console.error("[leads] email alert failed");
-    return "failed";
-  }
-}
-
-async function sendSms(lead: SanitizedLead): Promise<AlertChannel> {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const rawTo = process.env.AGENT_ALERT_PHONE?.trim() || "";
-  const rawFrom = process.env.TWILIO_FROM_NUMBER?.trim() || "";
-  if (!rawTo && !sid && !token && !rawFrom) return "skipped";
-  if (!rawTo || !sid || !token || !rawFrom) return "skipped";
-  const to = toE164(rawTo);
-  const from = toE164(rawFrom);
-  if (!to || !from) return "failed";
-
-  const campaign = [lead.attribution.utmSource, lead.attribution.utmCampaign]
-    .filter(Boolean)
-    .join("/");
-  const body = [
-    `New lead: ${lead.name}`,
-    INTENT_LABEL[lead.intent],
-    lead.phone || lead.email,
-    campaign,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-    .slice(0, 320);
-
-  try {
-    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
-    const payload = new URLSearchParams({ To: to, From: from, Body: body });
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: payload,
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    return response.ok ? "sent" : "failed";
-  } catch {
-    console.error("[leads] sms alert failed");
     return "failed";
   }
 }
@@ -255,8 +211,36 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
   return { email, sms };
 }
 
+async function recordOfficeAlert(kind: string, title: string, body: string): Promise<void> {
+  const sql = await officeDb();
+  if (!sql) return;
+  await sql`
+    INSERT INTO office_notifications (id, kind, title, body)
+    VALUES (${`note-${randomUUID().slice(0, 8)}`}, ${kind.slice(0, 80)}, ${title.slice(0, 160)}, ${body.slice(0, 2000)})
+  `;
+}
+
+export async function listOfficeAlerts(limit = 30): Promise<{ id: string; kind: string; title: string; body: string; createdAt: string }[]> {
+  const sql = await officeDb();
+  if (!sql) return [];
+  const rows = await sql<{ id: string; kind: string; title: string; body: string; created_at: Date | string }[]>`
+    SELECT id, kind, title, body, created_at
+    FROM office_notifications
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+  }));
+}
+
 export async function notifyAssignedAgent(lead: SanitizedLead): Promise<AlertReport> {
   if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
-  const [email, sms] = await Promise.all([sendEmail(lead), sendSms(lead)]);
-  return { email, sms };
+  const email = await sendEmail(lead);
+  await recordOfficeAlert("New Leads", `New lead: ${lead.name}`, leadText(lead)).catch(() => undefined);
+  return { email, sms: "skipped" };
 }

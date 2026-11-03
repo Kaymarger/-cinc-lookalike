@@ -1,5 +1,5 @@
 import { currentActor } from "@/lib/office-actor";
-import { channelStatus } from "@/lib/office-mail";
+import { alertInbox, channelStatus, twilioFromDisplay } from "@/lib/office-mail";
 import { recordSend } from "@/lib/office-live";
 
 export const runtime = "nodejs";
@@ -8,7 +8,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const actor = await currentActor();
   if (!actor) return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
-  return Response.json({ ok: true, channels: channelStatus() });
+  return Response.json({
+    ok: true,
+    channels: channelStatus(),
+    fromNumber: twilioFromDisplay(),
+    alertEmail: actor.user.role === "admin" || actor.user.role === "broker" ? alertInbox() : null,
+  });
 }
 
 export async function POST(request: Request) {
