@@ -1850,12 +1850,13 @@ function NotificationsTab() {
       <div className="my-3 border border-[#eee] p-3">
         <p className="mb-2 text-[12px] font-bold">Subscription</p>
         {(["cinc", "email", "text"] as const).map((key) => (
-          <label key={key} className="mr-4 text-[13px] capitalize">
-            <input type="checkbox" checked={Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
+          <label key={key} className="mr-4 text-[13px] capitalize" title={key === "text" ? "Agent alerts are not texted." : undefined}>
+            <input type="checkbox" disabled={key === "text"} checked={key === "text" ? false : Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
+              if (key === "text") return;
               const current = state.notifications.subscription ?? { cinc: true, email: true, text: false };
               const subscription = { ...current, [key]: !current[key] };
               update((next) => ({ ...next, notifications: { ...next.notifications, subscription } }));
-            }} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}
+            }} /> {key === "cinc" ? "In the office" : key === "email" ? "Email" : "Text off"}
           </label>
         ))}
         <div className="mt-3"><Btn kind="teal" onClick={() => { void savePreferences({ notifications: state.notifications }).then((error) => chrome.toast(error || "Notifications updated.")); }}>Update</Btn></div>
