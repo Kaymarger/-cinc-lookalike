@@ -256,7 +256,12 @@ export async function fetchAreaListings(name: string): Promise<DdfListing[]> {
   const active = await session();
   if (active.mode !== "oauth") return [];
   const safe = quote(cleaned);
-  for (const filter of [`CityRegion eq '${safe}'`, `SubdivisionName eq '${safe}'`]) {
+  for (const filter of [
+    `CityRegion eq '${safe}'`,
+    `SubdivisionName eq '${safe}'`,
+    `contains(CityRegion,'${safe}')`,
+    `contains(SubdivisionName,'${safe}')`,
+  ]) {
     try {
       const payload = await oauthGet(
         `${ODATA}/Property?$top=60&$filter=${encodeURIComponent(filter)}&$expand=Media`,
