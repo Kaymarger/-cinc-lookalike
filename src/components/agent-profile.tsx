@@ -18,13 +18,15 @@ Whether buying, selling, or investing, Casey Archibald is committed to deliverin
 
 export function AgentProfile({
   showInquiry = true,
+  heading = "About",
 }: {
   showInquiry?: boolean;
+  heading?: string;
 }) {
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
       <h2 className="relative mb-8 w-fit pb-3 font-[family-name:var(--font-display)] text-2xl text-[#222] sm:text-3xl">
-        About
+        {heading}
         <span
           aria-hidden
           className="absolute bottom-0 left-0 h-[3px] w-16 bg-[var(--cedar)]"

@@ -12,7 +12,7 @@ export default function ContactPage() {
   return (
     <div className="bg-white">
       <CamelotPageHeader />
-      <AgentProfile />
+      <AgentProfile heading="Contact" />
     </div>
   );
 }
