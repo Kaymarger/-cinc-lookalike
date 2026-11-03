@@ -17,7 +17,8 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
     let result = await searchDdfListings(filters);
     const needle = filters.q?.trim() || "";
     const placeName = needle.length >= 4 && !/^\d/.test(needle) && !/^[a-z]\d{4,}/i.test(needle);
-    if (placeName && result.total === 0 && (filters.page || 1) === 1) {
+    const unlabeled = result.properties.length > 0 && result.properties.every((property) => !property.neighborhood);
+    if (placeName && (result.total === 0 || unlabeled) && (filters.page || 1) === 1) {
       const pulled = await Promise.race([
         pullAreaIntoSearch(needle).catch(() => 0),
         new Promise<number>((resolve) => setTimeout(() => resolve(0), 3500)),

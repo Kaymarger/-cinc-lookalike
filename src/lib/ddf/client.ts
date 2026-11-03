@@ -263,7 +263,12 @@ export async function fetchAreaListings(name: string): Promise<DdfListing[]> {
         active.token
       );
       const listings = listingsFromJson(payload);
-      if (listings.length) return listings;
+      if (listings.length) {
+        for (const listing of listings) {
+          if (!listing.neighbourhood) listing.neighbourhood = cleaned;
+        }
+        return listings;
+      }
     } catch {
       continue;
     }

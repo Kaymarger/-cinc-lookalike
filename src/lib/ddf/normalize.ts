@@ -183,7 +183,19 @@ export function openHousesFromRecord(record: Record<string, unknown>): DdfOpenHo
 }
 
 export function neighbourhoodOf(record: Record<string, unknown>): string {
-  return text(record.CityRegion) || text(record.SubdivisionName) || text(record.MLSAreaMinor);
+  const city = text(record.City).toLowerCase();
+  const named = ["SubdivisionName", "MLSAreaMinor", "CityRegion", "Neighbourhood", "Neighborhood", "SubArea", "Community"];
+  const values = named.map((key) => text(record[key])).filter(Boolean);
+  for (const [key, value] of Object.entries(record)) {
+    if (/subdiv|cityregion|subarea|neighbour|community/i.test(key)) {
+      const name = text(value);
+      if (name) values.push(name);
+    }
+  }
+  for (const value of values) {
+    if (value.toLowerCase() !== city) return value;
+  }
+  return "";
 }
 
 function officeName(record: Record<string, unknown>): string {

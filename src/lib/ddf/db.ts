@@ -231,6 +231,7 @@ export async function upsertDdfListings(listings: DdfListing[]): Promise<number>
         updated_at = now()
     `;
   }
+  searchCache.clear();
   return listings.length;
 }
 
