@@ -34,7 +34,7 @@ See `.env.example`. Nothing in that file is a secret.
 | --- | --- | --- |
 | Save leads (Neon, Vercel Postgres, or Supabase Postgres) | `DATABASE_URL` or `POSTGRES_URL` | Forms still succeed in the browser. The CRM keeps its sample rows. |
 | Email the assigned agent | `AGENT_ALERT_EMAIL` plus either `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` | Email is skipped. |
-| Text the assigned agent | `AGENT_ALERT_PHONE`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | SMS is skipped. |
+| Call or text a lead, and text a visitor who opted in | `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_SECRET`, `TWILIO_FROM_NUMBER` | Calls and texts stay disconnected. New-lead alerts are email only. |
 | Name stored on the lead | `AGENT_ALERT_NAME` | Defaults to Casey Archibald. |
 | Meta Pixel | `META_PIXEL_ID` | Pixel is not loaded. |
 | Google Ads | `GOOGLE_ADS_ID` and, for the lead conversion, `GOOGLE_ADS_CONVERSION_LABEL` | Tag is not loaded. |

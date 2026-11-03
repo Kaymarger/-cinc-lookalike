@@ -31,15 +31,50 @@ function toE164(phone: string): string | null {
   return null;
 }
 
+type TwilioCreds = {
+  accountSid: string;
+  keySid: string;
+  keySecret: string;
+  from: string;
+};
+
+/** API key auth: the key SID and secret sign the request. The account SID is only the URL. */
+function twilioCreds(): TwilioCreds | null {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim() || "";
+  const keySid = process.env.TWILIO_API_KEY_SID?.trim() || "";
+  const keySecret = process.env.TWILIO_API_SECRET?.trim() || "";
+  const from = process.env.TWILIO_FROM_NUMBER?.trim() || "";
+  if (!accountSid || !keySid || !keySecret || !from) return null;
+  return { accountSid, keySid, keySecret, from };
+}
+
+async function twilioPost(resource: "Messages.json" | "Calls.json", fields: Record<string, string>): Promise<"sent" | "skipped" | "failed"> {
+  const creds = twilioCreds();
+  if (!creds) return "skipped";
+  try {
+    const auth = Buffer.from(`${creds.keySid}:${creds.keySecret}`).toString("base64");
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${creds.accountSid}/${resource}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams(fields),
+      signal: AbortSignal.timeout(8000),
+    });
+    return response.ok ? "sent" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
 export function twilioFromDisplay(): string | null {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const raw = process.env.TWILIO_FROM_NUMBER?.trim() || "";
-  if (!sid || !token || !raw) return null;
-  const digits = raw.replace(/\D/g, "");
+  const creds = twilioCreds();
+  if (!creds) return null;
+  const digits = creds.from.replace(/\D/g, "");
   const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
   if (local.length === 10) return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
-  return raw;
+  return creds.from;
 }
 
 /** New-lead email goes here. Empty when that mailbox is not set. */
@@ -48,10 +83,7 @@ export function alertInbox(): string | null {
 }
 
 export function channelStatus(): { email: boolean; sms: boolean; voice: boolean; gmail: boolean } {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const fromNumber = process.env.TWILIO_FROM_NUMBER?.trim();
-  const twilio = Boolean(sid && token && fromNumber);
+  const twilio = twilioCreds() !== null;
   const email = Boolean(fromAddress() && (process.env.RESEND_API_KEY?.trim() || process.env.SENDGRID_API_KEY?.trim()));
   const gmailId = process.env.GMAIL_CLIENT_ID?.trim() || process.env.GOOGLE_CLIENT_ID?.trim();
   const gmailSecret = process.env.GMAIL_CLIENT_SECRET?.trim() || process.env.GOOGLE_CLIENT_SECRET?.trim();
@@ -66,55 +98,29 @@ export function channelMessage(channel: "email" | "sms" | "voice"): string {
 }
 
 export async function startOfficeCall(toRaw: string): Promise<"sent" | "skipped" | "failed"> {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const fromRaw = process.env.TWILIO_FROM_NUMBER?.trim() || "";
-  if (!sid || !token || !fromRaw || !toRaw) return "skipped";
+  const creds = twilioCreds();
+  if (!creds || !toRaw) return "skipped";
   const to = toE164(toRaw);
-  const from = toE164(fromRaw);
+  const from = toE164(creds.from);
   if (!to || !from) return "failed";
-  try {
-    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
-    const payload = new URLSearchParams({
-      To: to,
-      From: from,
-      Twiml: "<Response><Say>This is a call from your real estate office.</Say></Response>",
-    });
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`, {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: payload,
-      signal: AbortSignal.timeout(8000),
-    });
-    return response.ok ? "sent" : "failed";
-  } catch {
-    console.error("[office] call failed");
-    return "failed";
-  }
+  const result = await twilioPost("Calls.json", {
+    To: to,
+    From: from,
+    Twiml: "<Response><Say>This is a call from your real estate office.</Say></Response>",
+  });
+  if (result === "failed") console.error("[office] call failed");
+  return result;
 }
 
 export async function sendOfficeSms(toRaw: string, body: string): Promise<"sent" | "skipped" | "failed"> {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const fromRaw = process.env.TWILIO_FROM_NUMBER?.trim() || "";
-  if (!sid || !token || !fromRaw || !toRaw) return "skipped";
+  const creds = twilioCreds();
+  if (!creds || !toRaw) return "skipped";
   const to = toE164(toRaw);
-  const from = toE164(fromRaw);
+  const from = toE164(creds.from);
   if (!to || !from) return "failed";
-  try {
-    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
-    const payload = new URLSearchParams({ To: to, From: from, Body: body.slice(0, 320) });
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: payload,
-      signal: AbortSignal.timeout(8000),
-    });
-    return response.ok ? "sent" : "failed";
-  } catch {
-    console.error("[office] sms failed");
-    return "failed";
-  }
+  const result = await twilioPost("Messages.json", { To: to, From: from, Body: body.slice(0, 320) });
+  if (result === "failed") console.error("[office] sms failed");
+  return result;
 }
 
 export async function sendOfficeMail(

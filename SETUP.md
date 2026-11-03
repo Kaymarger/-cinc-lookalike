@@ -55,7 +55,7 @@ On a lead, **+ Saved Search** stores area, price, beds, baths, property type, an
 | You want | Account | Variables |
 | --- | --- | --- |
 | Email when a lead arrives | [Resend](https://resend.com) or [SendGrid](https://sendgrid.com), with a verified from-address | `AGENT_ALERT_EMAIL`, plus `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` |
-| Text when a lead arrives | [Twilio](https://www.twilio.com) and a Twilio phone number | `AGENT_ALERT_PHONE`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
+| Call or text from a lead, and text a visitor who opted in | [Twilio](https://www.twilio.com) API key and a Twilio phone number | `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_SECRET`, `TWILIO_FROM_NUMBER` |
 | Name stored on the lead | — | `AGENT_ALERT_NAME` (optional; otherwise Casey Archibald) |
 | Meta ads | Meta Events Manager | `META_PIXEL_ID` |
 | Google ads | Google Ads conversion action | `GOOGLE_ADS_ID` (`AW-…`) and `GOOGLE_ADS_CONVERSION_LABEL` |
