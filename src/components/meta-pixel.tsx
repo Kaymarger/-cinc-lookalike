@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useRef } from "react";
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { isPublicLeadPath, metaPixelId, pixelEventsForLead, safeSearchString } from "@/lib/meta-pixel";
+import { isPublicLeadPath, pixelEventsForLead, safeSearchString } from "@/lib/meta-pixel-events";
+import { metaPixelId } from "@/lib/meta-pixel";
 import type { SearchFilters } from "@/lib/types";
 
 type Fbq = (...args: unknown[]) => void;

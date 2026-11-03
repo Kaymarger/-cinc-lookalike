@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  META_PIXEL_FALLBACK,
-  isPublicLeadPath,
-  pixelEventsForLead,
-  resolveMetaPixelId,
-  safeSearchString,
-} from "./meta-pixel.ts";
+import { META_PIXEL_FALLBACK, resolveMetaPixelId } from "./meta-pixel.ts";
+import { isPublicLeadPath, pixelEventsForLead, safeSearchString } from "./meta-pixel-events.ts";
 
 test("the site pixel is the fallback when the env value is empty or invalid", () => {
   assert.equal(resolveMetaPixelId(""), META_PIXEL_FALLBACK);
@@ -32,7 +27,10 @@ test("signup, contact, showing, and home value map to events without personal fi
 test("the pixel stays off the agent office", () => {
   assert.equal(isPublicLeadPath("/"), true);
   assert.equal(isPublicLeadPath("/search"), true);
+  assert.equal(isPublicLeadPath("/agents"), true);
+  assert.equal(isPublicLeadPath("/dashboard"), true);
   assert.equal(isPublicLeadPath("/agent"), false);
   assert.equal(isPublicLeadPath("/agent/leads"), false);
   assert.equal(isPublicLeadPath("/dashboard/spa"), false);
+  assert.equal(isPublicLeadPath("/dashboard/settings"), false);
 });

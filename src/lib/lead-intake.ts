@@ -1,4 +1,4 @@
-import { pixelEventsForLead } from "./meta-pixel";
+import { pixelEventsForLead } from "./meta-pixel-events";
 
 /** Shared lead payload checks. Safe to import from the browser and the server. */
 

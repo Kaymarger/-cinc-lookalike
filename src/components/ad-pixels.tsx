@@ -1,6 +1,5 @@
 import Script from "next/script";
-import { MetaPixel } from "@/components/meta-pixel";
-import { metaPixelId } from "@/lib/meta-pixel";
+import { MetaPixelGate } from "@/components/meta-pixel-gate";
 
 const ATTRIBUTION_BOOTSTRAP = `
 try {
@@ -48,18 +47,17 @@ function conversionLabel() {
 
 /** Stores ad click parameters and loads Meta / Google tags only when IDs are set. */
 export function AdPixels() {
-  const meta = metaPixelId();
   const google = googleId();
   const ga4 = ga4Id();
   const label = conversionLabel();
   const tagId = ga4 || google;
-  const config = JSON.stringify({ meta, google, ga4, label });
+  const config = JSON.stringify({ google, ga4, label });
 
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: ATTRIBUTION_BOOTSTRAP }} />
       <script dangerouslySetInnerHTML={{ __html: `window.__gvhsAds=${config};` }} />
-      <MetaPixel />
+      <MetaPixelGate />
       {tagId ? (
         <>
           <Script
