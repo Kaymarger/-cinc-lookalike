@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
@@ -15,6 +15,16 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const defaultMessage = `I'm interested in ${fullAddress(property)}.`;
+  const [message, setMessage] = useState(defaultMessage);
+
+  useEffect(() => {
+    function onAsk(event: Event) {
+      const detail = (event as CustomEvent<string>).detail;
+      if (detail) setMessage(detail);
+    }
+    window.addEventListener("gvhs-inquiry", onAsk);
+    return () => window.removeEventListener("gvhs-inquiry", onAsk);
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,11 +35,17 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
       return;
     }
     const fullName = String(data.get("FullName") || "").trim();
+    const email = String(data.get("Email") || "").trim();
+    const phone = String(data.get("Phone") || "").trim();
+    if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.replace(/\D/g, "").length < 7) {
+      setError("Enter your name, a valid email, and a phone number.");
+      return;
+    }
     setPending(true);
     const result = await capture({
       name: fullName,
-      email: String(data.get("Email") || ""),
-      phone: String(data.get("Phone") || ""),
+      email,
+      phone,
       smsOptIn: true,
       source: "ask_question",
       propertyId: property.id,
@@ -74,7 +90,7 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
           I want more info about this home
         </p>
       </div>
-      <form onSubmit={onSubmit} className="space-y-3 p-5">
+      <form onSubmit={onSubmit} noValidate className="space-y-3 p-5">
         <input
           name="FullName"
           required
@@ -101,7 +117,8 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
         <textarea
           name="Message"
           rows={4}
-          defaultValue={defaultMessage}
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
           aria-label="Message"
           className="w-full border border-[#ddd] px-3 py-2 text-sm outline-none focus:border-[var(--cedar)]"
         />

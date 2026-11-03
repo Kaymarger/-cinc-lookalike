@@ -407,6 +407,32 @@ export async function insertLead(
 ): Promise<StoredLead> {
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
+  const existing = await sql<LeadRow[]>`
+    SELECT * FROM captured_leads
+    WHERE lower(email) = ${lead.email.toLowerCase()}
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  if (existing[0]) {
+    const prior = existing[0];
+    const line = [
+      new Date().toISOString().slice(0, 16),
+      lead.source,
+      lead.propertyAddress,
+      lead.searchLabel,
+      lead.notes,
+    ].filter(Boolean).join(" · ");
+    const rows = await sql<LeadRow[]>`
+      UPDATE captured_leads SET
+        phone = CASE WHEN phone = '' THEN ${lead.phone} ELSE phone END,
+        search_label = CASE WHEN search_label IS NULL OR search_label = '' THEN ${lead.searchLabel ?? null} ELSE search_label END,
+        notes = concat_ws(E'\n', NULLIF(notes, ''), ${line}),
+        updated_at = now()
+      WHERE id = ${prior.id}
+      RETURNING *
+    `;
+    return rowToStoredLead(rows[0]);
+  }
   const rows = await sql<LeadRow[]>`
     INSERT INTO captured_leads (
       id, name, email, phone, sms_opt_in, source, intent, status,

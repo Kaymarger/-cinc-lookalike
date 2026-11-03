@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
 import type { SearchFilters } from "@/lib/types";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/saved-searches";
 
 export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
+  const { user } = useDemoAuth();
   const { add } = useSavedSearches();
   const { capture } = useLeads();
   const [open, setOpen] = useState(false);
@@ -22,6 +24,12 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
   const label = labelFromFilters(filters);
+
+  useEffect(() => {
+    if (!user) return;
+    setName((current) => current || user.name);
+    setEmail((current) => current || user.email);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

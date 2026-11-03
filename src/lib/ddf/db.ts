@@ -84,12 +84,15 @@ export function propertyFromRow(row: ListingRow): Property {
   };
 }
 
+const GREATER_VANCOUVER =
+  "vancouver|burnaby|richmond|surrey|coquitlam|port moody|new westminster|delta|langley|white rock|maple ridge|pitt meadows|anmore|belcarra|lions bay|bowen";
+
 const TYPE_SQL: Record<string, string> = {
   condo: "condo|apartment|condominium",
   apartment: "condo|apartment|condominium",
   house: "house|single|detached|duplex",
   townhouse: "town",
-  "half duplex": "duplex",
+  "half duplex": "duplex|semi",
 };
 
 export async function countListingsMissingBrokerage(): Promise<number> {
@@ -270,7 +273,9 @@ export async function searchDdfListings(filters: SearchFilters, limit = 48): Pro
   const typePattern = filters.propertyType ? TYPE_SQL[filters.propertyType.toLowerCase()] || filters.propertyType : "";
   const rows = await sql<ListingRow[]>`
     SELECT * FROM ddf_listings
-    WHERE (${city} = '' OR city ILIKE ${city})
+    WHERE city ~* ${GREATER_VANCOUVER}
+      AND COALESCE(list_price, 0) > 0
+      AND (${city} = '' OR city ILIKE ${city})
       AND (${filters.minPrice ?? null}::int IS NULL OR list_price >= ${filters.minPrice ?? null})
       AND (${filters.maxPrice ?? null}::int IS NULL OR list_price <= ${filters.maxPrice ?? null})
       AND (${filters.beds ?? null}::int IS NULL OR beds >= ${filters.beds ?? null})
@@ -279,19 +284,29 @@ export async function searchDdfListings(filters: SearchFilters, limit = 48): Pro
       AND (${filters.maxSqft ?? null}::int IS NULL OR sqft <= ${filters.maxSqft ?? null})
       AND (${filters.maxDays ?? null}::int IS NULL OR listed_at >= now() - ((${filters.maxDays ?? 0})::text || ' days')::interval)
       AND (${q} = '' OR address ILIKE ${"%" + q + "%"} OR city ILIKE ${"%" + q + "%"} OR postal_code ILIKE ${"%" + q + "%"} OR listing_id ILIKE ${"%" + q + "%"} OR public_remarks ILIKE ${"%" + q + "%"})
-      AND (${typePattern} = '' OR property_type ~* ${typePattern})
+      AND (
+        ${typePattern} = ''
+        OR property_type ~* ${typePattern}
+        OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
+      )
     ORDER BY listed_at DESC NULLS LAST, list_price DESC
     LIMIT ${limit}
   `;
   const totals = await sql<{ count: string }[]>`
     SELECT count(*)::text AS count FROM ddf_listings
-    WHERE (${city} = '' OR city ILIKE ${city})
+    WHERE city ~* ${GREATER_VANCOUVER}
+      AND COALESCE(list_price, 0) > 0
+      AND (${city} = '' OR city ILIKE ${city})
       AND (${filters.minPrice ?? null}::int IS NULL OR list_price >= ${filters.minPrice ?? null})
       AND (${filters.maxPrice ?? null}::int IS NULL OR list_price <= ${filters.maxPrice ?? null})
       AND (${filters.beds ?? null}::int IS NULL OR beds >= ${filters.beds ?? null})
       AND (${filters.baths ?? null}::numeric IS NULL OR baths >= ${filters.baths ?? null})
       AND (${q} = '' OR address ILIKE ${"%" + q + "%"} OR city ILIKE ${"%" + q + "%"} OR postal_code ILIKE ${"%" + q + "%"} OR listing_id ILIKE ${"%" + q + "%"})
-      AND (${typePattern} = '' OR property_type ~* ${typePattern})
+      AND (
+        ${typePattern} = ''
+        OR property_type ~* ${typePattern}
+        OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
+      )
   `;
   return { properties: rows.map(propertyFromRow), total: Number(totals[0]?.count || rows.length) };
 }
@@ -320,12 +335,18 @@ export async function ddfListingsForAlert(input: {
   const typePattern = input.propertyType ? TYPE_SQL[input.propertyType.toLowerCase()] || input.propertyType : "";
   const rows = await sql<ListingRow[]>`
     SELECT * FROM ddf_listings
-    WHERE (${input.city} = '' OR city ILIKE ${input.city})
+    WHERE city ~* ${GREATER_VANCOUVER}
+      AND COALESCE(list_price, 0) > 0
+      AND (${input.city} = '' OR city ILIKE ${input.city})
       AND (${input.minPrice}::int IS NULL OR list_price >= ${input.minPrice})
       AND (${input.maxPrice}::int IS NULL OR list_price <= ${input.maxPrice})
       AND (${input.beds}::int IS NULL OR beds >= ${input.beds})
       AND (${input.baths}::numeric IS NULL OR baths >= ${input.baths})
-      AND (${typePattern} = '' OR property_type ~* ${typePattern})
+      AND (
+        ${typePattern} = ''
+        OR property_type ~* ${typePattern}
+        OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
+      )
       AND COALESCE(listed_at, modification_timestamp, updated_at) >= now() - (${input.windowDays} || ' days')::interval
       AND NOT (listing_key = ANY(${input.exclude}))
     ORDER BY listed_at DESC NULLS LAST

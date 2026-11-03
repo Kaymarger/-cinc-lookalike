@@ -2045,6 +2045,69 @@ export function DialerView() {
   );
 }
 
+function CalendarAppointmentForm({
+  dayLabel,
+  when,
+  existing,
+  onClose,
+}: {
+  dayLabel: string;
+  when: string;
+  existing?: { id: string; title: string; when: string; agent?: string; eventType?: string; location?: string; end?: string; message?: string; isPrivate?: boolean };
+  onClose: () => void;
+}) {
+  const { update } = useCinc();
+  const chrome = useChrome();
+  const [title, setTitle] = useState(existing?.title || "");
+  const [agent, setAgent] = useState(existing?.agent || "Casey Archibald");
+  const [eventType, setEventType] = useState(existing?.eventType || "Showing");
+  const [location, setLocation] = useState(existing?.location || "");
+  const [start, setStart] = useState(existing?.when || when);
+  const [end, setEnd] = useState(existing?.end || when);
+  const [message, setMessage] = useState(existing?.message || "");
+  const [isPrivate, setPrivate] = useState(Boolean(existing?.isPrivate));
+  const [error, setError] = useState("");
+  return (
+    <ModalFrame title={existing ? "Edit Appointment" : `Appointment on ${dayLabel}`} onClose={onClose}>
+      <Field label="Title"><input className={inputCls} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
+      <Field label="Agent"><input className={inputCls} value={agent} onChange={(event) => setAgent(event.target.value)} /></Field>
+      <Field label="Event type">
+        <select className={inputCls} value={eventType} onChange={(event) => setEventType(event.target.value)}>
+          {["Showing", "Listing appointment", "Meeting", "Call", "Other"].map((item) => <option key={item}>{item}</option>)}
+        </select>
+      </Field>
+      <Field label="Location"><input className={inputCls} value={location} onChange={(event) => setLocation(event.target.value)} /></Field>
+      <Field label="Start"><input className={inputCls} type="date" value={start.slice(0, 10)} onChange={(event) => setStart(event.target.value)} /></Field>
+      <Field label="End"><input className={inputCls} type="date" value={end.slice(0, 10)} onChange={(event) => setEnd(event.target.value)} /></Field>
+      <Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={message} onChange={(event) => setMessage(event.target.value)} /></Field>
+      <label className="mb-2 block text-[13px]"><input type="checkbox" checked={isPrivate} onChange={(event) => setPrivate(event.target.checked)} /> Private</label>
+      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
+      <div className="flex justify-end gap-2">
+        {existing ? <Btn onClick={() => {
+          if (!window.confirm("Delete this appointment?")) return;
+          update((current) => ({ ...current, appointments: current.appointments.filter((item) => item.id !== existing.id) }));
+          chrome.toast("Appointment deleted.");
+          onClose();
+        }}>Delete</Btn> : null}
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="teal" onClick={() => {
+          if (!title.trim()) { setError("Enter a title."); return; }
+          if (!start || !end) { setError("Choose a start and end date."); return; }
+          const next = { title: title.trim(), when: start, end, agent, eventType, location, message, isPrivate, leadId: "" };
+          update((current) => ({
+            ...current,
+            appointments: existing
+              ? current.appointments.map((item) => item.id === existing.id ? { ...item, ...next } : item)
+              : [...current.appointments, { id: uid("appt"), ...next }],
+          }));
+          chrome.toast(existing ? "Appointment updated." : "Appointment saved.");
+          onClose();
+        }}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
 export function CalendarView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
@@ -2097,19 +2160,19 @@ export function CalendarView() {
               {cells.map((day, index) => {
                 const on = day === todayDay && month + 1 === todayMonth && year === todayYear;
                 return (
-                  <button key={index} type="button" className={`h-16 border text-left text-[12px] ${on ? "border-[#1c93b5] bg-[#e7f5f8]" : "border-[#eee]"}`} onClick={() => {
-                    if (!day) return;
-                    chrome.openModal(<ModalFrame title={`Appointment on ${names[month]} ${day}`} onClose={chrome.closeModal}><Field label="Title"><input id="appt-title" className={inputCls} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => {
-                      const title = (document.getElementById("appt-title") as HTMLInputElement | null)?.value.trim();
-                      if (!title) { chrome.toast("Enter a title."); return; }
-                      update((current) => ({ ...current, appointments: [...current.appointments, { id: uid("appt"), leadId: "", title, when: `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` }] }));
-                      chrome.closeModal();
-                      chrome.toast("Appointment added.");
-                    }}>Save</Btn></div></ModalFrame>);
-                  }}>
-                    {day || ""}
-                    {day ? state.appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => <span key={item.id} className="block truncate text-[10px] text-[#1c93b5]">{item.title}</span>) : null}
-                  </button>
+                  <div key={index} role="presentation" className={`h-16 border p-1 text-left text-[12px] ${on ? "border-[#1c93b5] bg-[#e7f5f8]" : "border-[#eee]"}`}>
+                    <button type="button" className="block w-full text-left" onClick={() => {
+                      if (!day) return;
+                      chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[month]} ${day}`} when={`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`} onClose={chrome.closeModal} />);
+                    }}>
+                      {day || ""}
+                    </button>
+                    {day ? state.appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => (
+                      <button key={item.id} type="button" className="block w-full truncate text-left text-[10px] text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[month]} ${day}`} when={item.when} existing={item} onClose={chrome.closeModal} />)}>
+                        {item.title}
+                      </button>
+                    )) : null}
+                  </div>
                 );
               })}
             </div>
@@ -2122,12 +2185,13 @@ export function CalendarView() {
 
 export function TasksView() {
   const { state, update } = useCinc();
+  const chrome = useChrome();
   return (
     <div className="p-4">
       <div className="bg-white p-4">
         {state.reminders.map((item) => (
           <label key={item.id} className="flex items-center gap-2 border-b border-[#eee] py-2 text-[13px]">
-            <input type="checkbox" checked={item.done} onChange={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))} />
+            <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
             <a href={item.leadId ? href.lead(item.leadId) : href.tasks} className="text-[#1c93b5]">{item.title}</a>
             <span className="ml-auto text-[12px] text-[#888]">{item.due}</span>
           </label>

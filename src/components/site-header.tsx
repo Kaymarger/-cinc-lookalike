@@ -159,51 +159,13 @@ export function SiteHeader() {
           )}
         </nav>
 
-        <div className="ml-2 hidden items-center lg:flex">
+        <div className="ml-2 hidden items-center gap-2 lg:flex">
           {agent ? (
-            <div className="relative">
-              <button
-                type="button"
-                aria-expanded={accountOpen}
-                aria-haspopup="menu"
-                onClick={() => {
-                  setAccountOpen((v) => !v);
-                  setMoreOpen(false);
-                }}
-                className="inline-flex max-w-[220px] items-center gap-1 px-3 text-[12px] font-bold tracking-[1px] text-[#1976d2] uppercase"
-              >
-                <span className="truncate">{agent.name}</span>
-                <svg width="8" height="5" viewBox="0 0 8 6" aria-hidden className="shrink-0">
-                  <path d="M0 0h8L4 6z" fill="#1976d2" />
-                </svg>
-              </button>
-              {accountOpen ? (
-                <div className="absolute top-full right-0 z-50 min-w-[220px] border border-[#e6e6e6] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                  {AGENT_MENU.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={close}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-bold tracking-[0.08em] text-[#333] uppercase hover:bg-[#f4f7f8]"
-                    >
-                      <AgentIcon name={item.icon} />
-                      {item.label}
-                    </Link>
-                  ))}
-                  <form action="/api/agent/logout" method="post" onSubmit={() => signOut()}>
-                    <input type="hidden" name="next" value="/" />
-                    <button
-                      type="submit"
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[12px] font-bold tracking-[0.08em] text-[#333] uppercase hover:bg-[#f4f7f8]"
-                    >
-                      <AgentIcon name="logout" />
-                      Logout
-                    </button>
-                  </form>
-                </div>
-              ) : null}
-            </div>
-          ) : ready && user ? (
+            <Link href="/agent" className="px-2 text-[11px] font-bold tracking-[1px] text-[#1976d2] uppercase">
+              Office
+            </Link>
+          ) : null}
+          {ready && user ? (
             <div className="relative">
               <button
                 type="button"
@@ -274,27 +236,12 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            {agent
-              ? AGENT_MENU.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={close}
-                    className="flex items-center gap-3 border-b border-white/15 py-3 text-[12px] font-bold tracking-[1px] !text-white uppercase"
-                  >
-                    {item.label}
-                  </Link>
-                ))
-              : null}
             {agent ? (
-              <form action="/api/agent/logout" method="post" onSubmit={() => signOut()}>
-                <input type="hidden" name="next" value="/" />
-                <button type="submit" className="py-3 text-left text-[12px] font-bold tracking-[1px] uppercase">
-                  Logout
-                </button>
-              </form>
+              <Link href="/agent" onClick={close} className="border-b border-white/15 py-3 text-[12px] font-bold tracking-[1px] !text-white uppercase">
+                Office
+              </Link>
             ) : null}
-            {!agent && user &&
+            {user &&
               ACCOUNT.map((item) => (
                 <Link
                   key={item.href}
@@ -305,7 +252,7 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-            {!agent && user ? (
+            {user ? (
               <button
                 type="button"
                 className="py-3 text-left text-[12px] font-bold tracking-[1px] uppercase"
@@ -316,7 +263,7 @@ export function SiteHeader() {
               >
                 Logout
               </button>
-            ) : !agent ? (
+            ) : (
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
@@ -339,7 +286,7 @@ export function SiteHeader() {
                   Sign up
                 </button>
               </div>
-            ) : null}
+            )}
           </nav>
         </div>
       )}

@@ -56,11 +56,8 @@ export function AgentProfile({
                   {SITE.phoneDisplay}
                 </a>
                 <br />
-                <a
-                  href="mailto:agent@example.com"
-                  className="text-[var(--cedar)] hover:underline"
-                >
-                  agent@example.com
+                <a href="#inquiry" className="text-[var(--cedar)] hover:underline">
+                  Send a message
                 </a>
               </p>
             </div>

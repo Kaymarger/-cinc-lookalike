@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   attributionSummary,
   readStoredAttribution,
@@ -296,6 +297,8 @@ export const LEAD_SOURCES = Object.keys(
 ) as LeadSource[];
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || "";
+  const officeScreen = pathname.startsWith("/agent") || pathname.startsWith("/dashboard");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [ready, setReady] = useState(false);
   const [database, setDatabase] = useState<DatabaseNotice | null>(null);
@@ -314,6 +317,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       setLeads(seeded);
       setReady(true);
     });
+    if (!officeScreen) return () => { cancelled = true; };
     fetch("/api/leads", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
@@ -350,7 +354,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [officeScreen]);
 
   useEffect(() => {
     if (!ready) return;

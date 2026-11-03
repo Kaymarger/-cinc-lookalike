@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { OfficeRole } from "@/lib/office-access";
 
 export type OfficeProfile = {
@@ -107,6 +108,8 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((value) => value + 1), []);
+  const pathname = usePathname() || "";
+  const officeScreen = pathname.startsWith("/agent") || pathname.startsWith("/dashboard");
 
   const endImpersonation = useCallback(() => {
     void fetch("/api/office/become", { method: "DELETE" }).finally(() => {
@@ -116,6 +119,11 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!officeScreen) {
+      setUser(null);
+      setReady(true);
+      return;
+    }
     let cancelled = false;
     fetch("/api/office/me", { cache: "no-store" })
       .then(async (response) => {
@@ -168,7 +176,7 @@ export function OfficeSessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [tick, officeScreen]);
 
   const value = useMemo(
     () => ({

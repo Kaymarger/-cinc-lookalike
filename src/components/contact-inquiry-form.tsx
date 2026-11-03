@@ -18,17 +18,29 @@ export function ContactInquiryForm({
   const { add } = useLeads();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const data = new FormData(e.currentTarget);
     const fullName = String(data.get("FullName") || "").trim();
+    const email = String(data.get("Email") || "").trim();
+    const phone = String(data.get("Phone") || "").trim();
     const address = String(data.get("Address") || "").trim();
     const message = String(data.get("Message") || "").trim();
+    if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.replace(/\D/g, "").length < 7) {
+      setError("Enter your name, a valid email, and a phone number.");
+      return;
+    }
+    if (includeAddress && !address) {
+      setError("Enter the home address.");
+      return;
+    }
     add({
       name: fullName,
-      email: String(data.get("Email") || ""),
-      phone: String(data.get("Phone") || ""),
+      email,
+      phone,
       smsOptIn: true,
       source,
       propertyAddress: address || undefined,
@@ -45,7 +57,7 @@ export function ContactInquiryForm({
       <div className="border border-[#e5e5e5] bg-white p-6 text-center sm:p-8">
         <CheckCircle2 className="mx-auto size-12 text-[var(--cedar)]" />
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl text-[#222]">
-          Thanks{name ? `, ${name.split(" ")[0]}` : ""}!
+          Thanks{name ? `, ${name}` : ""}!
         </h2>
         <p className="mt-2 text-sm text-[#666]">
           Your inquiry was sent successfully. Casey will follow up shortly.
@@ -77,7 +89,7 @@ export function ContactInquiryForm({
           {SITE.phoneDisplay}
         </p>
       </div>
-      <form onSubmit={onSubmit} className="space-y-3 p-5">
+      <form onSubmit={onSubmit} noValidate className="space-y-3 p-5">
         <input
           name="FullName"
           required
@@ -135,6 +147,7 @@ export function ContactInquiryForm({
           </Link>
           .
         </p>
+        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
         <button
           type="submit"
           className="h-11 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95"

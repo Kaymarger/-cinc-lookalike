@@ -235,15 +235,15 @@ function siteRow(lead: Lead): Row {
       .filter(Boolean)
       .join(" · "),
     price: lead.propertyAddress ? "Inquiry" : "$ n/a",
-    city: "Vancouver",
-    timeframe: lead.searchLabel || "—",
+    city: lead.propertyAddress ? "Inquiry" : "—",
+    timeframe: "—",
     lastLogin: "—",
-    logins: 1,
-    lastTouch: ago(lead.updatedAt),
+    logins: 0,
+    lastTouch: "—",
     nextReminder: lead.tasks.find((task) => !task.done)?.due || "n/a",
     overdue: false,
-    views: lead.viewedProperties.length,
-    saved: lead.savedSearches.length,
+    views: 0,
+    saved: 0,
     fav: 0,
     inq: lead.source === "ask_question" || lead.source === "showing_request" ? 1 : 0,
     assigned: {
@@ -982,9 +982,15 @@ export function LeadsView({
                     <td className="px-2 text-[12px]">{row.timeframe}</td>
                     <td className="px-2 text-[12px]">{row.lastLogin}<br />{row.logins} Total</td>
                     <td className="px-2 text-[12px] leading-5">
-                      <span title="Call">☎ {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
-                      <span title="Email">✉ {row.email ? `${(row.logins % 8) + 1}d` : "-"}</span><br />
-                      <span title="Text">✎ {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
+                      {row.origin === "site" ? (
+                        <span>—</span>
+                      ) : (
+                        <>
+                          <span title="Call">☎ {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
+                          <span title="Email">✉ {row.email ? `${(row.logins % 8) + 1}d` : "-"}</span><br />
+                          <span title="Text">✎ {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
+                        </>
+                      )}
                     </td>
                     <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>{row.nextReminder}</td>
                     <td className="px-2 text-[11px] leading-5">
@@ -2016,6 +2022,12 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
       </Field>
       {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="flex justify-end gap-2">
+        {reminderId ? <Btn onClick={() => {
+          if (!window.confirm("Delete this reminder?")) return;
+          update((current) => ({ ...current, reminders: current.reminders.filter((item) => item.id !== reminderId) }));
+          chrome.toast("Reminder deleted.");
+          onClose();
+        }}>Delete</Btn> : null}
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
           if (!name.trim()) { setError("Enter a reminder name."); return; }

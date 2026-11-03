@@ -47,7 +47,7 @@ export default function HomePulsePage() {
         HomePulse
       </h1>
       <p className="mt-2 text-sm text-[#354652]">
-        Claim a home to watch. Sample only — nothing is sent to a live valuation service.
+        Claim a home to watch. Casey can follow up from the office about value and next steps.
       </p>
       <form onSubmit={add} className="mt-6 space-y-3 border border-[#dbe3e8] bg-white p-5">
         <input

@@ -145,8 +145,7 @@ function AuthDialog({
               Welcome, {confirmed}
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[#354652]">
-              Free access is on, and your lead is on the agent list now —
-              source IDX Registration, with the signup time and activity.
+              You can browse full listing details and save homes. An agent will follow up using the contact details you entered.
             </p>
             <div className="mt-6 flex flex-col gap-2">
               <button
@@ -218,7 +217,7 @@ function AuthDialog({
                 <Link href="/privacy" className="font-bold underline" onClick={onClose}>
                   Privacy Policy
                 </Link>
-                . This is a local sample sign-in and does not text you.
+                . You can withdraw consent at any time.
               </p>
             </form>
           </>

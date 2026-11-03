@@ -28,7 +28,12 @@ type Chip = { key: keyof SearchFilters; label: string };
 
 function chipsFrom(filters: SearchFilters): Chip[] {
   const chips: Chip[] = [];
-  if (filters.q) chips.push({ key: "q", label: `“${filters.q}”` });
+  if (filters.q) {
+    const quoted = filters.q.replace(/^["“”']+|["“”']+$/g, "").trim();
+    if (!filters.city || quoted.toLowerCase() !== filters.city.toLowerCase()) {
+      chips.push({ key: "q", label: `“${quoted}”` });
+    }
+  }
   if (filters.city) chips.push({ key: "city", label: filters.city });
   if (filters.propertyType)
     chips.push({ key: "propertyType", label: filters.propertyType });

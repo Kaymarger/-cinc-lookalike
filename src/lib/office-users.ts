@@ -9,7 +9,7 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/password-hash";
 
 export const BOOTSTRAP_ID = "bootstrap";
-export const BOOTSTRAP_EMAIL = SITE.email;
+export const BOOTSTRAP_EMAIL = "office-owner@archibald.local";
 
 export type OfficeUser = {
   id: string;

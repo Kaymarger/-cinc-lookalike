@@ -1,16 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { getPropertyById } from "@/lib/search";
+import type { Property } from "@/lib/types";
 
 export default function RecentlyViewedPage() {
   const { ready, ids, clear } = useRecentlyViewed();
-  const homes = ready
-    ? ids.map((id) => getPropertyById(id)).filter(Boolean)
-    : [];
+  const [homes, setHomes] = useState<Property[]>([]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const local = ids.map((id) => getPropertyById(id)).filter((item): item is Property => Boolean(item));
+    const missing = ids.filter((id) => !local.some((item) => item.id === id));
+    if (!missing.length) {
+      setHomes(local);
+      return;
+    }
+    void fetch(`/api/listings?ids=${encodeURIComponent(missing.join(","))}`)
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { properties?: Property[] } | null;
+        const remote = data?.properties ?? [];
+        const byId = new Map([...local, ...remote].map((item) => [item.id, item]));
+        setHomes(ids.map((id) => byId.get(id)).filter((item): item is Property => Boolean(item)));
+      })
+      .catch(() => setHomes(local));
+  }, [ready, ids]);
 
   return (
     <div className="bg-white">
@@ -56,7 +74,7 @@ export default function RecentlyViewedPage() {
         ) : (
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {homes.map((home) => (
-              <PropertyCard key={home!.id} property={home!} />
+              <PropertyCard key={home.id} property={home} />
             ))}
           </div>
         )}

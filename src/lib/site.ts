@@ -7,8 +7,8 @@ export const SITE = {
   phoneTel: "6043637858",
   addressLine: "300 - 1195 W Broadway",
   cityLine: "Vancouver, BC V6H 3X5",
-  /** Sample mailbox. The live contact email is not copied into this demo. */
-  email: "agent@example.com",
+  /** Public contact is the office phone and the contact form. */
+  email: "",
   facebook: "https://www.facebook.com/caseyarchibaldvancouverrealtor",
   linkedin: "https://www.linkedin.com/in/casey-archibald-06836730/",
   instagram: "https://www.instagram.com/caseyarchibald/",

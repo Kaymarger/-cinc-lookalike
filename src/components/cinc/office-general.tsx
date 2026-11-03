@@ -48,7 +48,7 @@ export function OfficeGeneralSettings() {
   if (!ready) return <p className="p-4 text-[13px] text-[#666]">Loading office settings…</p>;
   const amounts = form.reassignUnit === "minute(s)" ? REASSIGN_MINUTES : form.reassignUnit === "day(s)" ? REASSIGN_DAYS : REASSIGN_HOURS;
   return (
-    <div className="space-y-4">
+        <div className="space-y-4 pt-2">
       <Box title="Seller">
         <Field label="Auto-Apply Label">
           <select className={inputCls} value={form.sellerLabel} onChange={(event) => set("sellerLabel", event.target.value)}>{AUTO_LABELS.map((item) => <option key={item}>{item}</option>)}</select>

@@ -328,6 +328,7 @@ export function PropertyDetail({ property }: { property: Property }) {
             </div>
             )}
 
+            {property.features.length > 0 ? (
             <section className="mt-10">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">
                 Features
@@ -343,6 +344,7 @@ export function PropertyDetail({ property }: { property: Property }) {
                 ))}
               </ul>
             </section>
+            ) : null}
 
             <div className="mt-8 flex flex-wrap gap-3">
               <LeadDialog
@@ -396,14 +398,15 @@ export function PropertyDetail({ property }: { property: Property }) {
               <ul className="mt-4 space-y-2">
                 {BUYER_QUESTIONS.map((q) => (
                   <li key={q}>
-                    <LeadDialog
-                      triggerLabel={q}
-                      propertyAddress={property.address}
-                      propertyId={property.id}
-                      source="ask_question"
-                      variant="outline"
-                      className="!h-auto !w-full !justify-start !whitespace-normal !border-0 !bg-transparent !px-0 !py-1.5 !text-left !text-[13px] !font-normal !normal-case !tracking-normal !text-[var(--cedar)] hover:!bg-transparent hover:!underline"
-                    />
+                    <a
+                      href="#maincontent_propertyinquirysection"
+                      className="block py-1.5 text-left text-[13px] text-[var(--cedar)] hover:underline"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent("gvhs-inquiry", { detail: q }));
+                      }}
+                    >
+                      {q}
+                    </a>
                   </li>
                 ))}
               </ul>
