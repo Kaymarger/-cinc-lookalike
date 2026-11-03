@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
-import { catalogSearch } from "@/lib/catalog";
+import { catalogFeatured } from "@/lib/catalog";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Featured Listings",
-  description: "Listings hand-picked by our agents.",
+  description: "Archibald Real Estate Group listings, then the newest Greater Vancouver homes.",
 };
 
 export default async function FeaturedPage() {
-  const { properties } = await catalogSearch({ sort: "newest" });
-  const list = properties.slice(0, 9);
+  const list = await catalogFeatured(9);
 
   return (
     <div className="bg-white">
@@ -22,8 +23,8 @@ export default async function FeaturedPage() {
         <h1 className="text-center font-[family-name:var(--font-display)] text-3xl font-normal text-[#222] sm:text-4xl">
           Featured Listings
         </h1>
-        <p className="mt-4 text-center text-[15px] text-[#666]">
-          Listings hand-picked by our agents.
+        <p className="mx-auto mt-4 max-w-xl text-center text-[15px] text-[#666]">
+          Archibald Real Estate Group listings come first, then the newest homes for sale across Greater Vancouver.
         </p>
 
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

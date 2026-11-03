@@ -135,7 +135,14 @@ CREATE TABLE IF NOT EXISTS ddf_listings (
 
 CREATE INDEX IF NOT EXISTS ddf_listings_city_idx ON ddf_listings (lower(city));
 CREATE INDEX IF NOT EXISTS ddf_listings_price_idx ON ddf_listings (list_price);
-CREATE INDEX IF NOT EXISTS ddf_listings_listed_idx ON ddf_listings (listed_at DESC);
+CREATE INDEX IF NOT EXISTS ddf_listings_listed_idx ON ddf_listings (listed_at DESC NULLS LAST);
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS neighbourhood text NOT NULL DEFAULT '';
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS virtual_tour_url text NOT NULL DEFAULT '';
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS video_url text NOT NULL DEFAULT '';
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS floor_plans jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS open_houses jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE ddf_listings ADD COLUMN IF NOT EXISTS details_synced boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS ddf_listings_neighbourhood_idx ON ddf_listings (lower(neighbourhood));
 
 CREATE TABLE IF NOT EXISTS ddf_sync_state (
   id text PRIMARY KEY,

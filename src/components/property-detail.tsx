@@ -253,6 +253,7 @@ export function PropertyDetail({ property }: { property: Property }) {
                 <h1 className="mt-2 text-xl font-medium text-[#222] sm:text-2xl">
                   {property.address},
                   <br />
+                  {property.neighborhood ? `${property.neighborhood}, ` : ""}
                   {property.city}, {property.province} {property.postalCode}
                 </h1>
               </div>
@@ -275,11 +276,7 @@ export function PropertyDetail({ property }: { property: Property }) {
               ) : null}
             </div>
 
-            {property.openHouse && (
-              <p className="mt-5 inline-flex bg-[var(--mist)] px-3 py-2 text-sm font-medium text-[var(--cedar)]">
-                Open house · {property.openHouse}
-              </p>
-            )}
+            <ListingExtras property={property} />
 
             <section className="mt-10">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">
@@ -447,6 +444,80 @@ export function PropertyDetail({ property }: { property: Property }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function videoEmbed(url: string): string | null {
+  const youtube = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
+  if (youtube) return `https://www.youtube.com/embed/${youtube[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return null;
+}
+
+function ListingExtras({ property }: { property: Property }) {
+  const houses = property.openHouses ?? [];
+  const plans = property.floorPlans ?? [];
+  const embed = property.videoUrl ? videoEmbed(property.videoUrl) : null;
+  if (!houses.length && !property.virtualTourUrl && !property.videoUrl && !plans.length) return null;
+  return (
+    <div className="mt-8 space-y-8">
+      {houses.length > 0 ? (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">Open houses</h2>
+          <ul className="mt-3 space-y-2">
+            {houses.map((house) => (
+              <li key={`${house.date}-${house.start}`} className="border border-[#e5e5e5] bg-[var(--mist)] px-3 py-2 text-sm text-[#333]">
+                <span className="font-semibold text-[var(--cedar)]">
+                  {[house.date, house.start && house.end ? `${house.start}–${house.end}` : house.start].filter(Boolean).join(" · ")}
+                </span>
+                {house.remarks ? <span className="mt-1 block text-[#555]">{house.remarks}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {property.virtualTourUrl ? (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">Virtual tour</h2>
+          <a href={property.virtualTourUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-10 items-center bg-[var(--cedar)] px-4 text-sm font-semibold text-white">
+            Open virtual tour
+          </a>
+        </section>
+      ) : null}
+      {property.videoUrl ? (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">Video</h2>
+          {embed ? (
+            <iframe title="Listing video" src={embed} className="mt-3 aspect-video w-full max-w-2xl border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+          ) : (
+            <a href={property.videoUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-sm font-semibold text-[var(--cedar)] underline">
+              Watch the video
+            </a>
+          )}
+        </section>
+      ) : null}
+      {plans.length > 0 ? (
+        <section>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#222]">Floor plans</h2>
+          <ul className="mt-3 space-y-3">
+            {plans.map((plan) => (
+              <li key={plan.url}>
+                {/\.(jpe?g|png|webp|gif)(\?|$)/i.test(plan.url) ? (
+                  // Floor-plan files are hosted by the listing feed.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={plan.url} alt={plan.label} className="max-h-80 w-auto max-w-full border border-[#eee]" />
+                ) : (
+                  <a href={plan.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[var(--cedar)] underline">
+                    {plan.label}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { HeroSearch } from "@/components/hero-search";
-import { catalogSearch } from "@/lib/catalog";
+import { catalogFeatured } from "@/lib/catalog";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 
 const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
@@ -32,10 +32,10 @@ const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
 );
 
 export const maxDuration = 60;
+export const revalidate = 60;
 
 export default async function HomePage() {
-  const { properties } = await catalogSearch({ sort: "newest" });
-  const featured = properties.slice(0, 8);
+  const featured = await catalogFeatured(8);
 
   return (
     <>
@@ -69,6 +69,9 @@ export default async function HomePage() {
           <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-normal text-[#1f2930]">
             Featured Listings
           </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
+            Archibald Real Estate Group listings come first, then the newest homes for sale across Greater Vancouver.
+          </p>
           <div className="mt-8">
             <FeaturedCarousel properties={featured} />
           </div>

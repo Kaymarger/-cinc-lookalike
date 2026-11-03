@@ -26,7 +26,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Arbutus",
     title: "Homes for Sale in Arbutus",
     description: "Arbutus neighbourhood listings in Vancouver.",
-    filters: { city: "Vancouver", q: "Arbutus" },
+    filters: { q: "Arbutus" },
   },
   {
     id: "PDQVLZZZ5N5W1LPMJ",
@@ -34,7 +34,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Cambie",
     title: "Homes for Sale in Cambie",
     description: "Cambie corridor homes for sale.",
-    filters: { city: "Vancouver", q: "Cambie" },
+    filters: { q: "Cambie" },
   },
   {
     id: "PDQVLZZZTNSN6V464",
@@ -42,7 +42,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Coal Harbour",
     title: "Homes for Sale in Coal Harbour",
     description: "Coal Harbour condos and homes for sale.",
-    filters: { city: "Vancouver", q: "Coal Harbour" },
+    filters: { q: "Coal Harbour" },
   },
   {
     id: "PDQVLZZZW5Z6W862T",
@@ -58,7 +58,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Dunbar",
     title: "Homes for Sale in Dunbar",
     description: "Dunbar family homes and listings.",
-    filters: { city: "Vancouver", q: "Dunbar" },
+    filters: { q: "Dunbar" },
   },
   {
     id: "PDQVLZZZ4M1YVS0VM",
@@ -74,7 +74,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Edgemont",
     title: "Homes for Sale in Edgemont",
     description: "Edgemont Village and surrounding North Vancouver listings.",
-    filters: { city: "North Vancouver", q: "Edgemont" },
+    filters: { q: "Edgemont" },
   },
   {
     id: "PDQVLZZZ5N5W1L6RD",
@@ -82,7 +82,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Fairview",
     title: "Homes for Sale in Fairview",
     description: "Fairview homes and condos for sale.",
-    filters: { city: "Vancouver", q: "Fairview" },
+    filters: { q: "Fairview" },
   },
   {
     id: "PDQVLZZZ52P2NMR2W",
@@ -90,7 +90,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in False Creek",
     title: "Homes for Sale in False Creek",
     description: "False Creek waterfront and nearby listings.",
-    filters: { city: "Vancouver", q: "False Creek" },
+    filters: { q: "False Creek" },
   },
   {
     id: "PDQVLZZZV7YD8ZVV9",
@@ -98,7 +98,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Kitsilano",
     title: "Homes for Sale in Kitsilano",
     description: "Kitsilano homes for sale near the beach and Broadway.",
-    filters: { city: "Vancouver", q: "Kitsilano" },
+    filters: { q: "Kitsilano" },
   },
   {
     id: "PDQVLZZZT3D6CXP0D",
@@ -106,7 +106,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Lynn Valley",
     title: "Homes for Sale in Lynn Valley",
     description: "Lynn Valley North Vancouver listings.",
-    filters: { city: "North Vancouver", q: "Lynn Valley" },
+    filters: { q: "Lynn Valley" },
   },
   {
     id: "PDQVLZZZ5X2JKPS06",
@@ -114,7 +114,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Mount Pleasant",
     title: "Homes for Sale in Mount Pleasant",
     description: "Mount Pleasant homes and condos for sale.",
-    filters: { city: "Vancouver", q: "Mount Pleasant" },
+    filters: { q: "Mount Pleasant" },
   },
   {
     id: "PDQVLZZZ4RY0VTJP8",
@@ -130,7 +130,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Point Grey",
     title: "Homes for Sale in Point Grey",
     description: "Point Grey Westside homes for sale.",
-    filters: { city: "Vancouver", q: "Point Grey" },
+    filters: { q: "Point Grey" },
   },
   {
     id: "PDQVLZZZW5Z626339",
@@ -162,7 +162,7 @@ export const QUICK_SEARCHES: QuickSearch[] = [
     label: "Homes for Sale in Yaletown",
     title: "Homes for Sale in Yaletown",
     description: "Yaletown condos and lofts for sale.",
-    filters: { city: "Vancouver", q: "Yaletown" },
+    filters: { q: "Yaletown" },
   },
   {
     id: "PDQVLZZZ3DW1JBZMV",

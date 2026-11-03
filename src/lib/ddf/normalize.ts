@@ -1,5 +1,14 @@
 export type DdfPhoto = { url: string; order: number };
 
+export type DdfFloorPlan = { url: string; label: string };
+
+export type DdfOpenHouse = {
+  date: string;
+  start: string;
+  end: string;
+  remarks: string;
+};
+
 export type DdfListing = {
   listingKey: string;
   listingId: string;
@@ -21,6 +30,13 @@ export type DdfListing = {
   listedAt: string | null;
   modifiedAt: string | null;
   photos: DdfPhoto[];
+  neighbourhood: string;
+  virtualTourUrl: string;
+  videoUrl: string;
+  floorPlans: DdfFloorPlan[];
+  openHouses: DdfOpenHouse[];
+  /** True only after a detail read that asked for media and open houses. */
+  detailsSynced: boolean;
 };
 
 function text(value: unknown): string {
@@ -66,29 +82,108 @@ function realtorUrl(record: Record<string, unknown>): string {
   return "";
 }
 
-function photosOf(record: Record<string, unknown>): DdfPhoto[] {
+function mediaUrl(row: Record<string, unknown>): string {
+  return text(row.MediaURL) || text(row.PhotoURL) || text(row.LargePhotoURL) || text(row.url);
+}
+
+function mediaKind(row: Record<string, unknown>, url: string): "photo" | "video" | "tour" | "floor" | "skip" {
+  const category = `${text(row.MediaCategory)} ${text(row.MediaType)} ${text(row.ShortDescription)} ${text(row.LongDescription)}`.toLowerCase();
+  if (/floor/.test(category)) return "floor";
+  if (/virtual|3d tour|matterport|unbranded virtual|branded virtual/.test(category)) return "tour";
+  if (/video/.test(category)) return "video";
+  if (/youtube\.com|youtu\.be|vimeo\.com/i.test(url)) return "video";
+  if (/matterport|virtualtour|myvisuallistings/i.test(url)) return "tour";
+  if (/\.pdf(\?|$)/i.test(url)) return /floor|plan/i.test(category) ? "floor" : "skip";
+  const image = /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url) || url.includes("/highres/") || url.includes("/listing/");
+  if ((!category.trim() || /photo|image/.test(category)) && image) return "photo";
+  return "skip";
+}
+
+export function mediaFromRecord(record: Record<string, unknown>): {
+  photos: DdfPhoto[];
+  virtualTourUrl: string;
+  videoUrl: string;
+  floorPlans: DdfFloorPlan[];
+} {
   const media = record.Media ?? record.Photo ?? record.Photos;
   const list = Array.isArray(media) ? media : [];
   const photos: DdfPhoto[] = [];
+  const floorPlans: DdfFloorPlan[] = [];
+  let virtualTourUrl = text(record.VirtualTourURLUnbranded) || text(record.VirtualTourURLBranded);
+  let videoUrl = "";
   list.forEach((item, index) => {
     if (!item || typeof item !== "object") return;
     const row = item as Record<string, unknown>;
-    const url = text(row.MediaURL) || text(row.PhotoURL) || text(row.LargePhotoURL) || text(row.url);
-    const category = text(row.MediaCategory) || text(row.MediaType);
-    const photo = !category || /photo/i.test(category);
-    const image = /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url) || url.includes("/highres/") || url.includes("/listing/");
-    if (!url.startsWith("http") || !photo || !image) return;
-    if (/youtube\.com|youtu\.be|\.pdf(\?|$)/i.test(url)) return;
-    const order = num(row.Order ?? row.SequenceId) || index;
-    photos.push({ url, order });
+    const url = mediaUrl(row);
+    if (!url.startsWith("http")) return;
+    const kind = mediaKind(row, url);
+    if (kind === "photo") photos.push({ url, order: num(row.Order ?? row.SequenceId) || index });
+    else if (kind === "tour" && !virtualTourUrl) virtualTourUrl = url;
+    else if (kind === "video" && !videoUrl) videoUrl = url;
+    else if (kind === "floor") floorPlans.push({ url, label: text(row.ShortDescription) || text(row.LongDescription) || "Floor plan" });
   });
   photos.sort((a, b) => a.order - b.order);
   const seen = new Set<string>();
-  return photos.filter((photo) => {
-    if (seen.has(photo.url)) return false;
-    seen.add(photo.url);
-    return true;
-  });
+  return {
+    photos: photos.filter((photo) => {
+      if (seen.has(photo.url)) return false;
+      seen.add(photo.url);
+      return true;
+    }),
+    virtualTourUrl,
+    videoUrl,
+    floorPlans: floorPlans.filter((plan) => {
+      if (seen.has(plan.url)) return false;
+      seen.add(plan.url);
+      return true;
+    }),
+  };
+}
+
+function clock(value: unknown): string {
+  const raw = text(value);
+  if (!raw) return "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime()) && /t|\d{4}-/i.test(raw)) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Vancouver",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(parsed);
+  }
+  return raw;
+}
+
+export function openHousesFromRecord(record: Record<string, unknown>): DdfOpenHouse[] {
+  const media = record.OpenHouse ?? record.OpenHouses;
+  const list = Array.isArray(media) ? media : [];
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Vancouver",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const houses: DdfOpenHouse[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const date = text(row.OpenHouseDate).slice(0, 10);
+    if (date && date < today) continue;
+    const start = clock(row.OpenHouseStartTime);
+    const end = clock(row.OpenHouseEndTime);
+    if (!date && !start) continue;
+    houses.push({
+      date,
+      start,
+      end,
+      remarks: text(row.OpenHouseRemarks) || text(row.OpenHouseType),
+    });
+  }
+  return houses;
+}
+
+export function neighbourhoodOf(record: Record<string, unknown>): string {
+  return text(record.CityRegion) || text(record.SubdivisionName) || text(record.MLSAreaMinor);
 }
 
 function officeName(record: Record<string, unknown>): string {
@@ -129,6 +224,7 @@ export function listingFromOData(record: Record<string, unknown>): DdfListing | 
   const address = addressOf(record);
   if (!listingKey || !address) return null;
   const baths = num(record.BathroomsTotalInteger ?? record.BathroomsTotalDecimal ?? record.BathroomsFull);
+  const media = mediaFromRecord(record);
   return {
     listingKey,
     listingId: text(record.ListingId) || listingKey,
@@ -149,7 +245,13 @@ export function listingFromOData(record: Record<string, unknown>): DdfListing | 
     longitude: num(record.Longitude),
     listedAt: when(record.ListingContractDate ?? record.OriginalEntryTimestamp ?? record.OnMarketDate),
     modifiedAt: when(record.ModificationTimestamp),
-    photos: photosOf(record).slice(0, 24),
+    photos: media.photos.slice(0, 24),
+    neighbourhood: neighbourhoodOf(record),
+    virtualTourUrl: media.virtualTourUrl,
+    videoUrl: media.videoUrl,
+    floorPlans: media.floorPlans.slice(0, 8),
+    openHouses: openHousesFromRecord(record).slice(0, 6),
+    detailsSynced: false,
   };
 }
 
@@ -206,5 +308,11 @@ export function listingFromRetsXml(block: string): DdfListing | null {
     listedAt: when(xmlText(block, "ListingContractDate")),
     modifiedAt: when(xmlText(block, "LastUpdated") || xmlText(block, "ModificationTimestamp")),
     photos: photoUrls.filter((url) => url.startsWith("http")).map((url, order) => ({ url, order })),
+    neighbourhood: xmlText(block, "CityRegion") || xmlText(block, "SubdivisionName"),
+    virtualTourUrl: xmlText(block, "VirtualTourURL") || xmlText(block, "VirtualTourURLUnbranded"),
+    videoUrl: xmlText(block, "VideoURL"),
+    floorPlans: [],
+    openHouses: [],
+    detailsSynced: false,
   };
 }

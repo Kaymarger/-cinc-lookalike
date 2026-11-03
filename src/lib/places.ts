@@ -1,10 +1,8 @@
-import type { City } from "./types";
-
 export type PlaceKind = "neighbourhood" | "city";
 
 export type Place = {
   label: string;
-  city: City;
+  city: string;
   kind: PlaceKind;
 };
 
@@ -51,6 +49,10 @@ export const PLACES: Place[] = [
   { label: "Maillardville", city: "Coquitlam", kind: "neighbourhood" },
   { label: "Burke Mountain", city: "Coquitlam", kind: "neighbourhood" },
   { label: "Guildford", city: "Surrey", kind: "neighbourhood" },
+  { label: "Fleetwood", city: "Surrey", kind: "neighbourhood" },
+  { label: "Newton", city: "Surrey", kind: "neighbourhood" },
+  { label: "Cloverdale", city: "Surrey", kind: "neighbourhood" },
+  { label: "Whalley", city: "Surrey", kind: "neighbourhood" },
   { label: "South Surrey", city: "Surrey", kind: "neighbourhood" },
   { label: "Moody Centre", city: "Port Moody", kind: "neighbourhood" },
   { label: "Town Centre", city: "Maple Ridge", kind: "neighbourhood" },
@@ -69,12 +71,19 @@ export const PLACES: Place[] = [
   { label: "Maple Ridge", city: "Maple Ridge", kind: "city" },
 ];
 
-export function suggestPlaces(query: string, limit = 8): Place[] {
+export function suggestPlaces(query: string, limit = 8, extra: Place[] = []): Place[] {
   const q = query.trim().toLowerCase();
   if (q.length < 1) return [];
+  const seen = new Set<string>();
+  const all = [...extra, ...PLACES].filter((place) => {
+    const key = `${place.kind}:${place.label.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const starts: Place[] = [];
   const contains: Place[] = [];
-  for (const place of PLACES) {
+  for (const place of all) {
     const label = place.label.toLowerCase();
     if (label.startsWith(q)) starts.push(place);
     else if (label.includes(q) || place.city.toLowerCase().includes(q)) contains.push(place);

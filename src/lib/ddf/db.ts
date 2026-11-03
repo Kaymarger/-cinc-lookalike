@@ -1,6 +1,31 @@
 import { officeDb } from "@/lib/leads-db";
-import type { DdfListing, DdfPhoto } from "@/lib/ddf/normalize";
+import type { DdfFloorPlan, DdfListing, DdfOpenHouse, DdfPhoto } from "@/lib/ddf/normalize";
 import type { Property, SearchFilters } from "@/lib/types";
+
+export const SEARCH_PAGE_SIZE = 24;
+
+/** Cities served by the public Greater Vancouver search. */
+export const GREATER_VANCOUVER_CITIES = [
+  "vancouver",
+  "north vancouver",
+  "west vancouver",
+  "burnaby",
+  "richmond",
+  "surrey",
+  "coquitlam",
+  "port coquitlam",
+  "port moody",
+  "new westminster",
+  "delta",
+  "langley",
+  "white rock",
+  "maple ridge",
+  "pitt meadows",
+  "anmore",
+  "belcarra",
+  "lions bay",
+  "bowen island",
+];
 
 export type DdfSyncState = {
   detailUrl: string | null;
@@ -33,7 +58,27 @@ type ListingRow = {
   listed_at: Date | string | null;
   photos: DdfPhoto[] | string | null;
   modification_timestamp: Date | string | null;
+  neighbourhood?: string | null;
+  virtual_tour_url?: string | null;
+  video_url?: string | null;
+  floor_plans?: DdfFloorPlan[] | string | null;
+  open_houses?: DdfOpenHouse[] | string | null;
+  details_synced?: boolean | null;
+  total_count?: string | number;
 };
+
+function jsonList<T>(value: T[] | string | null | undefined): T[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as T[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 function photos(value: ListingRow["photos"]): DdfPhoto[] {
   if (Array.isArray(value)) return value;
@@ -58,6 +103,10 @@ function daysAgo(value: Date | string | null): number {
 export function propertyFromRow(row: ListingRow): Property {
   const images = photos(row.photos).map((photo) => photo.url).filter((url) => url.startsWith("http"));
   const baths = Number(row.baths ?? 0) || 0;
+  const openHouses = jsonList<DdfOpenHouse>(row.open_houses);
+  const floorPlans = jsonList<DdfFloorPlan>(row.floor_plans);
+  const nextOpen = openHouses[0];
+  const virtualTourUrl = row.virtual_tour_url || "";
   return {
     id: row.listing_key,
     mlsNumber: row.listing_id,
@@ -81,11 +130,16 @@ export function propertyFromRow(row: ListingRow): Property {
     lng: Number(row.longitude ?? 0) || 0,
     feed: "ddf",
     realtorUrl: row.realtor_url,
+    neighborhood: row.neighbourhood || undefined,
+    openHouses,
+    openHouse: nextOpen ? [nextOpen.date, nextOpen.start && nextOpen.end ? `${nextOpen.start}–${nextOpen.end}` : nextOpen.start].filter(Boolean).join(" · ") : undefined,
+    virtualTour: Boolean(virtualTourUrl),
+    virtualTourUrl: virtualTourUrl || undefined,
+    videoUrl: row.video_url || undefined,
+    floorPlans,
+    detailsSynced: Boolean(row.details_synced),
   };
 }
-
-const GREATER_VANCOUVER =
-  "vancouver|burnaby|richmond|surrey|coquitlam|port moody|new westminster|delta|langley|white rock|maple ridge|pitt meadows|anmore|belcarra|lions bay|bowen";
 
 const TYPE_SQL: Record<string, string> = {
   condo: "condo|apartment|condominium",
@@ -119,7 +173,8 @@ export async function upsertDdfListings(listings: DdfListing[]): Promise<number>
       INSERT INTO ddf_listings (
         listing_key, listing_id, list_price, address, city, province, postal_code,
         beds, baths, sqft, property_type, public_remarks, brokerage_name, realtor_url,
-        latitude, longitude, listed_at, photos, modification_timestamp, updated_at
+        latitude, longitude, listed_at, photos, modification_timestamp, updated_at,
+        neighbourhood, virtual_tour_url, video_url, floor_plans, open_houses, details_synced
       ) VALUES (
         ${listing.listingKey},
         ${listing.listingId},
@@ -140,7 +195,13 @@ export async function upsertDdfListings(listings: DdfListing[]): Promise<number>
         ${listing.listedAt},
         ${sql.json(listing.photos)},
         ${listing.modifiedAt},
-        now()
+        now(),
+        ${listing.neighbourhood},
+        ${listing.virtualTourUrl},
+        ${listing.videoUrl},
+        ${sql.json(listing.floorPlans)},
+        ${sql.json(listing.openHouses)},
+        ${listing.detailsSynced}
       )
       ON CONFLICT (listing_key) DO UPDATE SET
         listing_id = EXCLUDED.listing_id,
@@ -154,13 +215,19 @@ export async function upsertDdfListings(listings: DdfListing[]): Promise<number>
         sqft = EXCLUDED.sqft,
         property_type = EXCLUDED.property_type,
         public_remarks = EXCLUDED.public_remarks,
-        brokerage_name = EXCLUDED.brokerage_name,
+        brokerage_name = CASE WHEN EXCLUDED.brokerage_name <> '' THEN EXCLUDED.brokerage_name ELSE ddf_listings.brokerage_name END,
         realtor_url = EXCLUDED.realtor_url,
         latitude = EXCLUDED.latitude,
         longitude = EXCLUDED.longitude,
         listed_at = EXCLUDED.listed_at,
-        photos = EXCLUDED.photos,
+        photos = CASE WHEN EXCLUDED.photos <> '[]'::jsonb THEN EXCLUDED.photos ELSE ddf_listings.photos END,
         modification_timestamp = EXCLUDED.modification_timestamp,
+        neighbourhood = CASE WHEN EXCLUDED.neighbourhood <> '' THEN EXCLUDED.neighbourhood ELSE ddf_listings.neighbourhood END,
+        virtual_tour_url = CASE WHEN EXCLUDED.details_synced OR EXCLUDED.virtual_tour_url <> '' THEN EXCLUDED.virtual_tour_url ELSE ddf_listings.virtual_tour_url END,
+        video_url = CASE WHEN EXCLUDED.details_synced OR EXCLUDED.video_url <> '' THEN EXCLUDED.video_url ELSE ddf_listings.video_url END,
+        floor_plans = CASE WHEN EXCLUDED.details_synced OR EXCLUDED.floor_plans <> '[]'::jsonb THEN EXCLUDED.floor_plans ELSE ddf_listings.floor_plans END,
+        open_houses = CASE WHEN EXCLUDED.details_synced OR EXCLUDED.open_houses <> '[]'::jsonb THEN EXCLUDED.open_houses ELSE ddf_listings.open_houses END,
+        details_synced = ddf_listings.details_synced OR EXCLUDED.details_synced,
         updated_at = now()
     `;
   }
@@ -265,50 +332,161 @@ export async function applyMasterDeletions(generation: number): Promise<number> 
   return removed.length;
 }
 
-export async function searchDdfListings(filters: SearchFilters, limit = 48): Promise<{ properties: Property[]; total: number }> {
+function orderBy(sql: NonNullable<Awaited<ReturnType<typeof officeDb>>>, sort: SearchFilters["sort"]) {
+  switch (sort) {
+    case "price-asc":
+      return sql`list_price ASC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    case "price-desc":
+      return sql`list_price DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    case "sqft-desc":
+      return sql`sqft DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    case "beds-desc":
+      return sql`beds DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    case "baths-desc":
+      return sql`baths DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    default:
+      return sql`COALESCE(listed_at, modification_timestamp) DESC NULLS LAST, listing_id DESC`;
+  }
+}
+
+const searchCache = new Map<string, { at: number; value: { properties: Property[]; total: number } }>();
+
+export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_PAGE_SIZE): Promise<{ properties: Property[]; total: number }> {
   const sql = await officeDb();
   if (!sql) return { properties: [], total: 0 };
-  const city = filters.city?.trim() || "";
+  const page = Math.max(1, filters.page || 1);
+  const offset = (page - 1) * limit;
+  const cacheKey = JSON.stringify({ filters, limit, offset });
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < 20_000) return cached.value;
+  const city = (filters.city?.trim() || "").toLowerCase();
   const q = (filters.q?.trim() || "").replace(/[%_]/g, "");
+  const qLower = q.toLowerCase();
   const typePattern = filters.propertyType ? TYPE_SQL[filters.propertyType.toLowerCase()] || filters.propertyType : "";
+  const newestOnly = Boolean(filters.newListings);
   const rows = await sql<ListingRow[]>`
-    SELECT * FROM ddf_listings
-    WHERE city ~* ${GREATER_VANCOUVER}
+    SELECT
+      listing_key, listing_id, list_price, address, city, province, postal_code,
+      beds, baths, sqft, property_type, ''::text AS public_remarks, brokerage_name, realtor_url,
+      latitude, longitude, listed_at, modification_timestamp, neighbourhood,
+      CASE
+        WHEN jsonb_typeof(photos) = 'array' AND jsonb_array_length(photos) > 0 THEN jsonb_build_array(photos->0)
+        ELSE '[]'::jsonb
+      END AS photos,
+      count(*) OVER() AS total_count
+    FROM ddf_listings
+    WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
       AND COALESCE(list_price, 0) > 0
-      AND (${city} = '' OR city ILIKE ${city})
+      AND (${city} = '' OR lower(city) = ${city})
       AND (${filters.minPrice ?? null}::int IS NULL OR list_price >= ${filters.minPrice ?? null})
       AND (${filters.maxPrice ?? null}::int IS NULL OR list_price <= ${filters.maxPrice ?? null})
       AND (${filters.beds ?? null}::int IS NULL OR beds >= ${filters.beds ?? null})
       AND (${filters.baths ?? null}::numeric IS NULL OR baths >= ${filters.baths ?? null})
       AND (${filters.minSqft ?? null}::int IS NULL OR sqft >= ${filters.minSqft ?? null})
       AND (${filters.maxSqft ?? null}::int IS NULL OR sqft <= ${filters.maxSqft ?? null})
-      AND (${filters.maxDays ?? null}::int IS NULL OR listed_at >= now() - ((${filters.maxDays ?? 0})::text || ' days')::interval)
-      AND (${q} = '' OR address ILIKE ${"%" + q + "%"} OR city ILIKE ${"%" + q + "%"} OR postal_code ILIKE ${"%" + q + "%"} OR listing_id ILIKE ${"%" + q + "%"} OR public_remarks ILIKE ${"%" + q + "%"})
+      AND (${filters.maxDays ?? null}::int IS NULL OR COALESCE(listed_at, modification_timestamp) >= now() - ((${filters.maxDays ?? 0})::text || ' days')::interval)
+      AND (${!newestOnly} OR COALESCE(listed_at, modification_timestamp) >= now() - interval '14 days')
+      AND (${filters.openHouse !== true} OR jsonb_array_length(open_houses) > 0)
+      AND (${filters.virtualTour !== true} OR virtual_tour_url <> '')
+      AND (
+        ${q} = ''
+        OR lower(neighbourhood) = ${qLower}
+        OR lower(city) = ${qLower}
+        OR neighbourhood ILIKE ${"%" + q + "%"}
+        OR address ILIKE ${"%" + q + "%"}
+        OR postal_code ILIKE ${"%" + q + "%"}
+        OR listing_id ILIKE ${q}
+        OR public_remarks ILIKE ${"%" + q + "%"}
+      )
       AND (
         ${typePattern} = ''
         OR property_type ~* ${typePattern}
         OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
       )
-    ORDER BY listed_at DESC NULLS LAST, list_price DESC
+    ORDER BY ${orderBy(sql, filters.sort)}
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `;
+  const total = Number(rows[0]?.total_count || 0);
+  const value = { properties: rows.map(propertyFromRow), total };
+  if (total > 0) searchCache.set(cacheKey, { at: Date.now(), value });
+  return value;
+}
+
+export async function featuredDdfListings(limit = 12): Promise<Property[]> {
+  const sql = await officeDb();
+  if (!sql) return [];
+  const rows = await sql<ListingRow[]>`
+    SELECT
+      listing_key, listing_id, list_price, address, city, province, postal_code,
+      beds, baths, sqft, property_type, ''::text AS public_remarks, brokerage_name, realtor_url,
+      latitude, longitude, listed_at, modification_timestamp, neighbourhood,
+      CASE
+        WHEN jsonb_typeof(photos) = 'array' AND jsonb_array_length(photos) > 0 THEN jsonb_build_array(photos->0)
+        ELSE '[]'::jsonb
+      END AS photos
+    FROM ddf_listings
+    WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
+      AND COALESCE(list_price, 0) > 0
+    ORDER BY
+      CASE
+        WHEN brokerage_name ~* 'archibald|re/?max crest' THEN 0
+        ELSE 1
+      END,
+      COALESCE(listed_at, modification_timestamp) DESC NULLS LAST,
+      listing_id DESC
     LIMIT ${limit}
   `;
-  const totals = await sql<{ count: string }[]>`
-    SELECT count(*)::text AS count FROM ddf_listings
-    WHERE city ~* ${GREATER_VANCOUVER}
-      AND COALESCE(list_price, 0) > 0
-      AND (${city} = '' OR city ILIKE ${city})
-      AND (${filters.minPrice ?? null}::int IS NULL OR list_price >= ${filters.minPrice ?? null})
-      AND (${filters.maxPrice ?? null}::int IS NULL OR list_price <= ${filters.maxPrice ?? null})
-      AND (${filters.beds ?? null}::int IS NULL OR beds >= ${filters.beds ?? null})
-      AND (${filters.baths ?? null}::numeric IS NULL OR baths >= ${filters.baths ?? null})
-      AND (${q} = '' OR address ILIKE ${"%" + q + "%"} OR city ILIKE ${"%" + q + "%"} OR postal_code ILIKE ${"%" + q + "%"} OR listing_id ILIKE ${"%" + q + "%"})
-      AND (
-        ${typePattern} = ''
-        OR property_type ~* ${typePattern}
-        OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
-      )
+  return rows.map(propertyFromRow);
+}
+
+export async function stampNeighbourhoods(stamps: { listingKey: string; city: string; neighbourhood: string }[]): Promise<number> {
+  const sql = await officeDb();
+  const usable = stamps.filter((stamp) => stamp.listingKey && stamp.neighbourhood);
+  if (!sql || !usable.length) return 0;
+  const keys = usable.map((stamp) => stamp.listingKey);
+  const areas = usable.map((stamp) => stamp.neighbourhood);
+  const cities = usable.map((stamp) => stamp.city);
+  const rows = await sql<{ listing_key: string }[]>`
+    UPDATE ddf_listings AS listing
+    SET neighbourhood = stamp.neighbourhood
+    FROM unnest(${keys}::text[], ${areas}::text[], ${cities}::text[]) AS stamp(listing_key, neighbourhood, city)
+    WHERE listing.listing_key = stamp.listing_key
+      AND stamp.neighbourhood <> ''
+      AND listing.neighbourhood IS DISTINCT FROM stamp.neighbourhood
+    RETURNING listing.listing_key
   `;
-  return { properties: rows.map(propertyFromRow), total: Number(totals[0]?.count || rows.length) };
+  searchCache.clear();
+  return rows.length;
+}
+
+export type PlaceOption = { label: string; city: string; kind: "city" | "neighbourhood"; homes: number };
+
+export async function listFeedPlaces(): Promise<PlaceOption[]> {
+  const sql = await officeDb();
+  if (!sql) return [];
+  const areas = await sql<{ label: string; city: string; homes: string }[]>`
+    SELECT neighbourhood AS label, city, count(*)::text AS homes
+    FROM ddf_listings
+    WHERE neighbourhood <> ''
+      AND COALESCE(list_price, 0) > 0
+      AND lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
+    GROUP BY neighbourhood, city
+    ORDER BY count(*) DESC, neighbourhood
+    LIMIT 500
+  `;
+  const cities = await sql<{ label: string; homes: string }[]>`
+    SELECT city AS label, count(*)::text AS homes
+    FROM ddf_listings
+    WHERE COALESCE(list_price, 0) > 0
+      AND lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
+    GROUP BY city
+    ORDER BY count(*) DESC
+  `;
+  return [
+    ...cities.map((row) => ({ label: row.label, city: row.label, kind: "city" as const, homes: Number(row.homes) })),
+    ...areas.map((row) => ({ label: row.label, city: row.city, kind: "neighbourhood" as const, homes: Number(row.homes) })),
+  ];
 }
 
 export async function getDdfListing(id: string): Promise<Property | null> {
@@ -335,9 +513,9 @@ export async function ddfListingsForAlert(input: {
   const typePattern = input.propertyType ? TYPE_SQL[input.propertyType.toLowerCase()] || input.propertyType : "";
   const rows = await sql<ListingRow[]>`
     SELECT * FROM ddf_listings
-    WHERE city ~* ${GREATER_VANCOUVER}
+    WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
       AND COALESCE(list_price, 0) > 0
-      AND (${input.city} = '' OR city ILIKE ${input.city})
+      AND (${input.city} = '' OR lower(city) = ${input.city.toLowerCase()})
       AND (${input.minPrice}::int IS NULL OR list_price >= ${input.minPrice})
       AND (${input.maxPrice}::int IS NULL OR list_price <= ${input.maxPrice})
       AND (${input.beds}::int IS NULL OR beds >= ${input.beds})

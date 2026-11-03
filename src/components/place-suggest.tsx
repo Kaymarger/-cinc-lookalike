@@ -28,7 +28,21 @@ export function PlaceSuggest({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const box = useRef<HTMLDivElement>(null);
-  const matches = suggestPlaces(value);
+  const [extra, setExtra] = useState<Place[]>([]);
+  const matches = suggestPlaces(value, 8, extra);
+
+  useEffect(() => {
+    let cancel = false;
+    void fetch("/api/places")
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { places?: Place[] } | null;
+        if (!cancel && Array.isArray(data?.places)) setExtra(data.places);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {

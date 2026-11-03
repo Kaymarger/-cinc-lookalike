@@ -94,6 +94,7 @@ export function parseFilters(
   return {
     q: get("q") || undefined,
     city: get("city") || undefined,
+    page: num("page") && num("page")! > 0 ? Math.min(200, Math.floor(num("page")!)) : undefined,
     minPrice: num("minPrice"),
     maxPrice: num("maxPrice"),
     beds: num("beds"),

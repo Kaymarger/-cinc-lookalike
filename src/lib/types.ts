@@ -42,7 +42,13 @@ export interface Property {
   neighborhood?: string;
   featured?: boolean;
   openHouse?: string;
+  openHouses?: { date: string; start: string; end: string; remarks: string }[];
   virtualTour?: boolean;
+  virtualTourUrl?: string;
+  videoUrl?: string;
+  floorPlans?: { url: string; label: string }[];
+  /** False until this listing has been read from the feed with its media. */
+  detailsSynced?: boolean;
   /** IDX-style tags such as Waterfront or Renovated */
   tags?: string[];
   /** Present when the record came from the CREA DDF feed. */
@@ -53,6 +59,8 @@ export interface Property {
 export interface SearchFilters {
   q?: string;
   city?: string;
+  /** 1-based results page. */
+  page?: number;
   minPrice?: number;
   maxPrice?: number;
   beds?: number;

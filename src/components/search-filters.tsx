@@ -437,9 +437,10 @@ export function SearchFiltersBar({
 
   const pushFilters = useCallback(
     (next: SearchFilters) => {
-      setFilters(next);
+      const cleared = { ...next, page: undefined };
+      setFilters(cleared);
       startTransition(() => {
-        router.push(`/search${filtersToQuery(next)}`, { scroll: false });
+        router.push(`/search${filtersToQuery(cleared)}`, { scroll: false });
       });
     },
     [router]
@@ -514,10 +515,10 @@ export function SearchFiltersBar({
               onChange={setKeyword}
               onPick={(place) => {
                 if (place.kind === "city") {
-                  setKeyword(place.label);
+                  setKeyword("");
                   pushFilters({
                     ...filters,
-                    q: place.label,
+                    q: undefined,
                     city: place.city,
                   });
                 } else {
@@ -525,7 +526,7 @@ export function SearchFiltersBar({
                   pushFilters({
                     ...filters,
                     q: place.label,
-                    city: place.city,
+                    city: undefined,
                   });
                 }
               }}

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { ddfCredentials, safeDdfError } from "@/lib/ddf/credentials";
-import { listingFromOData, listingFromRetsXml, xmlBlocks, type DdfListing } from "@/lib/ddf/normalize";
+import { listingFromOData, listingFromRetsXml, neighbourhoodOf, openHousesFromRecord, xmlBlocks, type DdfListing } from "@/lib/ddf/normalize";
 
 const TOKEN_URL = "https://identity.crea.ca/connect/token";
 const ODATA = "https://ddfapi.realtor.ca/odata/v1";
@@ -243,6 +243,94 @@ export async function fetchOfficeNames(officeKeys: string[]): Promise<Map<string
     if (key && name) names.set(key, name);
   }
   return names;
+}
+
+function quote(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+/** Listings whose MLS sub-area is exactly this name. Tries the CREA area fields. */
+export async function fetchAreaListings(name: string): Promise<DdfListing[]> {
+  const cleaned = name.trim();
+  if (!/^[a-z0-9][a-z0-9 .'-]{1,40}$/i.test(cleaned)) return [];
+  const active = await session();
+  if (active.mode !== "oauth") return [];
+  const safe = quote(cleaned);
+  for (const filter of [`CityRegion eq '${safe}'`, `SubdivisionName eq '${safe}'`]) {
+    try {
+      const payload = await oauthGet(
+        `${ODATA}/Property?$top=60&$filter=${encodeURIComponent(filter)}&$expand=Media`,
+        active.token
+      );
+      const listings = listingsFromJson(payload);
+      if (listings.length) return listings;
+    } catch {
+      continue;
+    }
+  }
+  return [];
+}
+
+export type AreaStamp = { listingKey: string; city: string; neighbourhood: string };
+
+/** One page of listing keys plus their MLS sub-area, for autocomplete. */
+export async function fetchAreaStampPage(nextUrl?: string | null): Promise<{ stamps: AreaStamp[]; nextUrl: string | null }> {
+  const active = await session();
+  if (active.mode !== "oauth") return { stamps: [], nextUrl: null };
+  const select = encodeURIComponent("ListingKey,City,CityRegion,SubdivisionName");
+  const url = nextUrl || `${ODATA}/Property?$top=200&$select=${select}&$orderby=ModificationTimestamp desc`;
+  let payload: { value?: unknown; "@odata.nextLink"?: string };
+  try {
+    payload = await oauthGet(url, active.token);
+  } catch {
+    if (nextUrl) return { stamps: [], nextUrl: null };
+    try {
+      payload = await oauthGet(`${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc`, active.token);
+    } catch {
+      return { stamps: [], nextUrl: null };
+    }
+  }
+  const stamps = rowsOf(payload)
+    .map((row) => {
+      const listingKey = String(row.ListingKey || "");
+      const neighbourhood = neighbourhoodOf(row);
+      if (!listingKey || !neighbourhood) return null;
+      return { listingKey, city: String(row.City || ""), neighbourhood };
+    })
+    .filter((row): row is AreaStamp => Boolean(row));
+  return { stamps, nextUrl: payload["@odata.nextLink"] || null };
+}
+
+/** One listing with photos, video, floor plans, and open houses. */
+export async function fetchListingDetail(listingKey: string): Promise<DdfListing | null> {
+  const active = await session();
+  if (active.mode !== "oauth" || !listingKey) return null;
+  const filter = encodeURIComponent(`ListingKey eq '${quote(listingKey)}'`);
+  let payload: { value?: unknown };
+  try {
+    payload = await oauthGet(`${ODATA}/Property?$top=1&$filter=${filter}&$expand=Media,OpenHouse`, active.token);
+  } catch {
+    try {
+      payload = await oauthGet(`${ODATA}/Property?$top=1&$filter=${filter}&$expand=Media`, active.token);
+    } catch {
+      return null;
+    }
+  }
+  const listing = listingsFromJson(payload)[0] || null;
+  if (!listing) return null;
+  if (!listing.openHouses.length) {
+    try {
+      const houses = await oauthGet(
+        `${ODATA}/OpenHouse?$top=20&$filter=${encodeURIComponent(`ListingKey eq '${quote(listingKey)}'`)}`,
+        active.token
+      );
+      listing.openHouses = openHousesFromRecord({ OpenHouse: rowsOf(houses) });
+    } catch {
+      listing.openHouses = listing.openHouses || [];
+    }
+  }
+  listing.detailsSynced = true;
+  return listing;
 }
 
 export async function fetchDdfMasterPage(nextUrl?: string | null): Promise<{ keys: string[]; nextUrl: string | null }> {
