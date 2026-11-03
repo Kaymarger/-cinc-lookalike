@@ -121,6 +121,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   }
   if (a === "leads") {
     if (b === "sources") return { view: "leads", mode: "sources", tab: "activity" };
+    if (b === "export") return { view: "leads", mode: "export", tab: "activity" };
     if (b === "dialer-history") return { view: "leads", mode: "history", tab: "activity" };
     if (b === "details" && c && d === "search") return { view: "leadsearch", leadId: decodeURIComponent(c), searchId: parts[4] ? decodeURIComponent(parts[4]) : undefined };
     if (b === "details" && c) return { view: "leads", mode: "list", leadId: decodeURIComponent(c), tab: asLeadTab(d) };
@@ -222,6 +223,9 @@ export function titleOf(route: CincRoute): string {
     case "callsummary":
       return "Call Summary";
     case "leads":
+      if (route.mode === "export") return "Export Leads";
+      if (route.mode === "history") return "Dialer History";
+      if (route.mode === "sources") return "Lead Sources";
       return "Leads Dashboard";
     case "leadsearch":
       return "Search Filters";
