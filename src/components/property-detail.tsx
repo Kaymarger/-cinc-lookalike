@@ -5,6 +5,7 @@ import {
   BedDouble,
   Maximize,
 } from "lucide-react";
+import { BuyerQuestions } from "@/components/buyer-questions";
 import { CompareToggle } from "@/components/compare-toggle";
 import { LeadDialog } from "@/components/lead-dialog";
 import { MortgageCalculator } from "@/components/mortgage-calculator";
@@ -395,21 +396,7 @@ export function PropertyDetail({ property }: { property: Property }) {
                   </p>
                 </div>
               </div>
-              <ul className="mt-4 space-y-2">
-                {BUYER_QUESTIONS.map((q) => (
-                  <li key={q}>
-                    <a
-                      href="#maincontent_propertyinquirysection"
-                      className="block py-1.5 text-left text-[13px] text-[var(--cedar)] hover:underline"
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent("gvhs-inquiry", { detail: q }));
-                      }}
-                    >
-                      {q}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <BuyerQuestions questions={BUYER_QUESTIONS} />
             </div>
           </aside>
         </div>
