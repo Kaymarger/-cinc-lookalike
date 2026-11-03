@@ -16,7 +16,7 @@ Checked against the public lead path. A pass means the behaviour is in the app. 
 | CASL consent checkbox | Pass | Required on registration, the view gate, and both landing forms. |
 | Unsubscribe | Pass | `/unsubscribe` turns off email and text for that address. |
 | Terms | Pass | `/terms`. |
-| Meta Pixel | Fail until set | Code loads the pixel only when `META_PIXEL_ID` matches a numeric id. Fires `Lead` after a stored sign-up. |
+| Meta Pixel | Set | `NEXT_PUBLIC_META_PIXEL_ID` loads on public pages only. Falls back to the site pixel `1412153377363377`. PageView on each public route, Lead on signup/contact/showing/home value, CompleteRegistration on a full signup, Search on a property search, and ViewContent on a listing. Nothing personal is sent. The pixel is not loaded on `/agent`. |
 | GA4 | Fail until set | Code loads the tag only when `GA4_ID` matches `G-…`. Fires `generate_lead` after a stored sign-up. |
 | Google Ads | Fail until set | Code loads the tag only when `GOOGLE_ADS_ID` matches `AW-…`. Fires a conversion when `GOOGLE_ADS_CONVERSION_LABEL` is also set. |
 | Welcome email | Fail until set | Sent with Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, otherwise SendGrid when `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` (or `LEAD_ALERT_FROM_EMAIL`) are set. Without those, sign-up still succeeds and the send is skipped. |
@@ -31,7 +31,7 @@ Checked against the public lead path. A pass means the behaviour is in the app. 
 Set these in Vercel. Leave a group empty and that channel stays off.
 
 - `DATABASE_URL` or `POSTGRES_URL`
-- `META_PIXEL_ID`
+- `NEXT_PUBLIC_META_PIXEL_ID`
 - `GA4_ID`
 - `GOOGLE_ADS_ID`
 - `GOOGLE_ADS_CONVERSION_LABEL`

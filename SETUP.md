@@ -57,7 +57,7 @@ On a lead, **+ Saved Search** stores area, price, beds, baths, property type, an
 | Email when a lead arrives | [Resend](https://resend.com) or [SendGrid](https://sendgrid.com), with a verified from-address | `AGENT_ALERT_EMAIL`, plus `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` |
 | Call or text from a lead, and text a visitor who opted in | [Twilio](https://www.twilio.com) API key and a Twilio phone number | `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_SECRET`, `TWILIO_FROM_NUMBER` |
 | Name stored on the lead | — | `AGENT_ALERT_NAME` (optional; otherwise Casey Archibald) |
-| Meta ads | Meta Events Manager | `META_PIXEL_ID` |
+| Meta ads | Meta Events Manager | `NEXT_PUBLIC_META_PIXEL_ID` (falls back to the site pixel if unset) |
 | Google ads | Google Ads conversion action | `GOOGLE_ADS_ID` (`AW-…`) and `GOOGLE_ADS_CONVERSION_LABEL` |
 
 `LEAD_ALERT_FROM_EMAIL` can be used as the from-address if the provider-specific from variable is empty. `NEXT_PUBLIC_SITE_URL` is optional and is the link included in the alert email.

@@ -1,3 +1,5 @@
+import { pixelEventsForLead } from "./meta-pixel";
+
 /** Shared lead payload checks. Safe to import from the browser and the server. */
 
 export const LEAD_CONSENT_TEXT =
@@ -206,12 +208,14 @@ type AdsWindow = Window & {
   gtag?: (...args: unknown[]) => void;
 };
 
-/** Fires only after a lead is actually stored. Missing pixels are a no-op. */
-export function trackLeadConversion() {
+/** Fires only after a lead is actually stored. Event params stay free of personal data. */
+export function trackLeadConversion(source?: string) {
   if (typeof window === "undefined") return;
   const ads = (window as AdsWindow).__gvhsAds;
   const fbq = (window as AdsWindow).fbq;
-  if (typeof fbq === "function") fbq("track", "Lead");
+  if (typeof fbq === "function" && source) {
+    for (const item of pixelEventsForLead(source)) fbq("track", item.event, item.params);
+  }
   const gtag = (window as AdsWindow).gtag;
   if (typeof gtag === "function") {
     if (ads?.ga4) gtag("event", "generate_lead", { send_to: ads.ga4 });

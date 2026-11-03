@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TrackPropertySearch } from "@/components/meta-pixel";
 import { SearchFiltersBar } from "@/components/search-filters";
 import { SearchResults } from "@/components/search-results";
 import type { Property, SearchFilters } from "@/lib/types";
@@ -25,6 +26,7 @@ export function SearchExperience({
 
   return (
     <div>
+      <TrackPropertySearch filters={filters} />
       <SearchFiltersBar
         initial={filters}
         resultCount={stats.count}

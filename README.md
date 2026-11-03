@@ -36,7 +36,7 @@ See `.env.example`. Nothing in that file is a secret.
 | Email the assigned agent | `AGENT_ALERT_EMAIL` plus either `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` | Email is skipped. |
 | Call or text a lead, and text a visitor who opted in | `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_SECRET`, `TWILIO_FROM_NUMBER` | Calls and texts stay disconnected. New-lead alerts are email only. |
 | Name stored on the lead | `AGENT_ALERT_NAME` | Defaults to Casey Archibald. |
-| Meta Pixel | `META_PIXEL_ID` | Pixel is not loaded. |
+| Meta Pixel | `NEXT_PUBLIC_META_PIXEL_ID` | The site pixel `1412153377363377` is used. It loads on public pages only. |
 | Google Ads | `GOOGLE_ADS_ID` and, for the lead conversion, `GOOGLE_ADS_CONVERSION_LABEL` | Tag is not loaded. |
 
 UTM parameters, `gclid`, and `fbclid` are stored on each lead automatically. Do not commit `.env` or real client records.

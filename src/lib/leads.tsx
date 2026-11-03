@@ -439,7 +439,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           )
         );
       }
-      if (response.ok && data?.ok !== false && data?.persisted) trackLeadConversion();
+      if (response.ok && data?.ok !== false && data?.persisted) trackLeadConversion(lead.source);
       return {
         ok: response.ok && data?.ok !== false,
         persisted: Boolean(data?.persisted),
