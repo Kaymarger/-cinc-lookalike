@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChromeContext } from "./chrome-context";
 import { useOfficeSession } from "./office-session";
+import { useLeads } from "@/lib/leads";
 import { href, sectionOf, titleMenu, titleOf, type CincRoute, type NavSection } from "./route";
 const NAV: {
   id: NavSection;
@@ -37,6 +38,7 @@ const NAV: {
     label: "Communications",
     href: href.inbox,
     children: [
+      { label: "CINC Inbox", href: "", group: true },
       { label: "Inbox", href: href.inbox },
       { label: "Sent", href: href.sent },
       { label: "Drafts", href: href.drafts },
@@ -61,8 +63,7 @@ const NAV: {
     label: "Properties",
     href: href.properties,
     children: [
-      { label: "Listings Dashboard", href: `${"/dashboard/spa"}#properties/listings` },
-      { label: "Properties", href: href.properties },
+      { label: "Listings Dashboard", href: href.properties },
       { label: "Text Responder", href: href.textResponder },
       { label: "Upcoming Open Houses", href: href.openHouses },
       { label: "Virtual Open Houses", href: href.virtualOpenHouses },
@@ -78,9 +79,15 @@ const NAV: {
       { label: "Branded Site", href: "/dashboard/spa#website/pages/branded" },
       { label: "Branded About", href: "/dashboard/spa#website/pages/branded-about" },
       { label: "Add Custom Page", href: "/dashboard/spa#website/pages/custom" },
-      { label: "Seller Suite", href: href.seller },
-      { label: "Landing Pages", href: href.landing },
-      { label: "Theme Options", href: "/dashboard/spa#website/theme" },
+      { label: "Seller Suite", href: "", group: true },
+      { label: "View All Sites", href: href.seller },
+      { label: "Add New Sites", href: "/dashboard/spa#website/pages/custom" },
+      { label: "Landing Pages", href: "", group: true },
+      { label: "Buyers", href: href.landingCat("buyers") },
+      { label: "Sellers", href: href.landingCat("sellers") },
+      { label: "Contact", href: href.landingCat("contact") },
+      { label: "Add Landing Page", href: "/dashboard/landing/#add" },
+      { label: "Theme Options", href: href.officeTheme },
     ],
   },
   {
@@ -102,6 +109,7 @@ const NAV: {
       { label: "Profile", href: href.profile },
       { label: "Dialer", href: href.officeDialer },
       { label: "Custom Fields", href: href.officeFields },
+      { label: "Billing & Invoices", href: href.officeBilling },
     ],
   },
   { id: "marketing", label: "Marketing Dashboard", href: href.marketing },
@@ -121,6 +129,18 @@ function childOn(label: string, route: CincRoute) {
   if (label === "Profile") return route.view === "settings" && (route.tab === "profile" || route.tab === "settings" || route.tab === "integrations" || route.tab === "advanced" || route.tab === "notifications" || route.tab === "customlinks");
   if (label === "Dialer") return route.view === "settings" && route.tab === "dialer";
   if (label === "Custom Fields") return route.view === "settings" && route.tab === "fields";
+  if (label === "Billing & Invoices") return route.view === "settings" && route.tab === "billing";
+  if (label === "Theme Options") return route.view === "settings" && route.tab === "theme";
+  if (label === "Home") return route.view === "website" && route.page === "home";
+  if (label === "About") return route.view === "website" && route.page === "about";
+  if (label === "Branded Site") return route.view === "website" && route.page === "branded";
+  if (label === "Branded About") return route.view === "website" && route.page === "branded-about";
+  if (label === "Add Custom Page" || label === "Add New Sites") return route.view === "website" && route.page === "custom";
+  if (label === "View All Sites") return route.view === "seller";
+  if (label === "Buyers") return route.view === "landing" && route.category === "buyers";
+  if (label === "Sellers") return route.view === "landing" && route.category === "sellers";
+  if (label === "Contact") return route.view === "landing" && route.category === "contact";
+  if (label === "Listings Dashboard") return route.view === "properties" && (route.sub === "list" || route.sub === "add");
   if (route.view === "inbox") {
     if (label === "Inbox") return route.folder === "inbox";
     if (label === "Sent") return route.folder === "sent";
@@ -360,6 +380,18 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const [rail, setRail] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
   const [feed, setFeed] = useState("All");
+  const { leads } = useLeads();
+  const activities = leads
+    .flatMap((lead) => (lead.activity ?? []).map((item) => ({ ...item, leadId: lead.id, leadName: lead.name })))
+    .filter((item) => {
+      if (feed === "Notes") return item.kind === "note";
+      if (feed === "Agent Actions") return item.kind === "call" || item.kind === "task" || item.kind === "system";
+      if (feed === "Communications") return item.kind === "email" || item.kind === "text";
+      if (feed === "Views & Favorites") return item.kind === "signup";
+      return true;
+    })
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+    .slice(0, 20);
   const [modal, setModal] = useState<ReactNode>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -429,12 +461,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   </a>
                   {active && kids.length ? (
                     <div className="bg-[#1e2c38] py-1">
-                      {item.id === "comms" ? (
-                        <p className="flex h-[24px] items-center gap-2 px-3 text-[11px] whitespace-nowrap text-[#1b9cb8]">
-                          <span className="h-[5px] w-[5px] rounded-full bg-[#1b9cb8]" />
-                          CINC Inbox
-                        </p>
-                      ) : null}
                       {kids.map((child) => {
                         if (child.group || !child.href) {
                           return <p key={child.label} className="px-5 py-1 text-[11px] font-bold text-[#9fd7ea]">{child.label}</p>;
@@ -563,7 +589,13 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   </select>
                 </label>
                 <div className="min-h-0 flex-1 overflow-auto px-2 [scrollbar-color:#c5c5c5_transparent]">
-                  <p className="px-1 py-6 text-center text-[12px] text-[#888]">No new activities</p>
+                  {activities.length ? activities.map((item) => (
+                    <a key={`${item.leadId}-${item.id}`} href={href.lead(item.leadId)} className="mb-2 block border border-[#e5e5e5] bg-white px-2 py-1.5 text-[12px] hover:border-[#1c93b5]">
+                      <span className="font-semibold text-[#1c93b5]">{item.leadName}</span>
+                      <span className="mt-0.5 block text-[#333]">{item.title}</span>
+                      <span className="text-[11px] text-[#888]">{item.at}</span>
+                    </a>
+                  )) : <p className="px-1 py-6 text-center text-[12px] text-[#888]">No new activities</p>}
                 </div>
                 <div className="border-t border-[#e5e5e5] bg-white">
                   <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-[#888] uppercase">Online</p>

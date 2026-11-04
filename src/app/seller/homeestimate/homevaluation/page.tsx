@@ -16,7 +16,7 @@ export default function HomeValuationPage() {
         <PageAssist />
       </div>
       <HomeEstimateHero
-        title="What's your home worth?"
+        title="WHAT'S YOUR HOME WORTH?"
         subtitle="Thinking of selling or interested in learning about a neighbor's house? We can help you see what it's worth."
         ctaLabel="Submit"
       />

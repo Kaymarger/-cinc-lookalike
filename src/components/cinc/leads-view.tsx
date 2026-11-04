@@ -16,6 +16,7 @@ import { useOfficeSession } from "./office-session";
 import { useChrome } from "./chrome-context";
 import { go, href, type LeadTab } from "./route";
 import { nowLabel, uid, useCinc, type Assign } from "./store";
+import { loadOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const PIPELINES = [
@@ -1588,6 +1589,40 @@ function LeadDetail({
   );
 }
 
+function LeadCustomFields({ leadId }: { leadId: string }) {
+  const [defs, setDefs] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    void loadOfficePrefs().then((prefs) => {
+      if (Array.isArray(prefs.customFieldDefs)) setDefs(prefs.customFieldDefs as { id: string; name: string; type: string }[]);
+    });
+    void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fields?: Record<string, string> } | null;
+      if (data?.fields) setValues(data.fields);
+    });
+  }, [leadId]);
+  if (!defs.length) return null;
+  return (
+    <div className="mt-3">
+      <p className="mb-2 border-b border-[#ddd] pb-1 font-semibold">Custom Fields</p>
+      {defs.map((field) => (
+        <label key={field.id} className="mb-2 block">
+          <span className="text-[10px] font-bold tracking-wide text-[#888] uppercase">{field.name}</span>
+          <input className={inputCls} value={values[field.id] || ""} onChange={(event) => {
+            const next = { ...values, [field.id]: event.target.value };
+            setValues(next);
+            void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fields: { [field.id]: event.target.value } }),
+            });
+          }} />
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function InfoTab({
   row,
   assignChoices,
@@ -1697,6 +1732,7 @@ function InfoTab({
             </div>
           ))}
           <a href="#leads/sources" className="text-[12px] text-[#1c93b5]">Edit Lead Sources</a>
+          <LeadCustomFields leadId={row.id} />
           {[
             ["Registered", row.registered],
             ["Inquiry Count", String(row.inq)],

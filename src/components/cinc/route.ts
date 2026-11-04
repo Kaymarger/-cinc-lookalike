@@ -46,6 +46,8 @@ export const href = {
   officeSearch: `${SPA}#settings/office/search`,
   officeDialer: `${SPA}#settings/office/dialer`,
   officeFields: `${SPA}#settings/office/fields`,
+  officeTheme: "/dashboard/settings/theme",
+  officeBilling: "/dashboard/settings/billing",
   plans: `${SPA}#plans`,
   dialer: `${SPA}#dialer`,
   calendar: `${SPA}#calendar`,
@@ -73,7 +75,7 @@ export type CincRoute =
   | { view: "seller" }
   | { view: "website"; page: string }
   | { view: "landing"; category: "all" | "buyers" | "sellers" | "contact" }
-  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" }
+  | { view: "settings"; tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" | "theme" | "billing" }
   | { view: "contacts"; mode: "vendors" | "people" }
   | { view: "users"; mode: "manage" | "routing" }
   | { view: "gmail" }
@@ -102,6 +104,8 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (pathname.includes("/search")) return { view: "settings", tab: "searchpage" };
     if (pathname.includes("/dialer")) return { view: "settings", tab: "dialer" };
     if (pathname.includes("/customfields") || pathname.includes("/fields")) return { view: "settings", tab: "fields" };
+    if (pathname.includes("/theme")) return { view: "settings", tab: "theme" };
+    if (pathname.includes("/billing")) return { view: "settings", tab: "billing" };
     return { view: "settings", tab: "general" };
   }
   if (pathname.startsWith("/dashboard/landing")) {
@@ -155,6 +159,8 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     if (c === "search") return { view: "settings", tab: "searchpage" };
     if (c === "dialer") return { view: "settings", tab: "dialer" };
     if (c === "fields") return { view: "settings", tab: "fields" };
+    if (c === "theme") return { view: "settings", tab: "theme" };
+    if (c === "billing") return { view: "settings", tab: "billing" };
     return { view: "settings", tab: "general" };
   }
   if (a === "settings") {
@@ -249,7 +255,12 @@ export function titleOf(route: CincRoute): string {
     case "landing":
       return "Landing Pages";
     case "settings":
-      return route.tab === "general" ? "General Settings" : "Settings";
+      if (route.tab === "general") return "General Settings";
+      if (route.tab === "searchpage") return "Search Settings";
+      if (route.tab === "dialer") return "Dialer Settings";
+      if (route.tab === "billing") return "Billing & Invoices";
+      if (route.tab === "theme") return "Choose Your Layout";
+      return "Settings";
     case "users":
       return route.mode === "routing" ? "Lead Routing" : "Agents";
     case "plans":

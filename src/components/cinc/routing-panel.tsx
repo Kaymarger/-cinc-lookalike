@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import type { OfficeProfile } from "./office-session";
-import { Btn } from "./ui";
+import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
+import { Btn, inputCls } from "./ui";
 
 const ROUTABLE: OfficeRole[] = ["admin", "broker", "agent", "isa"];
 
@@ -17,6 +18,8 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
   const [sources, setSources] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<"Basic" | "Advanced" | "Routing Overview">("Basic");
+  const [weights, setWeights] = useState<Record<string, { weight: string; min: string; max: string }>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +33,10 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
         setFixedUserId(data.routing.fixedUserId || "");
         setPoolIds(data.routing.poolIds);
         setLoaded(true);
+        void loadOfficePrefs().then((prefs) => {
+          const saved = prefs.routingWeights;
+          if (saved && typeof saved === "object") setWeights(saved as Record<string, { weight: string; min: string; max: string }>);
+        });
       })
       .catch(() => undefined);
     return () => {
@@ -56,13 +63,45 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
     setMessage(data?.message || (response.ok ? "Lead routing saved. New registrations use it." : "Could not save lead routing."));
   }
 
+  async function updateTable() {
+    await save();
+    const error = await saveOfficePrefs({ routingWeights: weights });
+    if (!error) setMessage("Lead routing updated.");
+  }
+
   return (
     <section className="mb-4 border border-[#e5e5e5] bg-white p-4">
-      <h2 className="text-[16px] font-semibold text-[#243238]">New lead assignment</h2>
-      <p className="mt-1 text-[13px] text-[#666]">
-        Choose who receives people who register on the public site. Sample rows already in the CRM stay where they are.
-      </p>
-      <div className="mt-3 space-y-2 text-[13px]">
+      <div className="mb-3 flex gap-4 border-b border-[#e5e5e5] text-[14px]">
+        {(["Basic", "Advanced", "Routing Overview"] as const).map((label) => (
+          <button key={label} type="button" className={tab === label ? "border-b-2 border-[#1c93b5] pb-2 font-semibold text-[#1c93b5]" : "pb-2 text-[#666]"} onClick={() => setTab(label)}>{label}</button>
+        ))}
+      </div>
+      {tab === "Routing Overview" ? (
+        <div>
+          <table className="w-full text-left text-[12px]">
+            <thead><tr>{["AGENT", "STATUS", "WEIGHT", "MIN PRICE", "MAX PRICE"].map((column) => <th key={column} className="border-b border-[#eee] py-2">{column}</th>)}</tr></thead>
+            <tbody>
+              {users.filter((user) => user.active).map((user) => {
+                const row = weights[user.id] || { weight: "1", min: "", max: "" };
+                const setRow = (key: "weight" | "min" | "max", value: string) => setWeights((current) => ({ ...current, [user.id]: { ...row, [key]: value } }));
+                return (
+                  <tr key={user.id} className="border-b border-[#f3f3f3]">
+                    <td className="py-2">{user.name}</td>
+                    <td>{user.active ? "Active" : "Disabled"}</td>
+                    <td><input className={inputCls} value={row.weight} onChange={(event) => setRow("weight", event.target.value)} /></td>
+                    <td><input className={inputCls} value={row.min} onChange={(event) => setRow("min", event.target.value)} /></td>
+                    <td><input className={inputCls} value={row.max} onChange={(event) => setRow("max", event.target.value)} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="mt-3"><Btn kind="teal" onClick={() => void updateTable()}>Update</Btn></div>
+        </div>
+      ) : null}
+      {tab !== "Routing Overview" ? <div className="mt-3 space-y-2 text-[13px]">
+        {tab === "Basic" ? (
+        <>
         <label className="flex items-start gap-2">
           <input type="radio" name="routing" checked={mode === "default"} onChange={() => setMode("default")} />
           <span>Office default. New leads go to the alert name, or Casey Archibald.</span>
@@ -85,6 +124,10 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
             ))}
           </select>
         ) : null}
+        </>
+        ) : null}
+        {tab === "Advanced" ? (
+        <>
         <label className="flex items-start gap-2">
           <input type="radio" name="routing" checked={mode === "source"} onChange={() => setMode("source")} />
           <span>Route by lead source. Website, phone, and partner leads can go to different agents.</span>
@@ -102,6 +145,10 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
             ))}
           </div>
         ) : null}
+        </>
+        ) : null}
+        {tab === "Basic" ? (
+        <>
         <label className="flex items-start gap-2">
           <input type="radio" name="routing" checked={mode === "round_robin"} onChange={() => setMode("round_robin")} />
           <span>Round robin across the people checked below.</span>
@@ -117,12 +164,16 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
             {!eligible.length ? <p className="text-[#888]">Add an active agent before using round robin.</p> : null}
           </div>
         ) : null}
-      </div>
-      <div className="mt-3 flex items-center gap-3">
-        <Btn kind="teal" onClick={() => void save()}>Save routing</Btn>
-        {message ? <p className="text-[13px] text-[#1c93b5]">{message}</p> : null}
-        {!loaded ? <p className="text-[12px] text-[#888]">Loading the current rule…</p> : null}
-      </div>
+        </>
+        ) : null}
+      </div> : null}
+      {message ? <p className="mt-3 text-[13px] text-[#1c93b5]">{message}</p> : null}
+      {tab !== "Routing Overview" ? (
+        <div className="mt-3 flex items-center gap-3">
+          <Btn kind="teal" onClick={() => void save()}>Update</Btn>
+          {!loaded ? <p className="text-[12px] text-[#888]">Loading the current rule…</p> : null}
+        </div>
+      ) : null}
     </section>
   );
 }

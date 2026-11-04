@@ -9,7 +9,10 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!actor) return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
   const { id } = await context.params;
   const photo = await readUserPhoto(id);
-  if (!photo) return new Response(null, { status: 404 });
+  if (!photo) {
+    const avatar = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" fill="#1c93b5"/><circle cx="48" cy="38" r="16" fill="#ffffff"/><path d="M18 84c6-18 16-26 30-26s24 8 30 26" fill="#ffffff"/></svg>`;
+    return new Response(avatar, { headers: { "content-type": "image/svg+xml", "cache-control": "private, max-age=300" } });
+  }
   return new Response(new Uint8Array(photo.bytes), { headers: { "content-type": photo.contentType, "cache-control": "private, max-age=60" } });
 }
 

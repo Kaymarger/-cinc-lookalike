@@ -11,6 +11,8 @@ import { OfficeGeneralSettings } from "./office-general";
 import { href } from "./route";
 import { INTEGRATIONS, NOTIFY_GROUPS, nowLabel, uid, useCinc, type Deal, type DealStage, type Mail, type Template } from "./store";
 import { MARKET_AREAS, templateAudience } from "@/lib/cinc-lists";
+import { BillingPlaceholder, CustomFieldsPanel, DialerSettingsPanel, PageEditor, SearchSettingsPanel, ThemeLayoutPicker } from "./office-panels";
+import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
 const AGENT_NUMBER = "4829103344556677";
@@ -277,10 +279,11 @@ const CALL_ROWS = [
 export function CallSummaryView() {
   const chrome = useChrome();
   const [frame, setFrame] = useState("Today");
+  const [agentFilter, setAgentFilter] = useState("All");
   const [customDays, setCustomDays] = useState(2);
   const [sortKey, setSortKey] = useState<"agent" | "login" | "calls" | "vm">("agent");
   const [dir, setDir] = useState<1 | -1>(1);
-  const rows = [...CALL_ROWS].sort((a, b) => {
+  const rows = [...CALL_ROWS].filter((row) => agentFilter === "All" || row[0] === agentFilter).sort((a, b) => {
     const av = sortKey === "agent" ? a[0] : sortKey === "login" ? a[1] : sortKey === "calls" ? a[2] : a[4];
     const bv = sortKey === "agent" ? b[0] : sortKey === "login" ? b[1] : sortKey === "calls" ? b[2] : b[4];
     return av < bv ? -dir : av > bv ? dir : 0;
@@ -293,6 +296,11 @@ export function CallSummaryView() {
   return (
     <div className="p-4">
       <div className="border border-[#e5e5e5] bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+        <Menu
+          label={<span className={`${toolBtn} w-[150px] justify-between`}>Agent: <b>{agentFilter}</b> ▾</span>}
+          items={["All", ...CALL_ROWS.map((row) => row[0])].map((label) => ({ label, onClick: () => setAgentFilter(label) }))}
+        />
         <Menu
           label={<span className={`${toolBtn} w-[150px] justify-between`}>Timeframe: <b>{frame}</b> ▾</span>}
           items={["Today", "Last 7 Days", "Last 30 Days", "This Month", "Last Month", "Custom"].map((label) => ({
@@ -308,6 +316,7 @@ export function CallSummaryView() {
             },
           }))}
         />
+        </div>
         <table className="mt-3 w-full border-collapse text-left text-[12px]">
           <thead className="bg-[#f6f6f6] text-[12px] font-bold text-black">
             <tr>
@@ -756,6 +765,7 @@ export function AutoTracksView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const [cat, setCat] = useState("General");
+  const [openTrack, setOpenTrack] = useState<string | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [stats, setStats] = useState<Record<string, { openRate: number | null; clickRate: number | null; leads: number; touches: number }>>({});
   useEffect(() => {
@@ -771,7 +781,19 @@ export function AutoTracksView() {
     return state.tracks.filter((track) => !hidden.has(track.id));
   }, [hiddenIds, state.hiddenTracks, state.tracks]);
   const trackQuery = chrome.leadSearch.trim().toLowerCase();
-  const shown = tracks.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
+  const immediate = {
+    id: "cinc-immediate",
+    name: "Immediate!",
+    category: "General",
+    status: "active" as const,
+    trigger: "New lead",
+    visibility: "private" as const,
+    owner: "CINC",
+    captured: true,
+    steps: [],
+  };
+  const catalog = tracks.some((track) => track.name === "Immediate!") ? tracks : [immediate, ...tracks];
+  const shown = catalog.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
   const active = tracks.filter((track) => track.status === "active").length;
   const paused = tracks.filter((track) => track.status === "paused").length;
   return (
@@ -823,12 +845,12 @@ export function AutoTracksView() {
             <article key={track.id} className="border-t border-[#eee]">
               <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => chrome.openModal(<AutoTrackWizard initial={track} onClose={chrome.closeModal} onSaved={setCat} />)}>
+                  <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => setOpenTrack(openTrack === track.id ? null : track.id)}>
                     <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
                     {track.name}
                   </button>
                   <p className="text-[12px] text-[#666]">Duration: {days} Days</p>
-                  <p className="text-[12px] text-[#666]">{track.visibility === "private" ? "Private" : "Public"} ({track.owner || CRM_AGENT.name})</p>
+                  <p className="text-[12px] text-[#666]">{(track.owner === "CINC" || /cinc template/i.test(track.name) ? "Private" : track.visibility === "private" ? "Private" : "Public")} ({track.owner === "CINC" || /cinc template/i.test(track.name) ? "CINC" : track.owner || CRM_AGENT.name})</p>
                 </div>
                 <div className="w-16 text-center">
                   <div className={`mx-auto grid h-12 w-12 place-items-center rounded-full border-2 ${track.status === "active" ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#bbb] text-[#999]"}`}>
@@ -880,6 +902,24 @@ export function AutoTracksView() {
                   ]}
                 />
               </div>
+              {openTrack === track.id ? (
+                <table className="w-full border-t border-[#e5e5e5] bg-white text-left text-[12px]">
+                  <thead className="text-[11px] uppercase text-[#666]">
+                    <tr>{["Status", "Lead", "Progress", "Date Assigned", "Open Rate", "Click Rate", "Agent Assigned"].map((column) => <th key={column} className="px-3 py-2">{column}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-[#eee]">
+                      <td className="px-3 py-2">{statusLabel(track.status)}</td>
+                      <td className="px-3 py-2">No leads assigned</td>
+                      <td className="px-3 py-2">{track.steps?.length ? `0 / ${track.steps.length}` : "—"}</td>
+                      <td className="px-3 py-2">—</td>
+                      <td className="px-3 py-2">{stat?.openRate == null ? "—" : `${stat.openRate}%`}</td>
+                      <td className="px-3 py-2">{stat?.clickRate == null ? "—" : `${stat.clickRate}%`}</td>
+                      <td className="px-3 py-2">{track.owner || CRM_AGENT.name}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : null}
             </article>
           );
         })}
@@ -1129,7 +1169,19 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option>Any</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
         <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)}><option>Any</option><option>Under $1M</option><option>$1M – $2M</option><option>Over $2M</option></select>
         <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["All MLS Listings", "My Office/Agents Listings", "Listed in the past 24 hours", "Featured Listings", "Casey Archibald", "Kayla Gerak"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
-        <button type="button" className={toolBtn} onClick={() => chrome.toast(listings.length ? `${listings.length} listings selected for a mass action.` : "No listings to act on.")}>Mass Actions</button>
+        <Menu label={<span className={toolBtn}>Mass Actions ▾</span>} items={[
+          { label: "Export visible listings", onClick: () => {
+            const lines = ["Address,MLS,Status,Price", ...listings.map((item) => `"${item.address}",${item.mls},${item.status},${item.price}`)];
+            const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "listings.csv";
+            link.click();
+            URL.revokeObjectURL(url);
+          } },
+          { label: "Advertise visible listings", onClick: () => chrome.toast(listings.length ? `Advertising request saved for ${listings.length} listings.` : "No listings to advertise.") },
+        ]} />
         <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="New listings this week" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue={`Please review ${listings.length} listings.`} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
         {mode === "pocket" ? <a href={href.addProperty} className="h-[22px] bg-[#1c93b5] px-3 text-[12px] leading-[22px] text-white">Add Pocket Listing</a> : null}
       </div>
@@ -1161,7 +1213,16 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
               <div className="flex flex-col items-start gap-1">
                 <button type="button" className={toolBtn} onClick={() => update((current) => ({ ...current, buyerMatches: { ...current.buyerMatches, [item.id]: !current.buyerMatches[item.id] } }))}>{state.buyerMatches[item.id] ? "Matches on" : "Buyer Matches"}</button>
                 <a className={toolBtn} href={href.textResponder}>Text Responder</a>
-                {mode === "pocket" ? <button type="button" className="text-[#d9363e]" onClick={() => update((current) => ({ ...current, pocket: current.pocket.filter((pocket) => pocket.id !== item.id) }))}>Delete pocket</button> : null}
+                {mode === "pocket" ? (
+                  <>
+                    <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => {
+                      const price = window.prompt("Price", item.price);
+                      if (price == null) return;
+                      update((current) => ({ ...current, pocket: current.pocket.map((pocket) => pocket.id === item.id ? { ...pocket, price } : pocket) }));
+                    }}>EDIT</button>
+                    <button type="button" className="font-semibold text-[#d9363e]" onClick={() => update((current) => ({ ...current, pocket: current.pocket.filter((pocket) => pocket.id !== item.id) }))}>DELETE</button>
+                  </>
+                ) : null}
               </div>
             </div>
           </article>
@@ -1320,19 +1381,8 @@ export function SellerView() {
 }
 
 export function WebsiteView({ page }: { page: string }) {
-  const title = page === "theme" ? "Theme Options" : page === "about" ? "About" : page === "branded" ? "Branded Site" : page === "branded-about" ? "Branded About" : page === "custom" ? "Add Custom Page" : "Home";
-  return (
-    <div className="p-4">
-      <h1 className="text-[18px] font-semibold">Page Editor · {title}</h1>
-      <p className="mt-2 text-[13px] text-[#555]">Edit the {title.toLowerCase()} content for the public site. Changes on General settings still control the live banner and tabs.</p>
-      <label className="mt-4 block text-[13px]">Headline
-        <input className="mt-1 h-8 w-full max-w-lg border border-[#ccc] px-2" defaultValue={title === "Home" ? "Greater Vancouver Area Home Search" : title} />
-      </label>
-      <label className="mt-3 block text-[13px]">Body
-        <textarea className="mt-1 h-28 w-full max-w-lg border border-[#ccc] p-2" defaultValue="" />
-      </label>
-    </div>
-  );
+  if (page === "theme") return <div className="p-4"><ThemeLayoutPicker /></div>;
+  return <PageEditor page={page} />;
 }
 
 function pageStats(_id: string) {
@@ -1451,7 +1501,7 @@ export function SettingsTabs({ active }: { active: string }) {
   );
 }
 
-export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" }) {
+export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrations" | "advanced" | "notifications" | "customlinks" | "general" | "searchpage" | "dialer" | "fields" | "theme" | "billing" }) {
   const { update } = useCinc();
   const loaded = useRef(false);
   useEffect(() => {
@@ -1474,7 +1524,7 @@ export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrati
   }, [update]);
   return (
     <div className="p-4">
-      {tab === "general" || tab === "searchpage" || tab === "dialer" || tab === "fields" ? <OfficeSettingsPage tab={tab} /> : <SettingsTabs active={tab} />}
+      {tab === "general" || tab === "searchpage" || tab === "dialer" || tab === "fields" || tab === "theme" || tab === "billing" ? <OfficeSettingsPage tab={tab} /> : <SettingsTabs active={tab} />}
       {tab === "profile" ? <ProfileTab /> : null}
       {tab === "settings" ? <SettingsTab /> : null}
       {tab === "integrations" ? <IntegrationsTab /> : null}
@@ -1596,7 +1646,8 @@ function ProfileTab() {
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
         <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell || "—"}</span></div>
         <OfficeLine />
-        <div className="flex justify-end gap-2">
+        <PasswordReset />
+        <div className="mt-3 flex justify-end gap-2">
           <Btn kind="blue" onClick={() => void sendRecovery("email")}>Send Email Recovery Link</Btn>
           <Btn kind="blue" onClick={() => void sendRecovery("text")}>Send Text Recovery Link</Btn>
         </div>
@@ -1614,7 +1665,7 @@ function ProfileTab() {
         <div className="mt-2 text-right"><Btn kind="blue" onClick={() => void persist("Subdomain saved.")}>Update</Btn></div>
       </Card>
       <Card title="Agent CINC Number">
-        <p className="font-mono text-[12px]">{AGENT_NUMBER}</p>
+        <CincNumberField />
       </Card>
       <Card title="Agent Links & Social Media">
         {socials.map(([label, key]) => (
@@ -1659,6 +1710,63 @@ function ProfileTab() {
       </Card>
       </div>
     </div>
+  );
+}
+
+function PasswordReset() {
+  const office = useOfficeSession();
+  const chrome = useChrome();
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [message, setMessage] = useState("");
+  const rules = [
+    next.length >= 8,
+    /[A-Za-z]/.test(next) && /\d/.test(next),
+    next.length > 0 && next === again,
+  ];
+  return (
+    <div className="mt-3 border-t border-[#eee] pt-3 text-[13px]">
+      <label className="mb-2 block">New Password<input type="password" className={inputCls} value={next} onChange={(event) => setNext(event.target.value)} autoComplete="new-password" /></label>
+      <label className="mb-2 block">Reenter Password<input type="password" className={inputCls} value={again} onChange={(event) => setAgain(event.target.value)} autoComplete="new-password" /></label>
+      <p className="mb-1 font-semibold">Password Requirements</p>
+      <ul className="mb-2 list-disc pl-5 text-[12px]">
+        <li className={rules[0] ? "text-[#2e9e5b]" : ""}>At least 8 characters</li>
+        <li className={rules[1] ? "text-[#2e9e5b]" : ""}>A letter and a number</li>
+        <li className={rules[2] ? "text-[#2e9e5b]" : ""}>The two passwords match</li>
+      </ul>
+      <Btn kind="blue" disabled={!rules.every(Boolean)} onClick={() => {
+        if (!office.user) { setMessage("Sign in to reset the password."); return; }
+        void fetch(`/api/office/users/${office.user.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: next }),
+        }).then(async (response) => {
+          const data = (await response.json().catch(() => null)) as { message?: string } | null;
+          const text = response.ok ? "Password updated." : data?.message || "Could not reset the password.";
+          setMessage(text);
+          chrome.toast(text);
+          if (response.ok) { setNext(""); setAgain(""); }
+        });
+      }}>Reset Password</Btn>
+      {message ? <p className="mt-2 text-[12px] text-[#1c93b5]">{message}</p> : null}
+    </div>
+  );
+}
+
+function CincNumberField() {
+  const [value, setValue] = useState(AGENT_NUMBER);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    void loadOfficePrefs().then((prefs) => {
+      if (typeof prefs.cincNumber === "string" && prefs.cincNumber) setValue(prefs.cincNumber);
+    });
+  }, []);
+  return (
+    <>
+      <input className={inputCls} value={value} onChange={(event) => setValue(event.target.value)} />
+      <div className="mt-2 text-right"><Btn kind="blue" onClick={() => { void saveOfficePrefs({ cincNumber: value }).then((error) => setNote(error || "Agent CINC number saved.")); }}>Update</Btn></div>
+      {note ? <p className="mt-2 text-[12px] text-[#1c93b5]">{note}</p> : null}
+    </>
   );
 }
 
@@ -1952,40 +2060,13 @@ function AdvancedTab() {
   );
 }
 
-function OfficeSettingsPage({ tab }: { tab: "general" | "searchpage" | "dialer" | "fields" }) {
-  const chrome = useChrome();
-  const { state, update } = useCinc();
+function OfficeSettingsPage({ tab }: { tab: "general" | "searchpage" | "dialer" | "fields" | "theme" | "billing" }) {
   if (tab === "general") return <OfficeGeneralSettings />;
-  if (tab === "searchpage") {
-    return (
-      <div className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-2 font-bold">Search</h2>
-        <label className="block">Default city <input className="mt-1 h-8 w-full max-w-sm border border-[#ccc] px-2" defaultValue="Vancouver" /></label>
-        <label className="mt-2 block">Default property type
-          <select className="mt-1 h-8 w-full max-w-sm border border-[#ccc] px-2"><option>Any</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
-        </label>
-        <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-white" onClick={() => chrome.toast("Search defaults saved.")}>Update</button>
-      </div>
-    );
-  }
-  if (tab === "dialer") {
-    return (
-      <div className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-2 font-bold">Dialer</h2>
-        <label className="block"><input type="checkbox" defaultChecked /> Email the daily call summary</label>
-        <label className="mt-2 block">Summary time <input className="mt-1 h-8 border border-[#ccc] px-2" defaultValue="6:00 PM" /></label>
-        <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-white" onClick={() => chrome.toast("Dialer settings saved.")}>Update</button>
-      </div>
-    );
-  }
-  return (
-    <div className="border border-[#ddd] bg-white p-4">
-      <h2 className="mb-2 font-bold">Custom Fields</h2>
-      <p className="mb-2 text-[13px]">Birthdate is the custom field captured for AutoTrack triggers.</p>
-      <label className="text-[13px]">Birthdate <input className="ml-2 h-8 border border-[#ccc] px-2" value={state.advanced.birthdate || ""} onChange={(event) => update((current) => ({ ...current, advanced: { ...current.advanced, birthdate: event.target.value } }))} /></label>
-      <div className="mt-3 text-right"><Btn kind="blue" onClick={() => { void savePreferences({ advanced: state.advanced }).then((error) => chrome.toast(error || "Custom fields saved.")); }}>Update</Btn></div>
-    </div>
-  );
+  if (tab === "searchpage") return <SearchSettingsPanel />;
+  if (tab === "dialer") return <DialerSettingsPanel />;
+  if (tab === "theme") return <ThemeLayoutPicker />;
+  if (tab === "billing") return <BillingPlaceholder />;
+  return <CustomFieldsPanel />;
 }
 
 function CustomLinksTab() {
@@ -2248,28 +2329,17 @@ export function TasksView() {
 export function MarketingView() {
   const chrome = useChrome();
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const [year, setYear] = useState(previous.getFullYear());
+  const [month, setMonth] = useState(previous.getMonth());
   const [report, setReport] = useState<{ locations: { location: string; leads: number; cost: number | null }[]; totalLeads: number; searchBudget: number; listcastBudget: number }>({ locations: [], totalLeads: 0, searchBudget: 0, listcastBudget: 0 });
   const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const [readyMonth, setReadyMonth] = useState(false);
   useEffect(() => {
-    void fetch("/api/office/marketing?latest=1", { cache: "no-store" }).then(async (response) => {
-      const data = await response.json().catch(() => null);
-      if (data?.ok && data.year && data.month) {
-        setYear(data.year);
-        setMonth(data.month - 1);
-      }
-      setReadyMonth(true);
-    });
-  }, []);
-  useEffect(() => {
-    if (!readyMonth) return;
     void fetch(`/api/office/marketing?year=${year}&month=${month + 1}`, { cache: "no-store" }).then(async (response) => {
       const data = await response.json().catch(() => null);
       if (data?.ok) setReport(data);
     });
-  }, [year, month, readyMonth]);
+  }, [year, month]);
   function shift(delta: number) {
     const next = new Date(year, month + delta, 1);
     const cap = new Date();
@@ -2278,10 +2348,11 @@ export function MarketingView() {
     setMonth(next.getMonth());
   }
   const known = new Set(MARKET_AREAS.map((name) => name.toLowerCase()));
-  const areaRows = MARKET_AREAS.map((location) => {
-    const leads = report.locations.filter((row) => row.location.toLowerCase() === location.toLowerCase()).reduce((sum, row) => sum + row.leads, 0);
-    return { location, leads, cost: report.searchBudget > 0 && leads > 0 ? Math.round(report.searchBudget / leads) : null };
-  });
+  const areaRows = report.locations.filter((row) => row.leads > 0).map((row) => ({
+    location: row.location,
+    leads: row.leads,
+    cost: report.searchBudget > 0 ? Math.round(report.searchBudget / row.leads) : null,
+  }));
   const otherLeads = report.locations.filter((row) => !known.has(row.location.toLowerCase())).reduce((sum, row) => sum + row.leads, 0);
   const areaTotal = areaRows.reduce((sum, row) => sum + row.leads, 0) + otherLeads;
   function exportCsv() {
@@ -2324,6 +2395,8 @@ export function MarketingView() {
         <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">Search ($)</p><p className="text-[22px] text-[#1c93b5]">${report.searchBudget}</p></article>
         <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">ListCast ($)</p><p className="text-[22px] text-[#1c93b5]">${report.listcastBudget}</p></article>
       </div>
+      <h2 className="mb-2 font-bold">Google Marketing</h2>
+      <p className="mb-3 text-[13px] text-[#555]">Google lead counts for {names[month]} {year}: {report.totalLeads}. Budget on file: ${report.searchBudget.toLocaleString("en-CA")}.</p>
       <h2 className="mb-2 font-bold">Search Marketing</h2>
       <div className="grid gap-3 lg:grid-cols-[300px_1fr]">
         <article className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
@@ -2331,11 +2404,8 @@ export function MarketingView() {
           <p className="mt-2 text-[20px] font-semibold text-[#1c93b5]">BUYER ${report.searchBudget.toLocaleString("en-CA")}</p>
           <label className="mt-2 block text-[12px]">BUYER $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
           <label className="mt-1 block text-[12px]">ListCast $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
-          <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => void contact()}>Contact Us</button>
-          <details className="mt-3">
-            <summary className="cursor-pointer text-[12px] uppercase">Disclaimer</summary>
-            <p className="mt-1 text-[12px] text-[#666]">Lead counts are people who registered on the site during the selected month. Cost per lead divides the buyer budget by those leads. This page does not purchase advertising.</p>
-          </details>
+          <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => void contact()}>Need to discuss your campaign?</button>
+          <p className="mt-3 text-[12px] leading-5 text-[#666]">Lead counts are people who registered on the site during the selected month, grouped by the city or search they used. Cost per lead divides the buyer search budget by those leads. Google Marketing shows the same lead counts beside the office Google budget. This page does not purchase advertising, and the figures are not a quote from Google or any other ad network.</p>
           <p className="mt-3 font-semibold">Target Areas <span title="The six areas with the most buyer and seller leads this month." className="text-[12px] text-[#1c93b5]">?</span></p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
           {(() => {
@@ -2375,7 +2445,7 @@ export function MarketingView() {
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">
           <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>%</th><th>Cost per lead</th></tr></thead>
           <tbody>
-            {areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{areaTotal ? `${Math.round((row.leads / areaTotal) * 100)}%` : "0%"}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>)}
+            {areaRows.length ? areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{areaTotal ? `${Math.round((row.leads / areaTotal) * 100)}%` : "0%"}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>) : <tr><td className="px-3 py-3 text-[#888]" colSpan={4}>No leads in this month.</td></tr>}
             <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{areaTotal}</td><td /></tr>
           </tbody>
         </table>
@@ -2407,31 +2477,75 @@ export function GmailView() {
 export function BrokerLaunchpad() {
   const { leads } = useLeads();
   const { state } = useCinc();
+  const today = new Date();
+  const due = state.reminders.filter((item) => !item.done).length;
+  const header = `${today.toLocaleDateString("en-US", { weekday: "long" })}, ${today.toLocaleDateString("en-US", { month: "long" })} ${today.getDate()} | VIEW: All Agents | Today your team has ${due} reminder${due === 1 ? "" : "s"} due…`;
+  const cities = topCounts(leads.map((lead) => cityOf(`${lead.propertyAddress || ""} ${lead.searchLabel || ""}`)));
+  const sources = topCounts(leads.map((lead) => lead.source || "unknown"));
+  const byWeek = new Map<string, number>();
+  for (const lead of leads) {
+    const when = new Date(lead.createdAt);
+    const label = Number.isNaN(when.getTime()) ? "Unknown" : when.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    byWeek.set(label, (byWeek.get(label) || 0) + 1);
+  }
+  const trends = [...byWeek.entries()].slice(-8);
+  const maxTrend = Math.max(1, ...trends.map(([, count]) => count));
   return (
     <div className="p-4">
-      <h1 className="text-[15px] font-bold">Broker Launchpad</h1>
-      <p className="mt-1 text-[13px] text-[#555]">Office-wide view for the brokerage.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {[
-          ["Leads", leads.length],
-          ["Open deals", state.deals.length],
-          ["Reminders", state.reminders.filter((item) => !item.done).length],
-        ].map(([label, value]) => (
-          <article key={String(label)} className="border border-[#e5e5e5] bg-white p-4">
-            <p className="text-[12px] uppercase text-[#888]">{label}</p>
-            <p className="text-[28px] text-[#1c93b5]">{value}</p>
-          </article>
-        ))}
+      <div className="flex flex-wrap items-center gap-3 border border-[#e5e5e5] bg-white px-3 py-2 text-[13px]">
+        <span className="font-semibold">{header}</span>
+        <button type="button" className="ml-auto bg-[#1c93b5] px-2 py-1 text-white" onClick={() => window.location.reload()}>Refresh</button>
       </div>
       <section className="mt-4 border border-[#e5e5e5] bg-white p-4">
-        <h2 className="mb-2 font-bold">Agents</h2>
-        <ul className="text-[13px]">
-          {["Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"].map((name) => (
-            <li key={name} className="border-b border-[#eee] py-2">{name}</li>
-          ))}
-        </ul>
+        <h2 className="mb-3 font-bold">Lead Trends</h2>
+        {trends.length ? (
+          <div className="flex h-32 items-end gap-2">
+            {trends.map(([label, count]) => (
+              <div key={label} className="flex flex-1 flex-col items-center justify-end">
+                <div className="w-full bg-[#1c93b5]" style={{ height: `${(count / maxTrend) * 100}%` }} title={`${count}`} />
+                <span className="mt-1 text-[10px] text-[#666]">{label}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-[13px] text-[#888]">No leads yet.</p>}
       </section>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <RankList title="Top 10 Lead Cities" rows={cities} />
+        <RankList title="Top 10 Lead Sources" rows={sources} />
+      </div>
     </div>
+  );
+}
+
+function cityOf(value: string) {
+  const hit = MARKET_AREAS.find((name) => value.toLowerCase().includes(name.toLowerCase()));
+  if (hit) return hit;
+  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+  const city = parts.find((part) => /vancouver|burnaby|surrey|richmond|coquitlam|delta|langley|new westminster|north van|west van|maple ridge|port moody|port coquitlam/i.test(part));
+  return city || "Unknown";
+}
+
+function topCounts(values: string[]) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const key = value || "Unknown";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+}
+
+function RankList({ title, rows }: { title: string; rows: [string, number][] }) {
+  return (
+    <section className="border border-[#e5e5e5] bg-white p-4">
+      <h2 className="mb-2 font-bold">{title}</h2>
+      {rows.length ? (
+        <ol className="text-[13px]">
+          {rows.map(([label, count]) => (
+            <li key={label} className="flex justify-between border-b border-[#eee] py-1"><span>{label}</span><span>{count}</span></li>
+          ))}
+        </ol>
+      ) : <p className="text-[13px] text-[#888]">No leads yet.</p>}
+    </section>
   );
 }
 

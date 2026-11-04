@@ -205,8 +205,8 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
           <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
             <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>+ Add Pond</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setPond(false); startCreate(); }}>+ Add Agent</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setPond(false); startCreate(); }}>Add Agent</button>
+            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>Add Pond</button>
           </div>
         </div>
       </div>

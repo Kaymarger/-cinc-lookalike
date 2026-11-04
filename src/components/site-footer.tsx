@@ -9,13 +9,12 @@ const MENU = [
   { href: "/featured", label: "Featured" },
   { href: "/about", label: "About" },
   { href: "/contact#inquiry", label: "Contact" },
-  { href: "/seller/homeestimate", label: "Home Estimate" },
+  { href: "/seller/homeestimate/homevaluation", label: "Home Estimate" },
 ];
 
 const LEGAL = [
-  { href: "/terms", label: "Terms of Use" },
-  { href: "/privacy", label: "Privacy Notice" },
-  { href: "/unsubscribe", label: "Unsubscribe" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
   { href: "/faq", label: "FAQ" },
   { href: "/disclaimer", label: "Disclaimer" },
 ];
@@ -122,7 +121,6 @@ export function SiteFooter() {
               {item.label}
             </Link>
           ))}
-          <Link href="/agent">Agent workspace</Link>
         </div>
       </div>
 

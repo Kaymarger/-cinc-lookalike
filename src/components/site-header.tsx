@@ -13,7 +13,7 @@ const NAV = [
   { href: "/featured", label: "Featured" },
   { href: "/about", label: "About" },
   { href: "/contact#inquiry", label: "Contact" },
-  { href: "/seller/homeestimate", label: "Home Estimate" },
+  { href: "/seller/homeestimate/homevaluation", label: "Home Estimate" },
 ];
 
 const ACCOUNT = [
