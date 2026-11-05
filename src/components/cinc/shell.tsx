@@ -74,19 +74,9 @@ const NAV: {
     label: "Website",
     href: "/dashboard/pages/home",
     children: [
-      { label: "Home", href: "/dashboard/spa#website/pages/home" },
-      { label: "About", href: "/dashboard/spa#website/pages/about" },
-      { label: "Branded Site", href: "/dashboard/spa#website/pages/branded" },
-      { label: "Branded About", href: "/dashboard/spa#website/pages/branded-about" },
-      { label: "Add Custom Page", href: "/dashboard/spa#website/pages/custom" },
-      { label: "Seller Suite", href: "", group: true },
-      { label: "View All Sites", href: href.seller },
-      { label: "Add New Sites", href: "/dashboard/spa#website/pages/custom" },
-      { label: "Landing Pages", href: "", group: true },
-      { label: "Buyers", href: href.landingCat("buyers") },
-      { label: "Sellers", href: href.landingCat("sellers") },
-      { label: "Contact", href: href.landingCat("contact") },
-      { label: "Add Landing Page", href: "/dashboard/landing/#add" },
+      { label: "Page Editor", href: "/dashboard/spa#website/pages/home" },
+      { label: "Seller Suite", href: href.seller },
+      { label: "Landing Pages", href: href.landing },
       { label: "Theme Options", href: href.officeTheme },
     ],
   },
@@ -131,15 +121,9 @@ function childOn(label: string, route: CincRoute) {
   if (label === "Custom Fields") return route.view === "settings" && route.tab === "fields";
   if (label === "Billing & Invoices") return route.view === "settings" && route.tab === "billing";
   if (label === "Theme Options") return route.view === "settings" && route.tab === "theme";
-  if (label === "Home") return route.view === "website" && route.page === "home";
-  if (label === "About") return route.view === "website" && route.page === "about";
-  if (label === "Branded Site") return route.view === "website" && route.page === "branded";
-  if (label === "Branded About") return route.view === "website" && route.page === "branded-about";
-  if (label === "Add Custom Page" || label === "Add New Sites") return route.view === "website" && route.page === "custom";
-  if (label === "View All Sites") return route.view === "seller";
-  if (label === "Buyers") return route.view === "landing" && route.category === "buyers";
-  if (label === "Sellers") return route.view === "landing" && route.category === "sellers";
-  if (label === "Contact") return route.view === "landing" && route.category === "contact";
+  if (label === "Page Editor") return route.view === "website";
+  if (label === "Seller Suite") return route.view === "seller";
+  if (label === "Landing Pages") return route.view === "landing";
   if (label === "Listings Dashboard") return route.view === "properties" && (route.sub === "list" || route.sub === "add");
   if (route.view === "inbox") {
     if (label === "Inbox") return route.folder === "inbox";
@@ -482,7 +466,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="relative z-50 flex h-[58px] shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-3 md:pl-5">
+          <header className="relative z-50 flex h-11 shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-3 md:pl-5">
             <button
               type="button"
               className="grid h-11 w-11 place-items-center text-[#2d3c4b] md:hidden"
@@ -497,7 +481,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[22px] leading-none font-light text-[#4aa8c8]"
+                className="flex items-center gap-2 text-[18px] leading-none font-light text-[#4aa8c8]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -534,6 +518,10 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
+              <button type="button" className="grid h-8 w-8 place-items-center text-[#4aa8c8]" aria-label="Search" onClick={() => setSearchOpen((value) => !value)}>
+                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="7" cy="7" r="4.2" /><path d="M10.5 10.5 14 14" /></svg>
+              </button>
+              {searchOpen ? <input className="h-7 w-40 border border-[#d5e8ee] px-2 text-[12px]" placeholder="Search" value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} /> : null}
               <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help

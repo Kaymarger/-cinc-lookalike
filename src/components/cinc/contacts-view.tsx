@@ -41,8 +41,7 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
   if (mode === "people") {
     return (
       <div className="p-6">
-        <h1 className="text-[18px] font-semibold">Contact List</h1>
-        <p className="mt-4 text-[13px] font-bold">ALL CONTACTS 0</p>
+        <p className="text-[13px] font-bold">ALL CONTACTS • 0</p>
         <p className="mt-2 text-[13px] text-[#666]">No contacts found. Contacts are created via the Listings Dashboard.</p>
       </div>
     );
@@ -87,7 +86,7 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
         </label>
       </div>
       <input className="mb-3 w-full max-w-sm border border-transparent bg-transparent text-[16px] font-bold outline-none placeholder:font-normal placeholder:text-[#bbb]" placeholder="Replace with title" defaultValue="" />
-      <h2 className="mb-3 text-[16px] font-bold">ALL VENDORS</h2>
+      <h2 className="mb-3 text-[16px] font-bold">ALL VENDORS • {shown.length}</h2>
       <div className="flex flex-wrap gap-3">
         <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>• {vendors.length}<br />ADD VENDOR</button>
         {shown.map((vendor) => (

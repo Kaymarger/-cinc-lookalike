@@ -249,10 +249,12 @@ export const REASSIGN_HOURS = Array.from({ length: 23 }, (_, index) => String(in
 export const REASSIGN_DAYS = Array.from({ length: 7 }, (_, index) => String(index + 1));
 
 export function templateAudience(name: string): string {
-  if (name === "Distressed Seller Welcome") return "Distressed Seller Welcome";
-  if (/seller welcome/i.test(name)) return "Seller Welcome";
-  if (/welcome email/i.test(name)) return "Welcome";
-  return "None";
+  if (name === "Distressed Seller Welcome") return "Distressed Seller";
+  if (/buyer/i.test(name) && /seller/i.test(name)) return "Buyers & Sellers";
+  if (/seller/i.test(name)) return "Sellers";
+  if (/buyer/i.test(name)) return "Buyers";
+  if (/welcome email/i.test(name)) return "Buyers & Sellers";
+  return "Buyers & Sellers";
 }
 
 export const CLOCK_HOURS = [

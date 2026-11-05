@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { statusLabel } from "@/lib/autotrack";
 import { useLeads } from "@/lib/leads";
-import { AutoTrackWizard, duplicateTrack, loadAutoTracks, persistTrackStatus, removeTrack } from "./autotrack-builder";
+import { AutoTrackWizard, loadAutoTracks } from "./autotrack-builder";
 import { useChrome } from "./chrome-context";
 import { useOfficeSession } from "./office-session";
 import { OfficeGeneralSettings } from "./office-general";
@@ -372,26 +372,19 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
     .filter((deal) => created === "Anytime" || Date.now() - deal.createdAt < (created === "Last 7 Days" ? 7 : 30) * 86400000)
     .sort((a, b) => sort === "Price" ? a.price.localeCompare(b.price) : b.createdAt - a.createdAt);
 
+  const money = (amount: number) => (amount > 0 ? `$${amount.toLocaleString("en-CA")}` : "$--");
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#eef3f6]">
-      <div className="flex h-12 items-center gap-6 bg-[#16324f] px-4 text-white">
-        <span className="text-[18px] font-semibold tracking-wide">DEALS</span>
-        <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-2 border-white pb-1" : "opacity-80"}>Purchases</a>
-        <a href={href.dealsListings} className={board === "listings" ? "border-b-2 border-white pb-1" : "opacity-80"}>Listings</a>
-      </div>
       <div className="flex min-h-0 flex-1 flex-col p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex gap-5 text-[15px] font-semibold">
           <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Purchases</a>
           <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Listings</a>
+          <button type="button" className="pb-1 text-[13px] font-normal text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
         </div>
-        <div className="flex gap-2">
-          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
-          <button type="button" className="inline-flex h-[22px] items-center gap-1 rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
-            <span className="grid h-3.5 w-3.5 place-items-center rounded-full border border-white text-[11px] leading-none">+</span>
-            Add Deal
-          </button>
-        </div>
+        <button type="button" className="inline-flex h-[22px] items-center rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
+          Add Deal
+        </button>
       </div>
       <div className="mb-3 flex w-full items-center gap-2 text-[12px]">
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
@@ -408,14 +401,16 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
                 <div className="text-[12px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
-                <p className="text-[11px] text-[#777]">${cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0).toLocaleString("en-CA")} | <span className="underline decoration-dotted">${cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0).toLocaleString("en-CA")} Potential</span></p>
+                <p className="text-[11px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
               </header>
               <div className="flex-1 p-2">
                 {cards.map((deal) => (
                   <article key={deal.id} className="mb-2 bg-white p-2 shadow-sm">
-                    <p className="text-[12px] font-semibold">{deal.client}</p>
-                    <p className="text-[11px]">{deal.address}</p>
-                    <p className="text-[11px] text-[#1c93b5]">{deal.price}</p>
+                    <p className="text-[12px]">{deal.address || "--"}</p>
+                    <p className="text-[11px] text-[#888]">--</p>
+                    <p className="text-[11px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
+                    <p className="text-[11px] text-[#888]">--</p>
+                    <p className="text-[11px] text-[#666]">No current upcoming tasks assigned</p>
                     <div className="mt-1 flex gap-2">
                       <select className="h-6 border border-[#ccc] text-[11px]" value={deal.stage} onChange={(event) => update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, stage: event.target.value as DealStage } : item) }))}>
                         {stages.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -556,7 +551,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
         <div className="flex min-h-0 flex-1 gap-3">
           <aside className="w-56 shrink-0 bg-white p-3 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-1 text-[13px] font-semibold"><span>📁</span> Groups</span>
+              <span className="flex items-center gap-1 text-[13px] font-semibold">Groups</span>
               <button type="button" className="border border-[#1c93b5] px-2 py-0.5 text-[12px] text-[#1c93b5]" onClick={() => {
                 const name = window.prompt("Group name");
                 if (!name) return;
@@ -568,7 +563,6 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
               const on = group === name;
               return (
                 <button key={name} type="button" className={`mb-1 flex h-[30px] w-full items-center gap-2 px-2 text-left text-[13px] ${on ? "bg-[#3a97c4] text-white" : "hover:bg-[#f6f6f6]"}`} onClick={() => setGroup(name)}>
-                  <span>📁</span>
                   <span className="min-w-0 flex-1 truncate">{name} ({count})</span>
                   {on ? <span>▸</span> : null}
                 </button>
@@ -588,18 +582,18 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                   templates: current.templates.map((item) => picked.includes(item.id) ? { ...item, group: name } : item),
                 }));
                 setPicked([]);
-              }}>📁 Move Selected to Group</button>
+              }}>Move Selected to Group</button>
               <button type="button" title="Copy" className={toolBtn} onClick={() => {
                 if (!picked.length) { chrome.toast("Select at least one template."); return; }
                 const chosen = state.templates.filter((item) => picked.includes(item.id));
                 update((current) => ({ ...current, templates: [...current.templates, ...chosen.map((item) => ({ ...item, id: uid("tpl"), name: `${item.name} copy` }))] }));
                 chrome.toast("Copied on this device.");
-              }}>⧉</button>
-              <button type="button" title="Share" className={toolBtn} onClick={() => { const link = `${window.location.origin}/dashboard/spa#inbox/templates`; navigator.clipboard?.writeText(link); chrome.toast("Share link copied."); }}>⤴</button>
-              <button type="button" title="Trash" className="text-[#999]" onClick={() => { if (!picked.length) { chrome.toast("Select at least one template."); return; } update((current) => ({ ...current, templates: current.templates.filter((item) => !picked.includes(item.id)) })); setPicked([]); chrome.toast(`Deleted ${picked.length} template${picked.length === 1 ? "" : "s"}.`); }}>🗑</button>
+              }}>Copy</button>
+              <button type="button" title="Share" className={toolBtn} onClick={() => { const link = `${window.location.origin}/dashboard/spa#inbox/templates`; navigator.clipboard?.writeText(link); chrome.toast("Share link copied."); }}>Share</button>
+              <button type="button" title="Trash" className={toolBtn} onClick={() => { if (!picked.length) { chrome.toast("Select at least one template."); return; } update((current) => ({ ...current, templates: current.templates.filter((item) => !picked.includes(item.id)) })); setPicked([]); chrome.toast(`Deleted ${picked.length} template${picked.length === 1 ? "" : "s"}.`); }}>Trash</button>
             </div>
             <table className="w-full text-left text-[12px]">
-              <thead className="text-[12px] font-bold text-black">
+              <thead className="text-[12px] font-normal text-[#555]">
                 <tr>
                   <th className="w-6" />
                   <th className="py-1"><button type="button" onClick={() => setSortKey("name")}>Template Name ↑</button></th>
@@ -790,7 +784,7 @@ export function AutoTracksView() {
     visibility: "private" as const,
     owner: "CINC",
     captured: true,
-    steps: [],
+    steps: [{ id: "cinc-immediate-1", day: 1, action: "email" as const, subject: "Welcome", body: "", format: "html" as const, to: "", from: "", template: "", schedule: "immediate" as const, scheduleTime: "", meridiem: "AM" as const, delayMinutes: 0, afterPrevious: false, calendarOn: "", attachments: [], videoUrl: "", videoTitle: "", reminderType: "", blocking: false }],
   };
   const catalog = tracks.some((track) => track.name === "Immediate!") ? tracks : [immediate, ...tracks];
   const shown = catalog.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
@@ -820,27 +814,17 @@ export function AutoTracksView() {
       </div>
       <div className="border border-[#e5e5e5] bg-white shadow-sm">
         {shown.map((track) => {
-          const counted = Boolean(track.captured || track.steps?.length);
           const stat = stats[track.id];
-          const seed = track.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-          const days = track.steps?.length ? Math.max(...track.steps.map((step) => step.day)) : [7, 14, 21, 30, 45, 60][seed % 6];
-          const statsRow = counted
-            ? [
-                ["% Open Rate", stat?.openRate == null ? "—" : String(stat.openRate)],
-                ["% Click Rate", stat?.clickRate == null ? "—" : String(stat.clickRate)],
-                ["Leads", String(stat?.leads ?? 0)],
-                ["Completed", "0"],
-                ["Touches", String(stat?.touches ?? 0)],
-                ["Steps", String(track.steps?.length ?? 0)],
-              ]
-            : [
-                ["% Open Rate", `${seed % 40}`],
-                ["% Click Rate", `${seed % 12}`],
-                ["Leads", String((seed % 80) + 3)],
-                ["Completed", String((seed % 400) + 4)],
-                ["Touches", String((seed % 6) + 1)],
-                ["Steps", String((seed % 6) + 1)],
-              ];
+          const steps = track.steps ?? [];
+          const days = steps.length ? Math.max(...steps.map((step) => step.day)) : 0;
+          const touches = steps.filter((step) => step.action === "email" || step.action === "text").length;
+          const statsRow = [
+            ["Completed", "0"],
+            ["Touches", String(touches)],
+            ["Steps", String(steps.length)],
+          ];
+          if (stat?.openRate != null) statsRow.unshift(["% Open Rate", String(stat.openRate)]);
+          if (stat?.clickRate != null) statsRow.splice(stat?.openRate != null ? 1 : 0, 0, ["% Click Rate", String(stat.clickRate)]);
           return (
             <article key={track.id} className="border-t border-[#eee]">
               <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
@@ -849,7 +833,7 @@ export function AutoTracksView() {
                     <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
                     {track.name}
                   </button>
-                  <p className="text-[12px] text-[#666]">Duration: {days} Days</p>
+                  <p className="text-[12px] text-[#666]">Duration: {days} Day{days === 1 ? "" : "s"}</p>
                   <p className="text-[12px] text-[#666]">{(track.owner === "CINC" || /cinc template/i.test(track.name) ? "Private" : track.visibility === "private" ? "Private" : "Public")} ({track.owner === "CINC" || /cinc template/i.test(track.name) ? "CINC" : track.owner || CRM_AGENT.name})</p>
                 </div>
                 <div className="w-16 text-center">
@@ -869,40 +853,9 @@ export function AutoTracksView() {
                     ))}
                   </div>
                 </div>
-                <Menu
-                  label={<span className="px-2 text-[18px] leading-none text-[#666]">…</span>}
-                  items={[
-                    { label: track.status === "active" ? "Pause" : "Resume", onClick: () => {
-                      const status = track.status === "active" ? "paused" : "active";
-                      void persistTrackStatus(track, status).then((saved) => {
-                        update((current) => ({
-                          ...current,
-                          tracks: current.tracks.some((item) => item.id === saved.id)
-                            ? current.tracks.map((item) => item.id === saved.id ? saved : item)
-                            : [saved, ...current.tracks],
-                        }));
-                        chrome.toast(status === "paused" ? `${track.name} paused.` : `${track.name} resumed.`);
-                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not update that AutoTrack."));
-                    } },
-                    { label: "Duplicate", onClick: () => {
-                      void duplicateTrack(track).then((saved) => {
-                        update((current) => ({ ...current, tracks: [saved, ...current.tracks.filter((item) => item.id !== saved.id)] }));
-                        setCat(saved.category);
-                        chrome.toast(`${saved.name} duplicated.`);
-                      }).catch((error: unknown) => chrome.toast(error instanceof Error ? error.message : "Could not duplicate that AutoTrack."));
-                    } },
-                    { label: "Delete", danger: true, onClick: () => {
-                      const drop = () => {
-                        setHiddenIds((current) => [...current, track.id]);
-                        update((current) => ({ ...current, hiddenTracks: [...current.hiddenTracks, track.id], tracks: current.tracks.filter((item) => item.id !== track.id) }));
-                        chrome.toast(`${track.name} deleted.`);
-                      };
-                      void removeTrack(track.id).then(drop).catch(() => drop());
-                    } },
-                  ]}
-                />
               </div>
               {openTrack === track.id ? (
+                <>
                 <table className="w-full border-t border-[#e5e5e5] bg-white text-left text-[12px]">
                   <thead className="text-[11px] uppercase text-[#666]">
                     <tr>{["Status", "Lead", "Progress", "Date Assigned", "Open Rate", "Click Rate", "Agent Assigned"].map((column) => <th key={column} className="px-3 py-2">{column}</th>)}</tr>
@@ -911,14 +864,16 @@ export function AutoTracksView() {
                     <tr className="border-t border-[#eee]">
                       <td className="px-3 py-2">{statusLabel(track.status)}</td>
                       <td className="px-3 py-2">No leads assigned</td>
-                      <td className="px-3 py-2">{track.steps?.length ? `0 / ${track.steps.length}` : "—"}</td>
-                      <td className="px-3 py-2">—</td>
-                      <td className="px-3 py-2">{stat?.openRate == null ? "—" : `${stat.openRate}%`}</td>
-                      <td className="px-3 py-2">{stat?.clickRate == null ? "—" : `${stat.clickRate}%`}</td>
+                      <td className="px-3 py-2">{track.steps?.length ? `0 / ${track.steps.length}` : ""}</td>
+                      <td className="px-3 py-2" />
+                      <td className="px-3 py-2">{stat?.openRate == null ? "" : `${stat.openRate}%`}</td>
+                      <td className="px-3 py-2">{stat?.clickRate == null ? "" : `${stat.clickRate}%`}</td>
                       <td className="px-3 py-2">{track.owner || CRM_AGENT.name}</td>
                     </tr>
                   </tbody>
                 </table>
+                <button type="button" className="block w-full bg-[#1c93b5] py-2 text-center text-[12px] font-semibold tracking-wide text-white" onClick={() => chrome.openModal(<AutoTrackWizard initial={track.id === "cinc-immediate" ? undefined : track} onClose={chrome.closeModal} onSaved={setCat} />)}>START/EDIT AN AUTOTRACK</button>
+                </>
               ) : null}
             </article>
           );
@@ -964,32 +919,27 @@ export function BehavioralView() {
       <div className="border border-[#e5e5e5] bg-white p-5 shadow-sm">
         <h2 className="text-[20px] font-bold text-[#243238]">Behavioral Messaging</h2>
         <div className="my-3 border-t border-dotted border-[#ccc]" />
-        <p className="mb-2 text-[13px] text-[#444]">Automated Behavioral Messages are text + email communications sent to your leads when they take an action on your site.</p>
-        <p className="mb-4 text-[13px] font-semibold text-[#333]">When a lead performs the action identified below, the matching message can send. We will only send one per day and only one of each type every two weeks.</p>
+        <p className="mb-4 text-[13px] text-[#333]">Automated Behavioral Messages are text + email communications sent to your leads when they take an action on your site. When a lead performs the action identified below, we will send them a text message. If they do not have a subscribed phone number, then we will send an email. We will only send one per day and only one of each type every two weeks.</p>
         {BEHAVIORS.map((group) => {
           const items = group.items.filter((item) => !query || item.toLowerCase().includes(query));
           if (!items.length) return null;
           return (
           <section key={group.group} className="mb-4">
             <div className="grid grid-cols-[1fr_90px_90px] bg-[#d7eef3] px-3 py-2 text-[13px] font-semibold">
-              <span>{group.group} ⓘ</span><span>Text</span><span>Email</span>
+              <span>{group.group}</span><span>Text</span><span>Email</span>
             </div>
             {items.map((item) => {
               const on = Boolean(state.behavioral[item]);
               return (
                 <div key={item} className="grid grid-cols-[1fr_90px_90px] items-center border-b border-[#eee] px-3 py-3">
                   <div className="flex items-center gap-3">
-                    <button type="button" className={`inline-flex h-8 w-14 items-center justify-center rounded-full ${on ? "bg-[#1c93b5]" : "bg-[#cfcfcf]"}`} onClick={() => update((current) => ({ ...current, behavioral: { ...current.behavioral, [item]: !on } }))}>
-                      <span className="grid h-5 w-5 place-items-center rounded-full border border-white text-[12px] text-white">{on ? "✓" : "✖"}</span>
+                    <button type="button" className={`inline-flex h-6 w-10 items-center rounded-full px-0.5 ${on ? "justify-end bg-[#1c93b5]" : "justify-start bg-[#cfcfcf]"}`} aria-pressed={on} onClick={() => update((current) => ({ ...current, behavioral: { ...current.behavioral, [item]: !on } }))}>
+                      <span className="h-5 w-5 rounded-full bg-white" />
                     </button>
                     <p className="text-[13px]">{item}</p>
                   </div>
-                  <button type="button" aria-label="View text" className="grid h-8 w-8 place-items-center rounded-full bg-[#1c93b5] text-white" onClick={() => chrome.openModal(<ModalFrame title="Text preview" onClose={chrome.closeModal}><p className="text-[13px]">{item}</p><p className="mt-2 text-[13px] text-[#555]">Hi, this is Kayla with Archibald Real Estate Group. Reply STOP to opt out.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" strokeWidth="1.4"><path d="M1.5 8s2.5-4 6.5-4 6.5 4 6.5 4-2.5 4-6.5 4S1.5 8 1.5 8z" /><circle cx="8" cy="8" r="1.6" /></svg>
-                  </button>
-                  <button type="button" aria-label="View email" className="grid h-8 w-8 place-items-center rounded-full bg-[#1c93b5] text-white" onClick={() => chrome.openModal(<ModalFrame title="Email preview" onClose={chrome.closeModal}><p className="text-[13px] font-semibold">{item}</p><p className="mt-2 text-[13px] text-[#555]">Kayla Gerak · Archibald Real Estate Group · (604) 363-7858</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" strokeWidth="1.4"><path d="M1.5 8s2.5-4 6.5-4 6.5 4 6.5 4-2.5 4-6.5 4S1.5 8 1.5 8z" /><circle cx="8" cy="8" r="1.6" /></svg>
-                  </button>
+                  <button type="button" className="text-left text-[13px] text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Text preview" onClose={chrome.closeModal}><p className="text-[13px]">{item}</p><p className="mt-2 text-[13px] text-[#555]">Hi, this is Kayla with Archibald Real Estate Group. Reply STOP to opt out.</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>View</button>
+                  <button type="button" className="text-left text-[13px] text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Email preview" onClose={chrome.closeModal}><p className="text-[13px] font-semibold">{item}</p><p className="mt-2 text-[13px] text-[#555]">Kayla Gerak · Archibald Real Estate Group · (604) 363-7858</p><div className="mt-3 text-right"><Btn kind="teal" onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>View</button>
                 </div>
               );
             })}
@@ -1015,39 +965,18 @@ export function AiView() {
     ["Industry Leader", "Built for real estate teams that live in their CRM."],
   ].filter(([title, body]) => !query || `${title} ${body}`.toLowerCase().includes(query));
   return (
-    <div className="bg-white">
-      <div className="flex items-center gap-2 px-6 py-4">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-[#1c93b5] text-white">💬</span>
-        <span className="text-[22px] font-semibold tracking-wide text-[#1c93b5]">CINC AI</span>
-      </div>
-      <div className="flex items-center justify-between bg-gradient-to-r from-[#1493b5] to-[#7dba4a] px-8 py-10 text-white">
-        <div>
-          <p className="max-w-xl text-[26px] leading-tight font-semibold">Adaptive conversations based on lead behavior captured within CINC CRM.</p>
-        </div>
-        <button type="button" className="bg-[#1c93b5] px-4 py-2 text-[14px] font-semibold" onClick={ask}>Get CINC AI</button>
-      </div>
-      <div className="grid gap-6 px-8 py-8 md:grid-cols-3">
+    <div className="bg-white px-8 py-8">
+      <div className="grid gap-6 md:grid-cols-3">
         {cards.map(([title, body]) => (
-          <article key={title}>
-            <div className="mb-3 h-24 bg-gradient-to-br from-[#e7f6fb] to-[#eef8e8]" />
-            <h3 className="font-bold">{title}</h3>
-            <p className="mt-1 text-[13px] text-[#555]">{body}</p>
+          <article key={title} className="border border-[#e5e5e5] p-4">
+            <h3 className="font-bold text-[#1c93b5]">{title}</h3>
+            <p className="mt-2 text-[13px] text-[#555]">{body}</p>
           </article>
         ))}
       </div>
-      <div className="grid items-center gap-6 border-t border-[#eee] px-8 py-8 md:grid-cols-2">
-        <div className="rounded-2xl border border-[#d7eef3] bg-[#f4fbfd] p-4 text-[13px]">
-          <p className="mb-2 rounded-lg bg-white p-2 shadow-sm">Hi Kayla — Morgan viewed the same Kitsilano home three times.</p>
-          <p className="ml-8 rounded-lg bg-[#1c93b5] p-2 text-white">Send the day-3 follow up and offer Saturday at 1.</p>
-        </div>
-        <div>
-          <p className="text-[18px] font-semibold text-[#1c93b5]">CINC AI</p>
-          <p className="mt-2 text-[13px] text-[#444]">It reads the lead timeline and suggests one next message.</p>
-          <p className="mt-2 text-[13px] text-[#444]">Scripts stay inside this demo. Nothing is sent to a model.</p>
-          <p className="mt-2 text-[13px] text-[#444]">Turn it on when you are ready and the team can review the copy first.</p>
-          <button type="button" className="mt-4 bg-[#1c93b5] px-4 py-2 text-white" onClick={ask}>Get CINC AI</button>
-        </div>
-      </div>
+      <p className="mt-8 max-w-3xl text-[15px] leading-6 text-[#333]">CINC AI follows what a lead does in your CRM and drafts the next text or email from that activity.</p>
+      <p className="mt-3 max-w-3xl text-[15px] leading-6 text-[#333]">Your team reviews the message before it sends, using scripts that have already been tried with similar leads.</p>
+      <button type="button" className="mt-6 bg-[#1c93b5] px-4 py-2 text-[14px] font-semibold text-white" onClick={ask}>Get CINC AI</button>
     </div>
   );
 }
@@ -1079,16 +1008,13 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const [bedsFilter, setBedsFilter] = useState("Any");
   const [typeFilter, setTypeFilter] = useState("Any");
   const [priceFilter, setPriceFilter] = useState("Any");
-  const nav = <PropertyNav sub={sub} />;
-  if (sub === "text") return <div>{nav}<TextResponder /></div>;
+  const nav = sub === "list" || sub === "add" ? <PropertyNav sub={sub} /> : null;
+  if (sub === "text") return <TextResponder />;
   if (sub === "add") return <div>{nav}<AddPocket /></div>;
   if (sub === "virtual") {
     return (
-      <div>
-        {nav}
-        <div className="p-4">
-          <div className="bg-white px-3 py-2 text-[13px] text-[#444]">No Virtual Open Houses found.</div>
-        </div>
+      <div className="p-4">
+        <div className="bg-white px-3 py-2 text-[13px] text-[#444]">No Virtual Open Houses found.</div>
       </div>
     );
   }
@@ -1096,7 +1022,6 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
     const extra = state.openHouses.filter((item) => !item.virtual);
     return (
       <div>
-        {nav}
         <div className="space-y-3 p-4">
         {CRM_OPEN_HOUSES.map((item) => (
           <article key={item.id} className="border border-[#e5e5e5] bg-white">
@@ -1273,10 +1198,19 @@ function CampaignModal({ onClose }: { onClose: () => void }) {
 function TextResponder() {
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const [line, setLine] = useState("778-200-5837");
+  useEffect(() => {
+    void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fromNumber?: string | null } | null;
+      const digits = (data?.fromNumber || "").replace(/\D/g, "");
+      const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+      if (local.length === 10) setLine(`${local.slice(0, 3)}-${local.slice(3, 6)}-${local.slice(6)}`);
+    }).catch(() => undefined);
+  }, []);
   return (
     <div className="p-4">
       <div className="mb-3 flex items-center">
-        <h2 className="flex-1 text-center text-[16px] font-bold">Your texting number: (604) 363-7858</h2>
+        <h2 className="flex-1 text-center text-[16px] font-bold">Your texting number: {line}</h2>
         <button type="button" className="mr-2 h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(
           <ModalFrame title="Text templates" onClose={chrome.closeModal}>
             <ul className="max-h-64 space-y-2 overflow-auto text-[13px]">
@@ -1381,8 +1315,23 @@ export function SellerView() {
 }
 
 export function WebsiteView({ page }: { page: string }) {
-  if (page === "theme") return <div className="p-4"><ThemeLayoutPicker /></div>;
-  return <PageEditor page={page} />;
+  const pages = [
+    ["home", "Home", "/dashboard/spa#website/pages/home"],
+    ["about", "About", "/dashboard/spa#website/pages/about"],
+    ["branded", "Branded Site", "/dashboard/spa#website/pages/branded"],
+    ["branded-about", "Branded About", "/dashboard/spa#website/pages/branded-about"],
+    ["custom", "Add Custom Page", "/dashboard/spa#website/pages/custom"],
+  ] as const;
+  return (
+    <div>
+      <div className="flex flex-wrap gap-4 border-b border-[#e5e5e5] bg-white px-4 py-2 text-[13px]">
+        {pages.map(([id, label, link]) => (
+          <a key={id} href={link} className={page === id ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>{label}</a>
+        ))}
+      </div>
+      {page === "theme" ? <div className="p-4"><ThemeLayoutPicker /></div> : <PageEditor page={page} />}
+    </div>
+  );
 }
 
 function pageStats(_id: string) {
@@ -1407,7 +1356,8 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
     // Prompt once when the add hash is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const query = chrome.leadSearch.trim().toLowerCase();
+  const [pageQuery, setPageQuery] = useState("");
+  const query = (pageQuery || chrome.leadSearch).trim().toLowerCase();
   const rows = state.landingPages
     .filter((page) => category === "all" || page.category === category)
     .filter((page) => !query || page.name.toLowerCase().includes(query))
@@ -1427,6 +1377,13 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
   }
   return (
     <div className="p-4">
+      <div className="mb-3 flex flex-wrap gap-4 border-b border-[#e5e5e5] pb-2 text-[13px]">
+        <a href={href.landing} className={category === "all" ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>All</a>
+        <a href={href.landingCat("buyers")} className={category === "buyers" ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>Buyers</a>
+        <a href={href.landingCat("sellers")} className={category === "sellers" ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>Sellers</a>
+        <a href={href.landingCat("contact")} className={category === "contact" ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>Contact</a>
+      </div>
+      <input className="mb-3 h-8 w-full max-w-sm border border-[#ccc] px-2 text-[13px]" placeholder="Search landing pages..." value={pageQuery} onChange={(event) => setPageQuery(event.target.value)} />
       <button type="button" className="mb-3 inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => {
         const name = window.prompt("Landing page name");
         if (!name) return;
@@ -2241,19 +2198,24 @@ export function CalendarView() {
   const todayDay = Number(vancouver.find((part) => part.type === "day")?.value);
   const [cursor, setCursor] = useState(new Date(todayYear, todayMonth - 1, 1));
   const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("month");
+  const office = useOfficeSession();
+  const { leads } = useLeads();
+  const appointments = state.appointments.filter((item) => !/audit appt/i.test(item.title || ""));
+  const requests = leads.filter((lead) => lead.source === "showing_request");
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
   const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const cells = [...Array.from({ length: firstWeekday }, () => 0), ...Array.from({ length: days }, (_, index) => index + 1)];
+  const owner = office.user ? `${office.user.name}, You` : "Casey Archibald, You";
   return (
-    <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr]">
+    <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr_260px]">
       <aside className="bg-white p-3 text-[13px]">
         <p className="font-bold">Mini Calendar</p>
         <p className="mt-1 text-[#1c93b5]">{names[todayMonth - 1]} {todayDay}, {todayYear}</p>
         <p className="mt-3 font-bold">CINC Calendars</p>
-        <p>Kayla Gerak</p>
+        <p>{owner}</p>
         <p className="mt-3 font-bold">Event Calendars</p>
         <p>US Holiday</p>
         <p>CA Holiday</p>
@@ -2265,17 +2227,17 @@ export function CalendarView() {
           <span className="font-semibold">{names[month]} {year}</span>
           <button type="button" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
           <div className="ml-auto flex gap-1">
-            {(["agenda", "week", "month", "day"] as const).map((item) => (
-              <button key={item} type="button" className={`border px-2 py-1 capitalize ${mode === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{item}</button>
+            {([["agenda", "my agenda"], ["week", "week"], ["month", "month"], ["day", "day"]] as const).map(([item, label]) => (
+              <button key={item} type="button" className={`border px-2 py-1 lowercase ${mode === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{label}</button>
             ))}
           </div>
         </div>
         {mode === "agenda" ? (
-          <ul>{state.appointments.length ? state.appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
+          <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
         ) : mode === "day" ? (
           <div className="border border-[#1c93b5] p-3">
             <p className="font-semibold">{names[todayMonth - 1]} {todayDay}</p>
-            {state.appointments.filter((item) => item.when.includes(String(todayDay))).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title}</p>)}
+            {appointments.filter((item) => item.when.includes(String(todayDay))).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title}</p>)}
           </div>
         ) : (
           <>
@@ -2291,7 +2253,7 @@ export function CalendarView() {
                     }}>
                       {day || ""}
                     </button>
-                    {day ? state.appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => (
+                    {day ? appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => (
                       <button key={item.id} type="button" className="block w-full truncate text-left text-[10px] text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[month]} ${day}`} when={item.when} existing={item} onClose={chrome.closeModal} />)}>
                         {item.title}
                       </button>
@@ -2303,6 +2265,17 @@ export function CalendarView() {
           </>
         )}
       </div>
+      <aside className="bg-white p-3 text-[13px]">
+        <h2 className="font-bold">Appointment Requests</h2>
+        {requests.length ? requests.map((lead) => (
+          <article key={lead.id} className="mt-3 border-t border-[#eee] pt-2">
+            <p className="font-semibold text-[#1c93b5]">{lead.name}</p>
+            <p>{lead.propertyAddress || "Showing request"}</p>
+            <p className="text-[12px] text-[#666]">Expiry Date: {lead.createdAt.slice(0, 10) || "—"}</p>
+            <p className="text-[12px]">Agent Accepted: {appointments.some((item) => item.leadId === lead.id) ? "Yes" : "No"}</p>
+          </article>
+        )) : <p className="mt-3 text-[#888]">No appointment requests.</p>}
+      </aside>
     </div>
   );
 }

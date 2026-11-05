@@ -12,7 +12,7 @@ export const href = {
   dialerHistory: `${SPA}#leads/dialer-history`,
   lead: (id: string, tab = "activity") => `${SPA}#leads/details/${encodeURIComponent(id)}/${tab}`,
   leadSearch: (id: string, searchId?: string) => `${SPA}#leads/details/${encodeURIComponent(id)}/search${searchId ? `/${encodeURIComponent(searchId)}` : ""}`,
-  dealsPurchases: `${SPA}/deals#/dashboard/purchases`,
+  dealsPurchases: `${SPA}/deals#/dashboard`,
   dealsListings: `${SPA}/deals#/dashboard/listings`,
   inbox: `${SPA}#inbox`,
   sent: `${SPA}#inbox/sent`,
@@ -225,7 +225,7 @@ export function titleOf(route: CincRoute): string {
     case "gmail":
       return "Gmail Inbox";
     case "contacts":
-      return route.mode === "people" ? "Contact List" : "Vendors";
+      return route.mode === "people" ? "Contacts" : "Vendors";
     case "callsummary":
       return "Call Summary";
     case "leads":

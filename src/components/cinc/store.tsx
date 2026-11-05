@@ -488,6 +488,7 @@ function load(raw: string | null): SpaState {
       campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
       notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
+      appointments: (parsed.appointments ?? []).filter((item) => !/audit appt/i.test(item.title || "")),
       leadTracks: parsed.leadTracks ?? {},
       leadSubs: parsed.leadSubs ?? {},
       verify: parsed.verify ?? {},

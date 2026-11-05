@@ -235,67 +235,92 @@ export function BillingPlaceholder() {
   );
 }
 
-const PAGE_COPY: Record<string, { title: string; headline: string; body: string }> = {
-  home: {
-    title: "Home",
-    headline: "Greater Vancouver Area Home Search",
-    body: "Search Greater Vancouver homes, save searches, and ask the office a question from the home page.",
-  },
-  about: {
-    title: "About",
-    headline: "About Archibald Real Estate Group",
-    body: "Archibald Real Estate Group helps people buy and sell homes across Greater Vancouver.",
-  },
-  branded: {
-    title: "Branded Site",
-    headline: "Branded Site",
-    body: "The branded site uses the office name, phone, and logo on every public page.",
-  },
-  "branded-about": {
-    title: "Branded About",
-    headline: "Branded About",
-    body: "The branded about page introduces the agents and the office.",
-  },
-  custom: {
-    title: "Add Custom Page",
-    headline: "Custom page",
-    body: "Add a page that is not one of the standard home or about pages.",
-  },
+const PAGE_TITLES: Record<string, string> = {
+  home: "Edit Home Page",
+  about: "Edit About Page",
+  branded: "Edit Branded Site Page",
+  "branded-about": "Edit Branded About Page",
+  custom: "Edit Custom Page",
 };
 
+type EditorSection = { id: string; name: string; show: boolean; agents: string[] };
+
+function starterSections(page: string): EditorSection[] {
+  if (page === "about" || page === "branded-about") {
+    return [{ id: "about", name: "About", show: true, agents: [] }];
+  }
+  return [{ id: "main", name: page === "home" ? "Home" : "Content", show: true, agents: [] }];
+}
+
 export function PageEditor({ page }: { page: string }) {
-  const copy = PAGE_COPY[page] ?? PAGE_COPY.home;
-  const [headline, setHeadline] = useState(copy.headline);
-  const [body, setBody] = useState(copy.body);
+  const title = PAGE_TITLES[page] ?? "Edit Home Page";
+  const [permalink, setPermalink] = useState(page === "home" ? "/" : `/${page}`);
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [sections, setSections] = useState<EditorSection[]>(() => starterSections(page));
   const [note, setNote] = useState("");
   useEffect(() => {
-    const fallback = PAGE_COPY[page] ?? PAGE_COPY.home;
-    setHeadline(fallback.headline);
-    setBody(fallback.body);
+    setPermalink(page === "home" ? "/" : `/${page}`);
+    setSections(starterSections(page));
+    setMetaTitle("");
+    setMetaDescription("");
     void loadOfficePrefs().then((prefs) => {
-      const pages = prefs.pages as Record<string, { headline?: string; body?: string }> | undefined;
+      const pages = prefs.pages as Record<string, { permalink?: string; metaTitle?: string; metaDescription?: string; sections?: EditorSection[] }> | undefined;
       const saved = pages?.[page];
-      if (saved?.headline) setHeadline(saved.headline);
-      if (saved?.body) setBody(saved.body);
+      if (!saved) return;
+      if (saved.permalink) setPermalink(saved.permalink);
+      if (saved.metaTitle) setMetaTitle(saved.metaTitle);
+      if (saved.metaDescription) setMetaDescription(saved.metaDescription);
+      if (saved.sections?.length) setSections(saved.sections);
     });
   }, [page]);
   return (
-    <div className="p-4">
-      <h1 className="text-[18px] font-semibold">Page Editor · {copy.title}</h1>
-      <p className="mt-2 text-[13px] text-[#555]">This page is {copy.title}. Its headline and body are separate from the other editor pages.</p>
-      <label className="mt-4 block text-[13px]">Headline
-        <input className="mt-1 h-8 w-full max-w-lg border border-[#ccc] px-2" value={headline} onChange={(event) => setHeadline(event.target.value)} />
+    <div className="p-4 text-[13px]">
+      <h1 className="text-[18px] font-semibold">{title}</h1>
+      <label className="mt-4 block max-w-lg">Permalink
+        <input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={permalink} onChange={(event) => setPermalink(event.target.value)} />
       </label>
-      <label className="mt-3 block text-[13px]">Body
-        <textarea className="mt-1 h-28 w-full max-w-lg border border-[#ccc] p-2" value={body} onChange={(event) => setBody(event.target.value)} />
-      </label>
-      <div className="mt-3"><Btn kind="blue" onClick={() => {
-        void loadOfficePrefs().then((prefs) => {
-          const pages = { ...((prefs.pages as object) || {}), [page]: { headline, body } };
-          return saveOfficePrefs({ pages });
-        }).then((error) => setNote(error || "Page saved."));
-      }}>Update</Btn></div>
-      {note ? <p className="mt-2 text-[13px] text-[#1c93b5]">{note}</p> : null}
+      <button type="button" className="mt-3 text-[#1c93b5]" onClick={() => setMetaOpen((value) => !value)}>Custom Meta Values</button>
+      {metaOpen ? (
+        <div className="mt-2 max-w-lg space-y-2 border border-[#e5e5e5] p-3">
+          <label className="block">Title<input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} /></label>
+          <label className="block">Description<textarea className="mt-1 h-20 w-full border border-[#ccc] p-2" value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} /></label>
+        </div>
+      ) : null}
+      <div className="mt-4 space-y-3">
+        {sections.map((section) => (
+          <section key={section.id} className="border border-[#e5e5e5] bg-white p-3">
+            <h2 className="font-semibold">{section.name}</h2>
+            {section.name === "About" ? (
+              <div className="mt-2">
+                <p className="font-semibold">Featured Agents</p>
+                <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show Section</label>
+                <ul className="mt-2">{section.agents.map((agent) => <li key={agent}>{agent}</li>)}</ul>
+                <button type="button" className="mt-2 text-[#1c93b5]" onClick={() => {
+                  const name = window.prompt("Agent name");
+                  if (!name) return;
+                  setSections((current) => current.map((item) => item.id === section.id ? { ...item, agents: [...item.agents, name] } : item));
+                }}>Add Agent</button>
+              </div>
+            ) : <p className="mt-2 text-[#666]">This section is on {title.replace("Edit ", "").replace(" Page", "")}.</p>}
+          </section>
+        ))}
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button type="button" className="border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => {
+          const name = window.prompt("Section name", "New section");
+          if (!name) return;
+          setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, agents: [] }]);
+        }}>Add Section</button>
+        <Btn kind="blue" onClick={() => {
+          void loadOfficePrefs().then((prefs) => {
+            const pages = { ...((prefs.pages as object) || {}), [page]: { permalink, metaTitle, metaDescription, sections } };
+            return saveOfficePrefs({ pages });
+          }).then((error) => setNote(error || "Page saved."));
+        }}>Save Page</Btn>
+      </div>
+      {note ? <p className="mt-2 text-[#1c93b5]">{note}</p> : null}
     </div>
   );
 }
