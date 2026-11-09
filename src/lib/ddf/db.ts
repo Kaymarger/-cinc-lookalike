@@ -363,6 +363,8 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
   const city = (filters.city?.trim() || "").toLowerCase();
   const q = (filters.q?.trim() || "").replace(/[%_]/g, "");
   const qLower = q.toLowerCase();
+  const metro = /^(greater vancouver|metro vancouver|gvrd|vancouver area)$/i.test(qLower);
+  const text = metro ? "" : q;
   const typePattern = filters.propertyType ? TYPE_SQL[filters.propertyType.toLowerCase()] || filters.propertyType : "";
   const newestOnly = Boolean(filters.newListings);
   const rows = await sql<ListingRow[]>`
@@ -390,14 +392,14 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
       AND (${filters.openHouse !== true} OR jsonb_array_length(open_houses) > 0)
       AND (${filters.virtualTour !== true} OR virtual_tour_url <> '')
       AND (
-        ${q} = ''
-        OR lower(neighbourhood) = ${qLower}
-        OR lower(city) = ${qLower}
-        OR neighbourhood ILIKE ${"%" + q + "%"}
-        OR address ILIKE ${"%" + q + "%"}
-        OR postal_code ILIKE ${"%" + q + "%"}
-        OR listing_id ILIKE ${q}
-        OR public_remarks ILIKE ${"%" + q + "%"}
+        ${text} = ''
+        OR lower(neighbourhood) = ${text.toLowerCase()}
+        OR lower(city) = ${text.toLowerCase()}
+        OR neighbourhood ILIKE ${"%" + text + "%"}
+        OR address ILIKE ${"%" + text + "%"}
+        OR postal_code ILIKE ${"%" + text + "%"}
+        OR listing_id ILIKE ${text}
+        OR public_remarks ILIKE ${"%" + text + "%"}
       )
       AND (
         ${typePattern} = ''

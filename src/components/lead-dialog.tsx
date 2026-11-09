@@ -27,6 +27,7 @@ export function LeadDialog({
   const panelId = useId().replace(/:/g, "");
   const { capture } = useLeads();
   const [sent, setSent] = useState(false);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -97,8 +98,13 @@ export function LeadDialog({
       <div
         id={panelId}
         popover="auto"
+        onToggle={(event) => {
+          const next = (event.nativeEvent as Event & { newState?: string }).newState;
+          setOpen(next === "open");
+        }}
         className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-border bg-white p-0 text-[var(--ink)] shadow-xl backdrop:bg-black/45 open:flex"
       >
+        {open ? (
         <div className="relative w-full p-5 sm:p-6">
           <button
             type="button"
@@ -239,6 +245,7 @@ export function LeadDialog({
             </>
           )}
         </div>
+        ) : null}
       </div>
     </div>
   );

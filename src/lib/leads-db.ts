@@ -423,9 +423,15 @@ export async function insertLead(
 ): Promise<StoredLead> {
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
+  const phoneDigits = lead.phone.replace(/\D/g, "");
   const existing = await sql<LeadRow[]>`
     SELECT * FROM captured_leads
     WHERE lower(email) = ${lead.email.toLowerCase()}
+       OR (
+         ${phoneDigits} <> ''
+         AND length(${phoneDigits}) >= 10
+         AND regexp_replace(phone, '\\D', '', 'g') = ${phoneDigits}
+       )
     ORDER BY created_at ASC
     LIMIT 1
   `;
@@ -497,6 +503,17 @@ export async function getLead(id: string): Promise<StoredLead | null> {
     SELECT * FROM captured_leads WHERE id = ${id} LIMIT 1
   `;
   return rows[0] ? rowToStoredLead(rows[0]) : null;
+}
+
+export async function deleteAuditTestLeads(): Promise<void> {
+  const sql = await officeDb();
+  if (!sql) return;
+  await sql`
+    DELETE FROM captured_leads
+    WHERE lower(email) = 'qa-audit-1106@example.com'
+       OR name ILIKE 'QA Audit1106%'
+       OR name ILIKE 'QA Audit 1106%'
+  `;
 }
 
 export async function listLeads(limit = 500, scope?: LeadScope | null): Promise<StoredLead[]> {

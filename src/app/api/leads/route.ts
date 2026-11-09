@@ -6,7 +6,7 @@ import {
 } from "@/lib/lead-intake";
 import { cookies } from "next/headers";
 import { COOKIE_NAME, verifySession } from "@/lib/agent-auth";
-import { databaseStatus, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
+import { databaseStatus, deleteAuditTestLeads, insertLead, leadsDatabaseConfigured, listLeads, type StoredLead } from "@/lib/leads-db";
 import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { insertSearch } from "@/lib/lead-searches-db";
 import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
@@ -33,6 +33,16 @@ function rateLimited(ip: string): boolean {
   recent.push(now);
   hits.set(ip, recent);
   return false;
+}
+
+function activityTitle(source: string) {
+  if (source === "registration" || source === "buyer_signup" || source === "seller_signup") return "Signed up for home search";
+  if (source === "search_alert") return "Saved a search";
+  if (source === "showing_request") return "Requested a showing";
+  if (source === "ask_question") return "Asked about a home";
+  if (source === "home_valuation") return "Requested a home value";
+  if (source === "general") return "Sent a message";
+  return "Updated their record";
 }
 
 function publicLead(lead: SanitizedLead | StoredLead) {
@@ -67,10 +77,7 @@ function publicLead(lead: SanitizedLead | StoredLead) {
         id: `${lead.id}-created`,
         at: lead.createdAt,
         kind: lead.source === "registration" || lead.source === "buyer_signup" ? "signup" : "system",
-        title:
-          lead.source === "registration" || lead.source === "buyer_signup"
-            ? "Free Access signup"
-            : "Lead captured",
+        title: activityTitle(lead.source),
         body: summary || undefined,
       },
     ],
@@ -98,6 +105,7 @@ export async function GET() {
     });
   }
   try {
+    await deleteAuditTestLeads();
     const leads = await listLeads(500, {
       role: actor.user.role,
       userId: actor.user.id,

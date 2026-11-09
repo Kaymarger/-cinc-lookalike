@@ -249,8 +249,8 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                 <div className="mt-2 flex flex-wrap gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
-                  {office.canBecome && user.active ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Their leads</button> : null}
-                  {office.canBecome && user.active ? <button type="button" className="border border-[#1c93b5] bg-white px-2 py-1 text-[#1c93b5]" onClick={() => void become(user, "profile")}>Their profile</button> : null}
+                  {office.canBecome && user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Become User</button> : null}
+                  {user.role === "isa" && office.canManageUsers ? <button type="button" className="border border-[#1c93b5] px-2 py-1 text-[#1c93b5]" onClick={() => startEdit(user)}>Edit pond</button> : null}
                   {office.canManageUsers && user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                 </div>
               </article>

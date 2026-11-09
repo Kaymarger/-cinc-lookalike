@@ -44,6 +44,7 @@ export function LaunchpadView() {
   const { leads } = useLeads();
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const office = useOfficeSession();
   const [tab, setTab] = useState("Contact Requested");
   useEffect(() => {
     const reset = () => setTab("Contact Requested");
@@ -105,7 +106,7 @@ export function LaunchpadView() {
   });
   return (
     <div className="p-4">
-      <h1 className="text-[22px] font-bold text-[#243238]">Welcome back, {CRM_AGENT.greetingName}.</h1>
+      <h1 className="text-[22px] font-bold text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
@@ -625,7 +626,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const composeOff = folder === "sent";
   const showCompose = folder === "inbox" || folder === "sent";
   const showFilters = folder === "inbox" || folder === "trashed";
-  const countLabel = messages.length ? `${safePage * pageSize + 1} - ${Math.min(messages.length, (safePage + 1) * pageSize)} of ${messages.length}` : "1 - 0 of 0";
+  const countLabel = messages.length ? `${safePage * pageSize + 1} - ${Math.min(messages.length, (safePage + 1) * pageSize)} of ${messages.length}` : "0 messages";
   if (booting) return <p className="p-6 text-[13px] text-[#666]">Loading…</p>;
   const allPicked = slice.length > 0 && slice.every((mail) => picked.includes(mail.id));
   function needPick() {
@@ -695,7 +696,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
           </article>
         ) : (
           <div className="bg-white shadow-sm">
-            {slice.map((mail) => (
+            {slice.length ? slice.map((mail) => (
               <div key={mail.id} className={`flex min-h-8 w-full items-center gap-2 border-b border-[#eee] px-2 py-1 text-left text-[12px] ${mail.unread ? "bg-[#f3fbfd] font-bold" : ""}`}>
                 <input className={checkCls} type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => { setOpenId(mail.id); update((current) => ({ ...current, mail: current.mail.map((item) => item.id === mail.id ? { ...item, unread: false } : item) })); }}>
@@ -719,7 +720,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                 <span className="font-bold">{mail.at}</span>
                 </button>
               </div>
-            ))}
+            )) : <p className="px-4 py-10 text-center text-[13px] text-[#666]">No messages in this folder.</p>}
           </div>
         )}
       </div>
@@ -1217,7 +1218,7 @@ function TextResponder() {
               {state.templates.filter((item) => item.type === "Text").map((item) => (
                 <li key={item.id} className="border border-[#eee] p-2">
                   <p className="font-semibold">{item.name}</p>
-                  <p className="text-[#666]">{item.body || "No body yet."}</p>
+                  <p className="text-[#666]">{item.body || `Hi, this is Casey Archibald at Archibald Real Estate Group. ${item.name}. Call or text (604) 363-7858. Reply STOP to opt out.`}</p>
                 </li>
               ))}
               {!state.templates.some((item) => item.type === "Text") ? <li>No text templates yet.</li> : null}
@@ -1300,16 +1301,59 @@ function AddPocket() {
 
 export function SellerView() {
   const office = useOfficeSession();
+  const [sites, setSites] = useState<{ id: string; name: string; address: string }[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  useEffect(() => {
+    void loadOfficePrefs().then((prefs) => {
+      if (Array.isArray(prefs.sellerSites)) setSites(prefs.sellerSites as { id: string; name: string; address: string }[]);
+    });
+  }, []);
   const allowed = !office.ready || !office.user || office.user.role === "admin" || office.user.role === "broker";
   if (!allowed) return <div className="p-4 text-[13px]">You do not have permission to edit Seller Suite pages</div>;
   return (
     <div className="p-4">
       <h1 className="text-[18px] font-semibold">Seller Suite</h1>
-      <p className="mt-2 text-[13px] text-[#555]">View all sites or add a new seller site.</p>
+      <p className="mt-2 text-[13px] text-[#555]">Seller sites for this office.</p>
       <div className="mt-4 flex gap-2">
-        <a className="bg-[#1c93b5] px-3 py-1 text-[13px] text-white" href="/dashboard/spa#website/pages/home">View All Sites</a>
-        <a className="border border-[#1c93b5] px-3 py-1 text-[13px] text-[#1c93b5]" href="/dashboard/spa#website/pages/custom">Add New Site</a>
+        <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[13px] text-white" onClick={() => setCreating(false)}>View All Sites</button>
+        <button type="button" className="border border-[#1c93b5] px-3 py-1 text-[13px] text-[#1c93b5]" onClick={() => setCreating(true)}>Add New Site</button>
       </div>
+      {creating ? (
+        <form className="mt-4 max-w-lg border border-[#1c93b5] bg-white p-4 text-[13px]" onSubmit={(event) => {
+          event.preventDefault();
+          if (!name.trim() || !address.trim()) return;
+          const next = [...sites, { id: `site-${Date.now()}`, name: name.trim(), address: address.trim() }];
+          setSites(next);
+          void saveOfficePrefs({ sellerSites: next });
+          setName("");
+          setAddress("");
+          setCreating(false);
+        }}>
+          <h2 className="mb-3 text-[16px] font-semibold">Create seller site</h2>
+          <label className="mb-2 block">Site name<input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="mb-3 block">Home address<input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={address} onChange={(event) => setAddress(event.target.value)} /></label>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setCreating(false)}>Cancel</button>
+            <button type="submit" className="bg-[#1c93b5] px-3 py-1 text-white">Create site</button>
+          </div>
+        </form>
+      ) : (
+        <div className="mt-4 border border-[#e5e5e5] bg-white">
+          <h2 className="border-b border-[#eee] px-3 py-2 font-semibold">All sites</h2>
+          {sites.length ? sites.map((site) => (
+            <article key={site.id} className="flex items-center justify-between border-b border-[#f3f3f3] px-3 py-2 text-[13px]">
+              <div><p className="font-semibold">{site.name}</p><p className="text-[#666]">{site.address}</p></div>
+              <button type="button" className="text-[#d9363e]" onClick={() => {
+                const next = sites.filter((item) => item.id !== site.id);
+                setSites(next);
+                void saveOfficePrefs({ sellerSites: next });
+              }}>Remove</button>
+            </article>
+          )) : <p className="px-3 py-6 text-[13px] text-[#666]">No seller sites yet. Use Add New Site to create one.</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1343,18 +1387,10 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
   const chrome = useChrome();
   const [sort, setSort] = useState<"title" | "leads" | "views" | "conv">("title");
   const [dir, setDir] = useState<1 | -1>(1);
+  const [creating, setCreating] = useState(false);
+  const [draftName, setDraftName] = useState("");
   useEffect(() => {
-    if (window.location.hash.includes("add")) {
-      const name = window.prompt("Landing page name");
-      if (name) {
-        const cat = category === "all" ? "buyers" : category;
-        update((current) => ({ ...current, landingPages: [...current.landingPages, { id: uid("lp"), name, category: cat, url: `/info/${name.toLowerCase().replace(/\s+/g, "-")}`, active: false }] }));
-        chrome.toast("Landing page created on this device.");
-      }
-      window.history.replaceState(null, "", "/dashboard/landing/#/");
-    }
-    // Prompt once when the add hash is opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (window.location.hash.includes("add")) setCreating(true);
   }, []);
   const [pageQuery, setPageQuery] = useState("");
   const query = (pageQuery || chrome.leadSearch).trim().toLowerCase();
@@ -1384,13 +1420,26 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
         <a href={href.landingCat("contact")} className={category === "contact" ? "font-semibold text-[#1c93b5]" : "text-[#555]"}>Contact</a>
       </div>
       <input className="mb-3 h-8 w-full max-w-sm border border-[#ccc] px-2 text-[13px]" placeholder="Search landing pages..." value={pageQuery} onChange={(event) => setPageQuery(event.target.value)} />
-      <button type="button" className="mb-3 inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => {
-        const name = window.prompt("Landing page name");
-        if (!name) return;
-        const cat = category === "all" ? "buyers" : category;
-        update((current) => ({ ...current, landingPages: [...current.landingPages, { id: uid("lp"), name, category: cat, url: `/info/${name.toLowerCase().replace(/\s+/g, "-")}`, active: false }] }));
-        chrome.toast("Landing page created on this device.");
-      }}>⊕ Add Landing Page</button>
+      <button type="button" className="mb-3 inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => setCreating(true)}>⊕ Add Landing Page</button>
+      {creating ? (
+        <form className="mb-4 max-w-lg border border-[#1c93b5] bg-white p-4 text-[13px]" onSubmit={(event) => {
+          event.preventDefault();
+          const name = draftName.trim();
+          if (!name) return;
+          const cat = category === "all" ? "buyers" : category;
+          update((current) => ({ ...current, landingPages: [...current.landingPages, { id: uid("lp"), name, category: cat, url: `/info/${name.toLowerCase().replace(/\s+/g, "-")}`, active: false }] }));
+          setDraftName("");
+          setCreating(false);
+          chrome.toast("Landing page created.");
+        }}>
+          <h2 className="mb-3 text-[16px] font-semibold">Create Landing Page</h2>
+          <label className="block">Name<input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={draftName} onChange={(event) => setDraftName(event.target.value)} /></label>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" onClick={() => setCreating(false)}>Cancel</button>
+            <button type="submit" className="bg-[#1c93b5] px-3 py-1 text-white">Create</button>
+          </div>
+        </form>
+      ) : null}
       <div className="mb-2 grid grid-cols-[1fr_70px_110px_90px_140px] px-3 text-[12px] font-bold">
         <span>{head("Title", "title")}</span>
         <span className="text-center">{head("Leads", "leads")}</span>
@@ -2200,7 +2249,7 @@ export function CalendarView() {
   const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("month");
   const office = useOfficeSession();
   const { leads } = useLeads();
-  const appointments = state.appointments.filter((item) => !/audit appt/i.test(item.title || ""));
+  const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || ""));
   const requests = leads.filter((lead) => lead.source === "showing_request");
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -2208,6 +2257,17 @@ export function CalendarView() {
   const days = new Date(year, month + 1, 0).getDate();
   const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const cells = [...Array.from({ length: firstWeekday }, () => 0), ...Array.from({ length: days }, (_, index) => index + 1)];
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const isoFor = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
+  const [selected, setSelected] = useState(isoFor(todayYear, todayMonth, todayDay));
+  function apptDay(when: string) {
+    return when.match(/\d{4}-\d{2}-\d{2}/)?.[0] || "";
+  }
+  function openNew(iso: string) {
+    setSelected(iso);
+    const [y, m, d] = iso.split("-").map(Number);
+    chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[(m || 1) - 1]} ${d}`} when={iso} onClose={chrome.closeModal} />);
+  }
   const owner = office.user ? `${office.user.name}, You` : "Casey Archibald, You";
   return (
     <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr_260px]">
@@ -2226,6 +2286,7 @@ export function CalendarView() {
           <button type="button" onClick={() => setCursor(new Date(year, month - 1, 1))}>‹</button>
           <span className="font-semibold">{names[month]} {year}</span>
           <button type="button" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
+          <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[12px] text-white" onClick={() => openNew(selected)}>Add Appointment</button>
           <div className="ml-auto flex gap-1">
             {([["agenda", "my agenda"], ["week", "week"], ["month", "month"], ["day", "day"]] as const).map(([item, label]) => (
               <button key={item} type="button" className={`border px-2 py-1 lowercase ${mode === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{label}</button>
@@ -2236,8 +2297,9 @@ export function CalendarView() {
           <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
         ) : mode === "day" ? (
           <div className="border border-[#1c93b5] p-3">
-            <p className="font-semibold">{names[todayMonth - 1]} {todayDay}</p>
-            {appointments.filter((item) => item.when.includes(String(todayDay))).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title}</p>)}
+            <p className="font-semibold">{names[Number(selected.slice(5, 7)) - 1]} {Number(selected.slice(8, 10))}, {selected.slice(0, 4)}</p>
+            {appointments.filter((item) => apptDay(item.when) === selected).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title} · {item.when}</p>)}
+            {!appointments.some((item) => apptDay(item.when) === selected) ? <p className="text-[13px] text-[#888]">No appointments on this day.</p> : null}
           </div>
         ) : (
           <>
@@ -2249,11 +2311,11 @@ export function CalendarView() {
                   <div key={index} role="presentation" className={`h-16 border p-1 text-left text-[12px] ${on ? "border-[#1c93b5] bg-[#e7f5f8]" : "border-[#eee]"}`}>
                     <button type="button" className="block w-full text-left" onClick={() => {
                       if (!day) return;
-                      chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[month]} ${day}`} when={`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`} onClose={chrome.closeModal} />);
+                      openNew(isoFor(year, month + 1, day));
                     }}>
                       {day || ""}
                     </button>
-                    {day ? appointments.filter((item) => item.when.includes(String(day)) && item.when.includes(String(month + 1))).map((item) => (
+                    {day ? appointments.filter((item) => apptDay(item.when) === isoFor(year, month + 1, day)).map((item) => (
                       <button key={item.id} type="button" className="block w-full truncate text-left text-[10px] text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[month]} ${day}`} when={item.when} existing={item} onClose={chrome.closeModal} />)}>
                         {item.title}
                       </button>

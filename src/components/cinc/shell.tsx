@@ -376,6 +376,16 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
     })
     .sort((a, b) => String(b.at).localeCompare(String(a.at)))
     .slice(0, 20);
+  function activityWhen(at: string) {
+    const date = new Date(at);
+    if (Number.isNaN(date.getTime())) return at;
+    return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  function activityTitle(title: string) {
+    if (title === "Free Access signup") return "Signed up for home search";
+    if (title === "Lead captured") return "Sent a message";
+    return title;
+  }
   const [modal, setModal] = useState<ReactNode>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -385,11 +395,12 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  const routeKey = JSON.stringify(route);
   useEffect(() => {
     document.title = `${titleOf(route) || "CINC"} · CINC`;
     setModal(null);
     setNavOpen(false);
-  }, [route]);
+  }, [routeKey]);
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) setRail(false);
@@ -580,8 +591,8 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   {activities.length ? activities.map((item) => (
                     <a key={`${item.leadId}-${item.id}`} href={href.lead(item.leadId)} className="mb-2 block border border-[#e5e5e5] bg-white px-2 py-1.5 text-[12px] hover:border-[#1c93b5]">
                       <span className="font-semibold text-[#1c93b5]">{item.leadName}</span>
-                      <span className="mt-0.5 block text-[#333]">{item.title}</span>
-                      <span className="text-[11px] text-[#888]">{item.at}</span>
+                      <span className="mt-0.5 block text-[#333]">{activityTitle(item.title)}</span>
+                      <span className="text-[11px] text-[#888]">{activityWhen(item.at)}</span>
                     </a>
                   )) : <p className="px-1 py-6 text-center text-[12px] text-[#888]">No new activities</p>}
                 </div>

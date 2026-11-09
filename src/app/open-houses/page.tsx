@@ -2,16 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 import { PropertyCard } from "@/components/property-card";
-import { ddfConfigured } from "@/lib/ddf/credentials";
-import { properties } from "@/lib/properties";
+import { searchDdfListings } from "@/lib/ddf/db";
 
 export const metadata: Metadata = {
   title: "Open Houses",
   description: "Open houses across Greater Vancouver.",
 };
 
-export default function OpenHousesPage() {
-  const openHouses = ddfConfigured() ? [] : properties.filter((p) => p.openHouse);
+export default async function OpenHousesPage() {
+  const { properties: openHouses } = await searchDdfListings({ openHouse: true }, 24);
 
   return (
     <div className="bg-white">

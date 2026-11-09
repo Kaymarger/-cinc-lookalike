@@ -119,7 +119,7 @@ export function parseFilters(
 export function searchProperties(filters: SearchFilters): Property[] {
   let results = [...properties];
 
-  if (filters.q) {
+  if (filters.q && !/^(greater vancouver|metro vancouver|gvrd|vancouver area)$/i.test(filters.q.trim())) {
     const q = filters.q.toLowerCase();
     results = results.filter((p) => {
       const hay = [

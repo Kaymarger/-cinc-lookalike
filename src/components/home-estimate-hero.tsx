@@ -128,19 +128,25 @@ export function HomeEstimateHero({
                   className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
                 />
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    name="Unit"
-                    placeholder="Unit # (opt.)"
-                    aria-label="Enter a Unit Number"
-                    className="h-12 w-full shrink-0 border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)] sm:w-32"
-                  />
-                  <input
-                    name="Address"
-                    required
-                    placeholder="Street address"
-                    aria-label="Home Address"
-                    className="h-12 min-w-0 flex-1 border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                  />
+                  <label className="block w-full shrink-0 text-xs text-[#666] sm:w-40">
+                    Unit number (optional)
+                    <input
+                      name="Unit"
+                      placeholder="Unit number (optional)"
+                      aria-label="Unit number (optional)"
+                      className="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
+                    />
+                  </label>
+                  <label className="block min-w-0 flex-1 text-xs text-[#666]">
+                    Home address
+                    <input
+                      name="Address"
+                      required
+                      placeholder="Home address"
+                      aria-label="Home address"
+                      className="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
+                    />
+                  </label>
                 </div>
                 <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
                   <input name="consent" type="checkbox" required className="mt-1" />

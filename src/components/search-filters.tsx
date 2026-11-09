@@ -471,7 +471,8 @@ export function SearchFiltersBar({
     const handle = window.setTimeout(() => {
       const trimmed = keyword.trim();
       if ((filters.q ?? "") === trimmed) return;
-      pushFilters({ ...filters, q: trimmed || undefined });
+      const metro = /^(greater vancouver|metro vancouver|gvrd|vancouver area)$/i.test(trimmed);
+      pushFilters(metro ? { sort: filters.sort } : { q: trimmed || undefined, sort: filters.sort });
     }, 350);
     return () => window.clearTimeout(handle);
   }, [keyword]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -482,7 +483,9 @@ export function SearchFiltersBar({
     heading ??
     (filters.city
       ? `${filters.city}, BC homes for sale`
-      : `${resultCount.toLocaleString("en-CA")} Listings`);
+      : filters.q
+        ? `Homes matching “${filters.q}”`
+        : "Homes for sale");
 
   return (
     <div className="border-b border-[#e8eef3] bg-white">
@@ -495,8 +498,7 @@ export function SearchFiltersBar({
             <p className="mt-1 text-sm text-[#666]">
               {pending
                 ? "Updating…"
-                : `${resultCount} home${resultCount === 1 ? "" : "s"}`}
-              {filters.q ? ` matching “${filters.q}”` : ""}
+                : `${resultCount.toLocaleString("en-CA")} homes`}
             </p>
           </div>
           <a

@@ -216,7 +216,7 @@ export function normalizeLead(raw: Partial<Lead> & Pick<Lead, "id" | "name" | "e
             id: `${raw.id}-created`,
             at: raw.createdAt,
             kind: "signup" as const,
-            title: raw.source === "registration" ? "Free Access signup" : "Lead captured",
+            title: raw.source === "registration" ? "Signed up for home search" : "Sent a message",
             body: notes || undefined,
           },
         ];
@@ -380,7 +380,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       notes,
       createdAt: now,
       updatedAt: now,
-      score: input.source === "registration" || input.source === "buyer_signup" ? 70 : 58,
+      score: 0,
       savedSearches: input.searchLabel ? [input.searchLabel] : [],
       viewedProperties: input.propertyAddress ? [input.propertyAddress] : [],
       tasks: [],
@@ -396,9 +396,19 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
               ? "signup"
               : "system",
           title:
-            input.source === "registration" || input.source === "buyer_signup"
-              ? "Free Access signup"
-              : "Lead captured",
+            input.source === "registration" || input.source === "buyer_signup" || input.source === "seller_signup"
+              ? "Signed up for home search"
+              : input.source === "search_alert"
+                ? "Saved a search"
+                : input.source === "showing_request"
+                  ? "Requested a showing"
+                  : input.source === "ask_question"
+                    ? "Asked about a home"
+                    : input.source === "home_valuation"
+                      ? "Requested a home value"
+                      : input.notes?.startsWith("Added by an agent")
+                        ? "Added by the office"
+                        : "Sent a message",
           body: [notes, campaign].filter(Boolean).join("\n") || LEAD_SOURCE_LABEL[input.source],
         },
       ],
@@ -432,14 +442,27 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         message?: string;
         lead?: Partial<Lead>;
       } | null;
-      if (data?.lead) {
-        setLeads((prev) =>
-          prev.map((item) =>
-            item.id === lead.id ? normalizeLead({ ...item, ...data.lead, id: item.id }) : item
-          )
-        );
+      if (data?.lead?.id) {
+        const savedId = String(data.lead.id);
+        setLeads((prev) => {
+          const without = prev.filter((item) => item.id !== lead.id && item.id !== savedId);
+          const prior = prev.find((item) => item.id === savedId);
+          const merged = normalizeLead({
+            ...(prior || lead),
+            ...data.lead,
+            id: savedId,
+            score: 0,
+            activity: [
+              ...(lead.activity ?? []),
+              ...((prior?.activity ?? []).filter((item) => !lead.activity?.some((next) => next.id === item.id))),
+            ],
+          });
+          return [merged, ...without].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
       }
-      if (response.ok && data?.ok !== false && data?.persisted) trackLeadConversion(lead.source);
+      if (response.ok && data?.ok !== false && data?.persisted && data.lead?.id === lead.id) trackLeadConversion(lead.source);
       return {
         ok: response.ok && data?.ok !== false,
         persisted: Boolean(data?.persisted),
@@ -448,31 +471,72 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  function sameContact(left: Lead, right: Lead) {
+    const email = right.email.trim().toLowerCase();
+    const phone = right.phone.replace(/\D/g, "");
+    if (email && left.email.trim().toLowerCase() === email) return true;
+    const leftPhone = left.phone.replace(/\D/g, "");
+    return phone.length >= 10 && leftPhone === phone;
+  }
+
   const add = useCallback((input: CreateLeadInput) => {
     const lead = buildLead(input);
+    const prior = leads.find((item) => sameContact(item, lead));
+    if (prior) {
+      setLeads((prev) =>
+        prev.map((item) =>
+          item.id === prior.id
+            ? {
+                ...item,
+                phone: item.phone || lead.phone,
+                notes: [item.notes, lead.notes].filter(Boolean).join("\n"),
+                activity: [...(lead.activity ?? []), ...(item.activity ?? [])],
+                updatedAt: lead.updatedAt,
+              }
+            : item
+        )
+      );
+      void publish({ ...lead, id: prior.id }, input).catch(() => undefined);
+      return { ...prior, updatedAt: lead.updatedAt };
+    }
     setLeads((prev) => [lead, ...prev]);
     void publish(lead, input).catch(() => undefined);
     return lead;
-  }, [buildLead, publish]);
+  }, [buildLead, leads, publish]);
 
   const capture = useCallback(async (input: CreateLeadInput) => {
     const lead = buildLead(input);
-    setLeads((prev) => [lead, ...prev.filter((item) => item.id !== lead.id)]);
+    const prior = leads.find((item) => sameContact(item, lead));
+    setLeads((prev) => {
+      const match = prev.find((item) => sameContact(item, lead));
+      if (!match) return [lead, ...prev];
+      return prev.map((item) =>
+        item.id === match.id
+          ? {
+              ...item,
+              phone: item.phone || lead.phone,
+              notes: [item.notes, lead.notes].filter(Boolean).join("\n"),
+              activity: [...(lead.activity ?? []), ...(item.activity ?? [])],
+              updatedAt: lead.updatedAt,
+            }
+          : item
+      );
+    });
     try {
-      const result = await publish(lead, input);
+      const result = await publish(prior ? { ...lead, id: prior.id } : lead, input);
       if (!result.ok) {
-        setLeads((prev) => prev.filter((item) => item.id !== lead.id));
+        if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
         return { ok: false, message: result.message || "Please check the form and try again." };
       }
       return { ok: true };
     } catch {
-      setLeads((prev) => prev.filter((item) => item.id !== lead.id));
+      if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
       return {
         ok: false,
         message: "We could not reach the office just now. Please call (604) 363-7858.",
       };
     }
-  }, [buildLead, publish]);
+  }, [buildLead, leads, publish]);
 
   const updateStatus = useCallback((id: string, status: LeadStatus) => {
     setLeads((prev) =>

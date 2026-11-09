@@ -6,19 +6,26 @@ import { Btn, inputCls } from "./ui";
 
 const LAYOUTS = ["Default", "Lucid", "Spring", "Circles", "Split", "Photo"] as const;
 
+const PALETTES = ["Ocean", "Cedar", "Slate", "Sand"];
+const FONTS = ["Lato", "Roboto", "Work Sans"];
+
 export function ThemeLayoutPicker() {
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>("Default");
+  const [palette, setPalette] = useState("Ocean");
+  const [font, setFont] = useState("Lato");
   const [note, setNote] = useState("");
   useEffect(() => {
     void loadOfficePrefs().then((prefs) => {
       const saved = String(prefs.themeLayout || "Default");
       if (LAYOUTS.includes(saved as (typeof LAYOUTS)[number])) setLayout(saved as (typeof LAYOUTS)[number]);
+      if (typeof prefs.themePalette === "string") setPalette(prefs.themePalette);
+      if (typeof prefs.themeFont === "string") setFont(prefs.themeFont);
     });
   }, []);
   return (
-    <div className="border border-[#ddd] bg-white p-4">
+    <div className="space-y-4 border border-[#ddd] bg-white p-4">
       <h1 className="text-[18px] font-semibold">Choose Your Layout</h1>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {LAYOUTS.map((name) => (
           <button
             key={name}
@@ -31,10 +38,26 @@ export function ThemeLayoutPicker() {
           </button>
         ))}
       </div>
-      <div className="mt-4 text-right">
-        <Btn kind="blue" onClick={() => { void saveOfficePrefs({ themeLayout: layout }).then((error) => setNote(error || "Layout saved.")); }}>Update</Btn>
+      <section>
+        <h2 className="mb-2 font-semibold">Color Palettes</h2>
+        <div className="flex flex-wrap gap-2">
+          {PALETTES.map((name) => (
+            <button key={name} type="button" className={`border px-3 py-2 text-[13px] ${palette === name ? "border-[#1c93b5] bg-[#f3fafc]" : "border-[#ddd]"}`} onClick={() => setPalette(name)}>{name}</button>
+          ))}
+        </div>
+      </section>
+      <section>
+        <h2 className="mb-2 font-semibold">Font Packs</h2>
+        <div className="flex flex-wrap gap-2">
+          {FONTS.map((name) => (
+            <button key={name} type="button" className={`border px-3 py-2 text-[13px] ${font === name ? "border-[#1c93b5] bg-[#f3fafc]" : "border-[#ddd]"}`} onClick={() => setFont(name)}>{name}</button>
+          ))}
+        </div>
+      </section>
+      <div className="text-right">
+        <Btn kind="blue" onClick={() => { void saveOfficePrefs({ themeLayout: layout, themePalette: palette, themeFont: font }).then((error) => setNote(error || "Theme saved.")); }}>Update</Btn>
       </div>
-      {note ? <p className="mt-2 text-[13px] text-[#1c93b5]">{note}</p> : null}
+      {note ? <p className="text-[13px] text-[#1c93b5]">{note}</p> : null}
     </div>
   );
 }
@@ -135,6 +158,7 @@ export function DialerSettingsPanel() {
   const [number, setNumber] = useState("");
   const [agent, setAgent] = useState("Kayla Gerak");
   const [summary, setSummary] = useState(true);
+  const [lines, setLines] = useState<{ id: string; agent: string; number: string }[]>([{ id: "office", agent: "Casey Archibald", number: "778-200-5837" }]);
   const [note, setNote] = useState("");
   useEffect(() => {
     void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
@@ -147,6 +171,7 @@ export function DialerSettingsPanel() {
       const saved = prefs.dialerSettings as { agent?: string; summary?: boolean } | undefined;
       if (saved?.agent) setAgent(saved.agent);
       if (typeof saved?.summary === "boolean") setSummary(saved.summary);
+      if (Array.isArray((saved as { lines?: unknown }).lines)) setLines((saved as { lines: { id: string; agent: string; number: string }[] }).lines);
     });
   }, []);
   return (
@@ -156,13 +181,27 @@ export function DialerSettingsPanel() {
       <p className="mt-2">{status}</p>
       <h2 className="mt-4 font-bold">Phone number assignment</h2>
       <p className="mt-1">Twilio number: {number || "not connected"}</p>
-      <label className="mt-2 block">Assign this number to
-        <select className={`${inputCls} mt-1 max-w-sm`} value={agent} onChange={(event) => setAgent(event.target.value)}>
+      <h2 className="mt-4 font-bold">Agent dialer lines</h2>
+      <table className="mt-2 w-full text-left text-[13px]">
+        <thead><tr><th className="py-1">Agent</th><th>Phone number</th><th /></tr></thead>
+        <tbody>
+          {lines.map((line) => (
+            <tr key={line.id} className="border-t border-[#eee]">
+              <td className="py-1">{line.agent}</td>
+              <td>{line.number}</td>
+              <td><button type="button" className="text-[#d9363e]" onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}>Remove</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <select className={inputCls + " max-w-[180px]"} value={agent} onChange={(event) => setAgent(event.target.value)}>
           {["Kayla Gerak", "Casey Archibald", "Anastasiia Borovyk", "Kevin Barrett"].map((name) => <option key={name}>{name}</option>)}
         </select>
-      </label>
+        <button type="button" className="bg-[#1c93b5] px-3 py-1 text-white" onClick={() => setLines((current) => [...current, { id: `line-${Date.now()}`, agent, number: number || "778-200-5837" }])}>Add</button>
+      </div>
       <label className="mt-3 block"><input type="checkbox" checked={summary} onChange={(event) => setSummary(event.target.checked)} /> Email the daily call summary</label>
-      <div className="mt-3 text-right"><Btn kind="blue" onClick={() => { void saveOfficePrefs({ dialerSettings: { agent, summary, number } }).then((error) => setNote(error || "Dialer settings saved.")); }}>Update</Btn></div>
+      <div className="mt-3 text-right"><Btn kind="blue" onClick={() => { void saveOfficePrefs({ dialerSettings: { agent, summary, number, lines } }).then((error) => setNote(error || "Dialer settings saved.")); }}>Update</Btn></div>
       {note ? <p className="mt-2 text-[#1c93b5]">{note}</p> : null}
     </div>
   );
@@ -179,6 +218,11 @@ export function CustomFieldsPanel() {
   useEffect(() => {
     void loadOfficePrefs().then((prefs) => {
       if (Array.isArray(prefs.customFieldDefs)) setFields(prefs.customFieldDefs as FieldDef[]);
+      else setFields([
+        { id: "birthdate", name: "Birthdate", type: "Date" },
+        { id: "language", name: "Preferred language", type: "Text" },
+        { id: "referral", name: "Referral source", type: "Text" },
+      ]);
     });
   }, []);
   function persist(next: FieldDef[], message: string) {
@@ -209,7 +253,8 @@ export function CustomFieldsPanel() {
           setType("Text");
         }}>{editing ? "Save field" : "Create field"}</Btn>
       </div>
-      <ul className="mt-4">
+      <h2 className="mt-4 text-[15px] font-semibold">Active Fields</h2>
+      <ul className="mt-2">
         {fields.map((field) => (
           <li key={field.id} className="flex items-center justify-between border-t border-[#eee] py-2">
             <span>{field.name} <span className="text-[#888]">({field.type})</span></span>
@@ -220,7 +265,7 @@ export function CustomFieldsPanel() {
           </li>
         ))}
       </ul>
-      {!fields.length ? <p className="mt-3 text-[#888]">No custom fields yet.</p> : null}
+      {!fields.length ? <p className="mt-3 text-[#888]">No active fields yet.</p> : null}
       {note ? <p className="mt-2 text-[#1c93b5]">{note}</p> : null}
     </div>
   );
@@ -247,9 +292,18 @@ type EditorSection = { id: string; name: string; show: boolean; agents: string[]
 
 function starterSections(page: string): EditorSection[] {
   if (page === "about" || page === "branded-about") {
-    return [{ id: "about", name: "About", show: true, agents: [] }];
+    return [
+      { id: "about", name: "About", show: true, agents: [] },
+      { id: "agents", name: "Featured Agents", show: true, agents: ["Casey Archibald"] },
+    ];
   }
-  return [{ id: "main", name: page === "home" ? "Home" : "Content", show: true, agents: [] }];
+  if (page === "home") {
+    return [
+      { id: "featured", name: "Featured Listings", show: true, agents: [] },
+      { id: "guides", name: "Neighborhood Guides", show: true, agents: [] },
+    ];
+  }
+  return [{ id: "main", name: "Content", show: true, agents: [] }];
 }
 
 export function PageEditor({ page }: { page: string }) {
@@ -272,7 +326,10 @@ export function PageEditor({ page }: { page: string }) {
       if (saved.permalink) setPermalink(saved.permalink);
       if (saved.metaTitle) setMetaTitle(saved.metaTitle);
       if (saved.metaDescription) setMetaDescription(saved.metaDescription);
-      if (saved.sections?.length) setSections(saved.sections);
+      if (saved.sections?.length) {
+        const names = new Set(saved.sections.map((section) => section.name));
+        setSections([...saved.sections, ...starterSections(page).filter((section) => !names.has(section.name))]);
+      }
     });
   }, [page]);
   return (
@@ -292,7 +349,7 @@ export function PageEditor({ page }: { page: string }) {
         {sections.map((section) => (
           <section key={section.id} className="border border-[#e5e5e5] bg-white p-3">
             <h2 className="font-semibold">{section.name}</h2>
-            {section.name === "About" ? (
+            {section.name === "About" || section.name === "Featured Agents" ? (
               <div className="mt-2">
                 <p className="font-semibold">Featured Agents</p>
                 <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show Section</label>

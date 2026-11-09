@@ -378,7 +378,7 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
-const DATA_VERSION = 8;
+const DATA_VERSION = 9;
 
 function buildTemplates(): Template[] {
   const rows: Template[] = [];
@@ -392,7 +392,9 @@ function buildTemplates(): Template[] {
         type: text ? "Text" : "Email",
         createdBy: group === "CINC Templates" ? "CINC" : "Kayla Gerak",
         edited: "10-30-2026",
-        body: "",
+        body: text
+          ? `Hi, this is Casey Archibald with Archibald Real Estate Group. Thanks for your interest in ${name}. I can help with the next step. Reply STOP to opt out of texts.`
+          : `Hi,\n\nThis is Casey Archibald at Archibald Real Estate Group.\n\n${name}\n\nCall or text (604) 363-7858 when you want to talk it through.\n\nCasey Archibald\nArchibald Real Estate Group\n300 - 1195 W Broadway, Vancouver`,
       });
     });
   }
@@ -488,7 +490,7 @@ function load(raw: string | null): SpaState {
       campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
       notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
-      appointments: (parsed.appointments ?? []).filter((item) => !/audit appt/i.test(item.title || "")),
+      appointments: (parsed.appointments ?? []).filter((item) => !/qa audit appt/i.test(item.title || "")),
       leadTracks: parsed.leadTracks ?? {},
       leadSubs: parsed.leadSubs ?? {},
       verify: parsed.verify ?? {},

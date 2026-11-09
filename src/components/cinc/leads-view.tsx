@@ -7,7 +7,7 @@ import { ACTIVITY_FILTER_GROUPS, LABEL_GROUPS, OFFICE_ROSTER, REMINDER_TIMING, c
 import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/lib/cinc-lists";
 import type { OfficeSettings } from "@/lib/office-settings";
 import { leadVisibleTo } from "@/lib/office-access";
-import { accountVerified, leadSide, quartScore, validEmail } from "@/lib/lead-signals";
+import { accountVerified, leadSide, validEmail } from "@/lib/lead-signals";
 import { useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
 import { LeadSearches } from "./lead-searches";
@@ -224,18 +224,14 @@ function siteRow(lead: Lead): Row {
     phoneValid: digits(lead.phone),
     emailValid: validEmail(lead.email),
     verified: accountVerified(lead.source),
-    score: quartScore(lead),
+    score: 0,
     type: leadSide(lead),
     pipeline: SITE_PIPE[lead.status] ?? "New Lead",
     registered: ago(lead.createdAt),
     registeredAt: new Date(lead.createdAt).getTime() || 0,
-    source: [
-      SOURCE[lead.source] ?? "Website",
-      lead.attribution?.utmSource,
-      lead.attribution?.utmCampaign,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    source: lead.notes.startsWith("Added by an agent")
+      ? "—"
+      : [SOURCE[lead.source] ?? "—", lead.attribution?.utmSource, lead.attribution?.utmCampaign].filter(Boolean).join(" · ") || "—",
     price: lead.propertyAddress ? "Inquiry" : "$ n/a",
     city: lead.propertyAddress ? "Inquiry" : "—",
     timeframe: "—",
@@ -938,7 +934,7 @@ export function LeadsView({
       {open && !expanded ? null : (
       <div className="flex items-center justify-end bg-white px-3 py-1">
         <button type="button" className="inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
-          add({ ...input, source: "general" });
+          add({ ...input, source: "general", notes: "Added by an agent" });
           chrome.closeModal();
           chrome.toast("Lead added.");
         }} />)}>
@@ -994,7 +990,7 @@ export function LeadsView({
                         {row.email} {row.emailValid ? <span className="text-[#2e9e5b]">✓</span> : <span className="text-[#e39b2b]">!</span>}
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[12px] text-white">★ {row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
+                        <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[12px] text-white">★ {row.origin === "site" ? "n/a" : row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
                     </td>
@@ -1044,7 +1040,7 @@ export function LeadsView({
                     <td className="px-2 text-[12px]">{row.registered}<br />{row.source}</td>
                     <td className="px-2 text-[12px]">{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td>
                     <td className="px-2 text-[12px]">{row.timeframe}</td>
-                    <td className="px-2 text-[12px]">{row.lastLogin}<br />{row.logins} Total</td>
+                    <td className="px-2 text-[12px]">{row.origin === "site" || row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td>
                     <td className="px-2 text-[12px] leading-5">
                       {row.origin === "site" ? (
                         <span>—</span>
@@ -1899,7 +1895,6 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
       <Field label="Last name"><input className={inputCls} value={last} onChange={(event) => setLast(event.target.value)} /></Field>
       <Field label="Email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
       <Field label="Cell phone"><input className={inputCls} value={phone} onChange={(event) => setPhone(event.target.value)} /></Field>
-      {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {

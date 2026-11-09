@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +29,14 @@ export function useAuthModal() {
 
 export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("login") !== "1") return;
+    setMode("login");
+    params.delete("login");
+    const next = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${next ? `?${next}` : ""}`);
+  }, []);
 
   return (
     <AuthModalContext.Provider
