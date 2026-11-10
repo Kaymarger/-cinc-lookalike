@@ -50,15 +50,15 @@ export function PropertyCard({
             "property-image-wrapper relative mx-2 mt-2 h-[200px] overflow-hidden bg-[#7b97aa]"
           )}
         >
-          {property.images[0] ? (
+          {property.images?.[0] ? (
             <Image
-              src={property.images[0]}
+              src={property.images[0] || ""}
               alt={property.address}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="property-image object-cover"
               priority={priority}
-              unoptimized={property.images[0].startsWith("http") && !property.images[0].includes("ddfcdn.realtor.ca")}
+              unoptimized={property.images[0].startsWith("http") && !property.images[0].includes("ddfcdn.realtor.ca") && !property.images[0].includes("images.unsplash.com")}
             />
           ) : (
             <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>
@@ -87,7 +87,7 @@ export function PropertyCard({
           )}
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="property-price whitespace-nowrap text-[21px] leading-[1.7] text-[#1976d2]">
+            <p className="property-price whitespace-nowrap text-[21px] leading-[1.7] text-[#3498d8]">
               {formatPrice(property.price)}
             </p>
             <div className="property-interactions relative z-[2]">

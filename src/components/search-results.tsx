@@ -109,7 +109,7 @@ export function SearchResults({
   return (
     <div
       id="searchListingsContainer"
-      className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8"
+      className="mx-auto max-w-[1350px] px-4 py-4"
     >
       <div
         id="searchListingHeader"

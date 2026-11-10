@@ -21,7 +21,7 @@ export function comparedHomeFromProperty(property: Property): ComparedHome {
     yearBuilt: property.yearBuilt,
     listedDaysAgo: property.listedDaysAgo,
     brokerage: property.brokerage,
-    image: property.images[0],
+    image: property.images?.[0],
     neighborhood: property.neighborhood,
   };
 }

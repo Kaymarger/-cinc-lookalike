@@ -47,7 +47,7 @@ export function HeroSearch() {
             setQ(place.label);
             setError(false);
           }}
-          placeholder="City, neighbourhood, or postal code"
+          placeholder="City or postal code"
           aria-label="Search Bar"
           className="min-w-0 flex-[2]"
           inputClassName="h-10 w-full border-0 bg-white px-3 text-sm text-[#1f2930] outline-none placeholder:text-[#7b97aa]"
@@ -55,7 +55,7 @@ export function HeroSearch() {
         <button
           id="home-search-button"
           type="submit"
-          className="h-10 flex-1 cursor-pointer border-0 bg-[#1976d2] text-sm font-bold tracking-[1px] text-white uppercase hover:bg-[#145ca4]"
+          className="h-10 flex-1 cursor-pointer border-0 bg-[#3498d8] text-sm font-bold tracking-[1px] text-white uppercase hover:brightness-90"
         >
           Search
         </button>

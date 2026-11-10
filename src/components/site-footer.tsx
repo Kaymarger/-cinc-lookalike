@@ -41,7 +41,7 @@ function Social({ href, label, children }: { href: string; label: string; childr
       target="_blank"
       rel="noreferrer"
       aria-label={label}
-      className="mr-3 inline-flex text-[22px] text-[#7b97aa] hover:text-[#1976d2]"
+      className="mr-3 inline-flex text-[22px] text-[#7b97aa] hover:text-[#3498d8]"
     >
       {children}
     </a>
@@ -50,8 +50,8 @@ function Social({ href, label, children }: { href: string; label: string; childr
 
 export function SiteFooter() {
   return (
-    <footer id="footer" className="mt-auto border-t-4 border-[#1976d2] bg-[#ebeff2] text-[#1f2930]">
-      <div className="mx-auto grid max-w-[1170px] gap-8 px-4 py-10 sm:px-6 md:grid-cols-3">
+    <footer id="footer" className="mt-auto border-t-4 border-[#04427d] bg-[#ebeff2] text-[#1f2930]">
+      <div className="mx-auto grid max-w-[1350px] gap-8 px-4 py-10 md:grid-cols-3">
         <div>
           <Link href="/" className="inline-block">
             <Image
@@ -132,7 +132,7 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-[1170px] flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="mx-auto flex max-w-[1350px] flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <Image
           src="/brand/fair-housing.png"
           alt="Fair Housing/Equal Opportunity"
@@ -151,7 +151,7 @@ export function SiteFooter() {
       </div>
 
       <div className="bg-white px-4 py-4 text-[12px] leading-relaxed text-[#7b97aa] sm:px-6">
-        <div className="mx-auto max-w-[1170px] space-y-3">
+        <div className="mx-auto max-w-[1350px] space-y-3">
           <Image
             src="/brand/mls-vancouver.gif"
             alt="MIMLS"

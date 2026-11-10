@@ -90,8 +90,8 @@ export function SiteHeader() {
   }
 
   return (
-    <header id="header" className="sticky top-0 z-50 border-t-4 border-[#1976d2] bg-white">
-      <div className="mx-auto flex min-h-[64px] max-w-[1170px] items-center gap-2 px-3 sm:px-4">
+    <header id="header" className="sticky top-0 z-50 border-t-[3px] border-[#04427d] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
+      <div className="mx-auto flex min-h-[72px] max-w-[1350px] items-center gap-2 px-4">
         <button
           type="button"
           id="header-icon"
@@ -111,7 +111,7 @@ export function SiteHeader() {
             alt="Greater Vancouver Area Home Search"
             width={200}
             height={46}
-            className="h-9 w-auto sm:h-11"
+            className="h-[52px] w-auto max-w-[160px] sm:h-[60px]"
             priority
           />
         </Link>
@@ -121,7 +121,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#1976d2]"
+              className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#3498d8]"
             >
               {item.label}
             </Link>
@@ -161,7 +161,7 @@ export function SiteHeader() {
 
         <div className="ml-2 hidden items-center gap-2 lg:flex">
           {agent ? (
-            <Link href="/agent" className="px-2 text-[11px] font-bold tracking-[1px] text-[#1976d2] uppercase">
+              <Link href="/agent" className="px-2 text-[11px] font-bold tracking-[1px] text-[#3498d8] uppercase">
               Office
             </Link>
           ) : null}
@@ -207,14 +207,14 @@ export function SiteHeader() {
               <button
                 type="button"
                 onClick={openSignup}
-                className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#1976d2]"
+                className="px-3 py-3 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:text-[#3498d8]"
               >
                 Log In
               </button>
               <button
                 type="button"
                 onClick={openSignup}
-                className="border-2 border-[#1976d2] px-3 py-1.5 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:border-[#145ca4]"
+                className="border-2 border-[#3498d8] px-3 py-1.5 text-[12px] font-bold tracking-[1px] text-[#1f2930] uppercase hover:border-[#04427d]"
               >
                 Sign up
               </button>

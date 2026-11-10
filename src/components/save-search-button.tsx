@@ -76,7 +76,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-2 border border-[var(--cedar)] bg-white px-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--cedar)] hover:bg-[#edf5fd]"
+        className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:text-[#3498d8]"
       >
         <Bell className="size-4" />
         Save Search

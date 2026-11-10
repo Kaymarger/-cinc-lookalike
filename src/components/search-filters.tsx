@@ -119,10 +119,10 @@ function FilterMenu({
         type="button"
         onClick={onToggle}
         className={cn(
-          "inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium",
+          "inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)]",
           active || open
-            ? "border-[var(--cedar)] bg-[#edf5fd] text-[var(--cedar-deep)]"
-            : "border-[#d7e0e8] bg-white text-[#333] hover:border-[var(--cedar)]"
+            ? "text-[#3498d8]"
+            : "hover:text-[#04427d]"
         )}
       >
         {label}
@@ -131,7 +131,7 @@ function FilterMenu({
         />
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-40 min-w-[240px] rounded-2xl border border-[#e5e5e5] bg-white p-4 shadow-xl">
+        <div className="absolute top-[calc(100%+6px)] left-0 z-40 min-w-[240px] rounded-[3px] border border-[#dbe3e8] bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
           {children}
           <button
             type="button"
@@ -495,17 +495,13 @@ export function SearchFiltersBar({
 
   return (
     <div className="border-b border-[#e8eef3] bg-white">
-      <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="mx-auto max-w-[1350px] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl text-[#222] sm:text-3xl">
-              {title}
+            <h1 id="searchHeaderTitle" className="text-base font-bold text-[#1f2930]">
+              {pending ? "Updating…" : `${resultCount.toLocaleString("en-CA")} Listings`}
             </h1>
-            <p className="mt-1 text-sm text-[#666]">
-              {pending
-                ? "Updating…"
-                : `${resultCount.toLocaleString("en-CA")} homes`}
-            </p>
+            <p className="sr-only">{title}</p>
           </div>
           <a
             href={`tel:${SITE.phoneTel}`}
@@ -538,14 +534,14 @@ export function SearchFiltersBar({
                   });
                 }
               }}
-              placeholder="City, neighbourhood, address, or MLS® #"
+              placeholder="City or postal code"
               aria-label="Search Bar"
-              inputClassName="h-12 w-full rounded-2xl border border-[#d7e0e8] bg-[#f7fafc] px-4 text-[16px] outline-none focus:border-[var(--cedar)] focus:bg-white sm:text-sm"
+              inputClassName="h-10 w-full rounded-[3px] border-0 bg-white px-3 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)] outline-none"
             />
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              className="inline-flex h-12 items-center gap-2 rounded-2xl border border-[#d7e0e8] bg-white px-4 text-sm font-semibold text-[#222] lg:hidden"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-3 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)] lg:hidden"
             >
               <SlidersHorizontal className="size-4" />
               Filters
@@ -701,7 +697,7 @@ export function SearchFiltersBar({
                   }}
                   className={cn(
                     "px-3 text-sm font-semibold",
-                    !showMap ? "bg-[#1976d2] text-white" : "bg-white text-[#333]"
+                    !showMap ? "bg-[#3498d8] text-white" : "bg-white text-[#1f2930]"
                   )}
                 >
                   List
@@ -713,7 +709,7 @@ export function SearchFiltersBar({
                   }}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3 text-sm font-semibold",
-                    showMap ? "bg-[#1976d2] text-white" : "bg-white text-[#333]"
+                    showMap ? "bg-[#3498d8] text-white" : "bg-white text-[#1f2930]"
                   )}
                 >
                   <MapIcon className="size-4" />

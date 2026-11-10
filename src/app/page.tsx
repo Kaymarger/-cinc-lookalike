@@ -40,7 +40,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="relative isolate min-h-[78vh] overflow-hidden">
+      <section className="relative isolate overflow-hidden bg-[#3498d8]">
         <Image
           src="/brand/hero.jpg"
           alt="Greater Vancouver skyline"
@@ -54,11 +54,11 @@ export default async function HomePage() {
           aria-hidden
           className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.1)_0%,rgba(31,41,48,0.6)_100%)]"
         />
-        <div className="relative z-10 mx-auto flex min-h-[78vh] max-w-[1170px] flex-col items-center justify-center px-4 py-[18vh] text-center">
-          <p className="text-base font-bold tracking-wide text-white uppercase [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
+        <div className="relative z-10 mx-auto flex max-w-[1350px] flex-col items-center justify-center px-4 py-[22vh] text-center">
+          <p className="font-sans text-base font-bold tracking-normal text-white uppercase [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
             Archibald Real Estate Group
           </p>
-          <h1 className="mt-2 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-normal leading-tight text-white [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)] sm:text-5xl md:text-[64px] md:leading-[1.3]">
+          <h1 className="mt-2 max-w-none whitespace-nowrap font-[family-name:var(--font-accent)] text-[clamp(28px,4.7vw,67px)] font-normal leading-[1.3] text-white [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
             Greater Vancouver Area Home Search
           </h1>
           <HeroSearch />
@@ -66,8 +66,8 @@ export default async function HomePage() {
       </section>
 
       <section id="featured" className="bg-white py-12">
-        <div className="mx-auto max-w-[1170px] px-4 sm:px-6">
-          <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-normal text-[#1f2930]">
+        <div className="mx-auto max-w-[1350px] px-4">
+          <h2 className="text-center font-[family-name:var(--font-display)] text-[28px] font-normal text-[#1f2930]">
             Featured Listings
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
@@ -86,7 +86,7 @@ export default async function HomePage() {
             <Link
               href="/featured"
               aria-label="View More Featured Properties"
-              className="inline-flex h-11 items-center bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:bg-[#145ca4]"
+              className="inline-flex h-10 items-center bg-[#3498d8] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:brightness-90"
             >
               View More
             </Link>
@@ -96,7 +96,7 @@ export default async function HomePage() {
       <PublicPageSections page="home" />
 
       <section className="bg-white pb-14">
-        <div className="mx-auto max-w-[1170px] px-4 sm:px-6">
+        <div className="mx-auto max-w-[1350px] px-4">
           <h2 className="border-b border-[#dbe3e8] pb-2 font-[family-name:var(--font-display)] text-2xl text-[#1f2930]">
             Quick Searches
           </h2>

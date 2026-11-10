@@ -51,10 +51,10 @@ export async function catalogFeatured(limit = 12): Promise<Property[]> {
         live = await featuredDdfListingsByMls(ids);
       }
     } catch {
-      live = await featuredDdfListingsByMls(ids);
+      live = live.length ? live : await featuredDdfListingsByMls(ids).catch(() => []);
     }
   }
-  return live.slice(0, limit).map((property) => ({ ...property, images: property.images.slice(0, 1) }));
+  return JSON.parse(JSON.stringify(live.slice(0, limit).map((property) => ({ ...property, images: (property.images || []).slice(0, 1) })))) as Property[];
 }
 
 export async function catalogListing(id: string): Promise<Property | null> {
