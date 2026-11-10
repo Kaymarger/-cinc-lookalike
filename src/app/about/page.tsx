@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AgentProfile } from "@/components/agent-profile";
+import { PublicPageSections } from "@/components/public-page-sections";
 import { SITE } from "@/lib/site";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 
@@ -13,6 +14,7 @@ export default function AboutPage() {
   return (
     <div className="bg-white">
       <CamelotPageHeader />
+      <PublicPageSections page="about" />
       <AgentProfile />
     </div>
   );

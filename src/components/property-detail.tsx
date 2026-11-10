@@ -149,6 +149,12 @@ export function PropertyDetail({ property }: { property: Property }) {
     },
   ];
 
+  const land = [
+    { label: "Lot Features:", value: property.features.filter((feature) => /yard|garden|lot|view/i.test(feature)).join(", ") || "See listing" },
+    { label: "Community:", value: property.neighborhood || property.city },
+    { label: "Zoning:", value: attached ? "Multi-family" : "Residential" },
+  ];
+
   const structures = [
     {
       label: "Has Garage:",
@@ -310,21 +316,21 @@ export function PropertyDetail({ property }: { property: Property }) {
               </dl>
             </section>
 
+            <div className="mt-10 grid gap-10 sm:grid-cols-2">
+              <FactGroup title="Building" rows={building} />
+              <FactGroup title="Land" rows={land} />
+              <FactGroup title="Listing" rows={listing} />
+              <FactGroup title="Money" rows={money} />
+              <FactGroup title="Structures" rows={structures} />
+              <FactGroup title="Systems" rows={systems} />
+            </div>
             {property.feed === "ddf" ? (
               <div className="mt-8 space-y-4">
                 <p className="text-[14px] text-[#333]">Listing brokerage: {property.brokerage}</p>
                 <RealtorBadge href={property.realtorUrl || ""} />
                 <DdfDisclaimer />
               </div>
-            ) : (
-            <div className="mt-10 grid gap-10 sm:grid-cols-2">
-              <FactGroup title="Building" rows={building} />
-              <FactGroup title="Listing" rows={listing} />
-              <FactGroup title="Money" rows={money} />
-              <FactGroup title="Structures" rows={structures} />
-              <FactGroup title="Systems" rows={systems} />
-            </div>
-            )}
+            ) : null}
 
             {property.features.length > 0 ? (
             <section className="mt-10">

@@ -532,7 +532,15 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
               <button type="button" className="grid h-8 w-8 place-items-center text-[#4aa8c8]" aria-label="Search" onClick={() => setSearchOpen((value) => !value)}>
                 <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="7" cy="7" r="4.2" /><path d="M10.5 10.5 14 14" /></svg>
               </button>
-              {searchOpen ? <input className="h-7 w-40 border border-[#d5e8ee] px-2 text-[12px]" placeholder="Search" value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} /> : null}
+              {searchOpen ? <input className="h-7 w-40 border border-[#d5e8ee] px-2 text-[12px]" placeholder="Search leads" value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                const q = leadSearch.trim().toLowerCase();
+                if (!q) return;
+                const digits = q.replace(/\D/g, "");
+                const match = leads.find((lead) => lead.email.toLowerCase() === q || lead.name.toLowerCase() === q || (digits.length >= 7 && lead.phone.replace(/\D/g, "").includes(digits)));
+                if (!match) { setMessage("No lead matches that search."); return; }
+                window.location.href = href.lead(match.id);
+              }} /> : null}
               <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
@@ -548,7 +556,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
-                    <p className="px-3 py-2 text-[13px] text-[#1c93b5]">Canada</p>
+                    <p className="px-3 py-2 text-[13px] text-[#1c93b5]">{office.user?.name || "Account"}</p>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
                     {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
                       <a href={href.agents} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Agents</a>

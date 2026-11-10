@@ -408,7 +408,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
                 {cards.map((deal) => (
                   <article key={deal.id} className="mb-2 bg-white p-2 shadow-sm">
                     <p className="text-[12px]">{deal.address || "--"}</p>
-                    <p className="text-[11px] text-[#888]">--</p>
+                    <p className="text-[11px] text-[#888]">{deal.client || "--"}</p>
                     <p className="text-[11px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
                     <p className="text-[11px] text-[#888]">--</p>
                     <p className="text-[11px] text-[#666]">No current upcoming tasks assigned</p>
@@ -1327,6 +1327,7 @@ export function SellerView() {
           const next = [...sites, { id: `site-${Date.now()}`, name: name.trim(), address: address.trim() }];
           setSites(next);
           void saveOfficePrefs({ sellerSites: next });
+          void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sellerSites: next }) });
           setName("");
           setAddress("");
           setCreating(false);
@@ -1344,12 +1345,21 @@ export function SellerView() {
           <h2 className="border-b border-[#eee] px-3 py-2 font-semibold">All sites</h2>
           {sites.length ? sites.map((site) => (
             <article key={site.id} className="flex items-center justify-between border-b border-[#f3f3f3] px-3 py-2 text-[13px]">
-              <div><p className="font-semibold">{site.name}</p><p className="text-[#666]">{site.address}</p></div>
-              <button type="button" className="text-[#d9363e]" onClick={() => {
+              <div>
+                <p className="font-semibold">{site.name}</p>
+                <p className="text-[#666]">{site.address}</p>
+                <p className="text-[12px] text-[#1c93b5]">/seller-site/{site.id}</p>
+              </div>
+              <div className="flex gap-2">
+                <a className="text-[#1c93b5]" href={`/seller-site/${site.id}`}>Visit</a>
+                <button type="button" className="text-[#1c93b5]" onClick={() => { setCreating(true); setName(site.name); setAddress(site.address); }}>Editor</button>
+                <button type="button" className="text-[#d9363e]" onClick={() => {
                 const next = sites.filter((item) => item.id !== site.id);
                 setSites(next);
                 void saveOfficePrefs({ sellerSites: next });
+                void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sellerSites: next }) });
               }}>Remove</button>
+              </div>
             </article>
           )) : <p className="px-3 py-6 text-[13px] text-[#666]">No seller sites yet. Use Add New Site to create one.</p>}
         </div>
@@ -1392,6 +1402,9 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
   useEffect(() => {
     if (window.location.hash.includes("add")) setCreating(true);
   }, []);
+  useEffect(() => {
+    void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ landingPages: state.landingPages }) });
+  }, [state.landingPages]);
   const [pageQuery, setPageQuery] = useState("");
   const query = (pageQuery || chrome.leadSearch).trim().toLowerCase();
   const rows = state.landingPages
@@ -2189,7 +2202,8 @@ function CalendarAppointmentForm({
   const { update } = useCinc();
   const chrome = useChrome();
   const [title, setTitle] = useState(existing?.title || "");
-  const [agent, setAgent] = useState(existing?.agent || "Casey Archibald");
+  const office = useOfficeSession();
+  const [agent, setAgent] = useState(existing?.agent || office.user?.name || "Casey Archibald");
   const [eventType, setEventType] = useState(existing?.eventType || "Showing");
   const [location, setLocation] = useState(existing?.location || "");
   const [start, setStart] = useState(existing?.when || when);
@@ -2273,7 +2287,13 @@ export function CalendarView() {
     <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr_260px]">
       <aside className="bg-white p-3 text-[13px]">
         <p className="font-bold">Mini Calendar</p>
-        <p className="mt-1 text-[#1c93b5]">{names[todayMonth - 1]} {todayDay}, {todayYear}</p>
+        <p className="mt-1 text-[#1c93b5]">{names[month]} {year}</p>
+        <div className="mt-1 grid grid-cols-7 gap-px text-center text-[10px]">
+          {["S", "M", "T", "W", "T", "F", "S"].map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}
+          {cells.map((day, index) => (
+            <button key={`mini-${index}`} type="button" className={`h-5 ${day && isoFor(year, month + 1, day) === selected ? "bg-[#1c93b5] text-white" : ""}`} onClick={() => { if (!day) return; setSelected(isoFor(year, month + 1, day)); setMode("day"); }}>{day || ""}</button>
+          ))}
+        </div>
         <p className="mt-3 font-bold">CINC Calendars</p>
         <p>{owner}</p>
         <p className="mt-3 font-bold">Event Calendars</p>
@@ -2294,7 +2314,23 @@ export function CalendarView() {
           </div>
         </div>
         {mode === "agenda" ? (
-          <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{item.when} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
+          <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
+        ) : mode === "week" ? (
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: 7 }, (_, index) => {
+              const base = new Date(`${selected}T12:00:00`);
+              const start = new Date(base);
+              start.setDate(base.getDate() - base.getDay() + index);
+              const iso = isoFor(start.getFullYear(), start.getMonth() + 1, start.getDate());
+              const items = appointments.filter((item) => apptDay(item.when) === iso);
+              return (
+                <div key={iso} className="min-h-28 border border-[#eee] p-1">
+                  <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => openNew(iso)}>{start.getDate()}</button>
+                  {items.map((item) => <p key={item.id} className="mt-1 text-[11px] text-[#1c93b5]">{item.title}</p>)}
+                </div>
+              );
+            })}
+          </div>
         ) : mode === "day" ? (
           <div className="border border-[#1c93b5] p-3">
             <p className="font-semibold">{names[Number(selected.slice(5, 7)) - 1]} {Number(selected.slice(8, 10))}, {selected.slice(0, 4)}</p>

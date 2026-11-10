@@ -35,14 +35,30 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
-function activityTitle(source: string) {
+function activityTitle(source: string, notes = "") {
+  if (notes.startsWith("Added by an agent") || notes.startsWith("Added by the office")) return "Added by the office";
+  if (/contact inquiry/i.test(notes)) return "Contact inquiry";
   if (source === "registration" || source === "buyer_signup" || source === "seller_signup") return "Signed up for home search";
   if (source === "search_alert") return "Saved a search";
   if (source === "showing_request") return "Requested a showing";
   if (source === "ask_question") return "Asked about a home";
-  if (source === "home_valuation") return "Requested a home value";
+  if (source === "home_valuation" || /home estimate/i.test(notes)) return "Requested a home value";
   if (source === "general") return "Sent a message";
   return "Updated their record";
+}
+
+function leadActivities(lead: SanitizedLead | StoredLead) {
+  const notes = lead.notes || "";
+  const lines = notes.split("\n").map((line) => line.trim()).filter(Boolean);
+  const sourceOf = (line: string) => line.split(" · ")[1] || lead.source;
+  const rows = (lines.length ? lines : [""]).map((line, index) => ({
+    id: `${lead.id}-n${index}`,
+    at: /^\d{4}-\d{2}-\d{2}T/.test(line) ? line.slice(0, 16) : lead.createdAt,
+    kind: lead.source === "registration" || lead.source === "buyer_signup" ? "signup" as const : "system" as const,
+    title: activityTitle(sourceOf(line), line),
+    body: line || undefined,
+  }));
+  return rows;
 }
 
 function publicLead(lead: SanitizedLead | StoredLead) {
@@ -72,15 +88,7 @@ function publicLead(lead: SanitizedLead | StoredLead) {
     listingAgent: "listingAgent" in lead ? lead.listingAgent : "Unassigned",
     createdAt: lead.createdAt,
     updatedAt: lead.createdAt,
-    activity: [
-      {
-        id: `${lead.id}-created`,
-        at: lead.createdAt,
-        kind: lead.source === "registration" || lead.source === "buyer_signup" ? "signup" : "system",
-        title: activityTitle(lead.source),
-        body: summary || undefined,
-      },
-    ],
+    activity: leadActivities(lead).map((item, index) => index === 0 ? { ...item, body: item.body || summary || undefined } : item),
   };
 }
 

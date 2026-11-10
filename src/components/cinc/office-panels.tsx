@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
 import { Btn, inputCls } from "./ui";
 
-const LAYOUTS = ["Default", "Lucid", "Spring", "Circles", "Split", "Photo"] as const;
+const LAYOUTS = ["Default", "Lucid", "Spring", "Circles", "Split", "Photo", "Video", "Castle", "Castle Light", "Castle Dark"] as const;
 
-const PALETTES = ["Ocean", "Cedar", "Slate", "Sand"];
-const FONTS = ["Lato", "Roboto", "Work Sans"];
+const PALETTES = ["Ocean", "Cedar", "Slate", "Sand", "Midnight", "Forest", "Sunset", "Berry", "Glacier", "Coral", "Ink", "Sage", "Plum", "Gold"];
+const FONTS = ["Lato", "Roboto", "Work Sans", "Merriweather", "Source Sans"];
 
 export function ThemeLayoutPicker() {
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>("Default");
@@ -83,7 +83,7 @@ const SEARCH_DEFAULTS: SearchDefaults = {
   baths: "Any",
   minPrice: "",
   maxPrice: "",
-  sortBy: "Newest",
+  sortBy: "Latest",
   layout: "List",
   sortOverride: "None",
 };
@@ -126,7 +126,7 @@ export function SearchSettingsPanel() {
           ))}
           <label>Sort By
             <select className={inputCls} value={form.sortBy} onChange={(event) => set("sortBy", event.target.value)}>
-              {["Newest", "Price", "Beds"].map((option) => <option key={option}>{option}</option>)}
+              {["None", "Highest price", "Lowest price", "Latest", "Baths", "Beds", "Year built"].map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
         </div>
@@ -141,9 +141,7 @@ export function SearchSettingsPanel() {
         </label>
         <label className="block">Sort Order Override
           <select className={inputCls} value={form.sortOverride} onChange={(event) => set("sortOverride", event.target.value)}>
-            <option>None</option>
-            <option>Newest</option>
-            <option>Price</option>
+            {["None", "Highest price", "Lowest price", "Latest", "Baths", "Beds", "Year built"].map((option) => <option key={option}>{option}</option>)}
           </select>
         </label>
       </section>
@@ -209,20 +207,27 @@ export function DialerSettingsPanel() {
 
 type FieldDef = { id: string; name: string; type: string };
 
+const CANONICAL_FIELDS: FieldDef[] = [
+  { id: "birthdate", name: "Birthdate", type: "Date" },
+  { id: "birthday", name: "Birthday", type: "Date" },
+  { id: "main-birth", name: "Main Contact Birth Date", type: "Date" },
+  { id: "move-in", name: "Move In Date", type: "Date" },
+  { id: "spouse-birth", name: "SpousePartner Birth Date", type: "Date" },
+];
+
 export function CustomFieldsPanel() {
-  const [fields, setFields] = useState<FieldDef[]>([]);
+  const [fields, setFields] = useState<FieldDef[]>(CANONICAL_FIELDS);
   const [name, setName] = useState("");
   const [type, setType] = useState("Text");
   const [editing, setEditing] = useState<string | null>(null);
   const [note, setNote] = useState("");
   useEffect(() => {
     void loadOfficePrefs().then((prefs) => {
-      if (Array.isArray(prefs.customFieldDefs)) setFields(prefs.customFieldDefs as FieldDef[]);
-      else setFields([
-        { id: "birthdate", name: "Birthdate", type: "Date" },
-        { id: "language", name: "Preferred language", type: "Text" },
-        { id: "referral", name: "Referral source", type: "Text" },
-      ]);
+      if (Array.isArray(prefs.customFieldDefs)) {
+        const saved = (prefs.customFieldDefs as FieldDef[]).filter((field) => field.id !== "language" && field.id !== "referral");
+        const names = new Set(saved.map((field) => field.name));
+        setFields([...CANONICAL_FIELDS.filter((field) => !names.has(field.name)), ...saved]);
+      }
     });
   }, []);
   function persist(next: FieldDef[], message: string) {
@@ -239,6 +244,7 @@ export function CustomFieldsPanel() {
           <option>Text</option>
           <option>Number</option>
           <option>Date</option>
+          <option>True/False</option>
         </select>
         <Btn kind="teal" onClick={() => {
           const label = name.trim();
@@ -288,22 +294,19 @@ const PAGE_TITLES: Record<string, string> = {
   custom: "Edit Custom Page",
 };
 
-type EditorSection = { id: string; name: string; show: boolean; agents: string[] };
+type EditorSection = { id: string; name: string; show: boolean; body: string; agents: string[] };
 
 function starterSections(page: string): EditorSection[] {
   if (page === "about" || page === "branded-about") {
-    return [
-      { id: "about", name: "About", show: true, agents: [] },
-      { id: "agents", name: "Featured Agents", show: true, agents: ["Casey Archibald"] },
-    ];
+    return [{ id: "about", name: "About", show: true, body: "Casey Archibald and Archibald Real Estate Group help people buy and sell across Greater Vancouver.", agents: [] }];
   }
   if (page === "home") {
     return [
-      { id: "featured", name: "Featured Listings", show: true, agents: [] },
-      { id: "guides", name: "Neighborhood Guides", show: true, agents: [] },
+      { id: "featured", name: "Featured Listings", show: true, body: "Show the featured listing previews on the home page.", agents: [] },
+      { id: "guides", name: "Neighborhood Guides", show: true, body: "Kitsilano, Yaletown, Coal Harbour, Mount Pleasant", agents: [] },
     ];
   }
-  return [{ id: "main", name: "Content", show: true, agents: [] }];
+  return [{ id: "main", name: "Content", show: true, body: "", agents: [] }];
 }
 
 export function PageEditor({ page }: { page: string }) {
@@ -326,10 +329,7 @@ export function PageEditor({ page }: { page: string }) {
       if (saved.permalink) setPermalink(saved.permalink);
       if (saved.metaTitle) setMetaTitle(saved.metaTitle);
       if (saved.metaDescription) setMetaDescription(saved.metaDescription);
-      if (saved.sections?.length) {
-        const names = new Set(saved.sections.map((section) => section.name));
-        setSections([...saved.sections, ...starterSections(page).filter((section) => !names.has(section.name))]);
-      }
+      if (saved.sections?.length) setSections(saved.sections.map((section) => ({ ...section, body: section.body || "", agents: section.agents || [] })));
     });
   }, [page]);
   return (
@@ -348,19 +348,28 @@ export function PageEditor({ page }: { page: string }) {
       <div className="mt-4 space-y-3">
         {sections.map((section) => (
           <section key={section.id} className="border border-[#e5e5e5] bg-white p-3">
-            <h2 className="font-semibold">{section.name}</h2>
-            {section.name === "About" || section.name === "Featured Agents" ? (
-              <div className="mt-2">
-                <p className="font-semibold">Featured Agents</p>
-                <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show Section</label>
-                <ul className="mt-2">{section.agents.map((agent) => <li key={agent}>{agent}</li>)}</ul>
-                <button type="button" className="mt-2 text-[#1c93b5]" onClick={() => {
-                  const name = window.prompt("Agent name");
-                  if (!name) return;
-                  setSections((current) => current.map((item) => item.id === section.id ? { ...item, agents: [...item.agents, name] } : item));
-                }}>Add Agent</button>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">{section.name}</h2>
+              <button type="button" className="text-[#d9363e]" onClick={() => setSections((current) => current.filter((item) => item.id !== section.id))}>Remove</button>
+            </div>
+            <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show this section on the public page</label>
+            {section.name === "Featured Listings" ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {["Featured home", "New listing", "Open house"].map((label) => (
+                  <div key={label} className="border border-[#eee] p-2">
+                    <div className="mb-2 h-16 bg-[#e7f5f8]" />
+                    <p className="font-semibold">{label}</p>
+                    <p className="text-[12px] text-[#666]">Preview of a public listing card</p>
+                  </div>
+                ))}
               </div>
-            ) : <p className="mt-2 text-[#666]">This section is on {title.replace("Edit ", "").replace(" Page", "")}.</p>}
+            ) : null}
+            {section.name === "Neighborhood Guides" ? (
+              <ul className="mt-2 list-disc pl-5 text-[13px]">{(section.body || "Kitsilano").split(",").map((item) => <li key={item.trim()}>{item.trim()}</li>)}</ul>
+            ) : null}
+            <label className="mt-2 block">Section copy
+              <textarea className="mt-1 h-16 w-full border border-[#ccc] p-2" value={section.body} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, body: event.target.value } : item))} />
+            </label>
           </section>
         ))}
       </div>
@@ -368,11 +377,12 @@ export function PageEditor({ page }: { page: string }) {
         <button type="button" className="border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => {
           const name = window.prompt("Section name", "New section");
           if (!name) return;
-          setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, agents: [] }]);
+          setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, body: "", agents: [] }]);
         }}>Add Section</button>
         <Btn kind="blue" onClick={() => {
           void loadOfficePrefs().then((prefs) => {
             const pages = { ...((prefs.pages as object) || {}), [page]: { permalink, metaTitle, metaDescription, sections } };
+            void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
             return saveOfficePrefs({ pages });
           }).then((error) => setNote(error || "Page saved."));
         }}>Save Page</Btn>

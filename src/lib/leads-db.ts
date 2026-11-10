@@ -446,13 +446,15 @@ export async function insertLead(
     ].filter(Boolean).join(" · ");
     const rows = await sql<LeadRow[]>`
       UPDATE captured_leads SET
-        phone = CASE WHEN phone = '' THEN ${lead.phone} ELSE phone END,
-        search_label = CASE WHEN search_label IS NULL OR search_label = '' THEN ${lead.searchLabel ?? null} ELSE search_label END,
-        notes = concat_ws(E'\n', NULLIF(notes, ''), ${line}),
+        phone = CASE WHEN btrim(phone) = '' THEN ${lead.phone} ELSE phone END,
+        search_label = CASE WHEN search_label IS NULL OR btrim(search_label) = '' THEN ${lead.searchLabel ?? ""} ELSE search_label END,
+        property_address = CASE WHEN property_address IS NULL OR btrim(property_address) = '' THEN ${lead.propertyAddress ?? ""} ELSE property_address END,
+        notes = CASE WHEN btrim(notes) = '' THEN ${line} ELSE notes || ${"\n" + line} END,
         updated_at = now()
       WHERE id = ${prior.id}
       RETURNING *
     `;
+    if (!rows[0]) throw new Error("lead_update_failed");
     return rowToStoredLead(rows[0]);
   }
   const rows = await sql<LeadRow[]>`
@@ -510,9 +512,16 @@ export async function deleteAuditTestLeads(): Promise<void> {
   if (!sql) return;
   await sql`
     DELETE FROM captured_leads
-    WHERE lower(email) = 'qa-audit-1106@example.com'
+    WHERE lower(email) LIKE 'qa-audit-1106@example.com'
+       OR lower(email) LIKE 'qa-audit-1110%@example.com'
+       OR lower(email) LIKE 'qa-contact-1110%@example.com'
+       OR lower(email) LIKE 'qa-estimate-1110%@example.com'
+       OR lower(email) LIKE 'qa-probe-%@example.com'
        OR name ILIKE 'QA Audit1106%'
        OR name ILIKE 'QA Audit 1106%'
+       OR name ILIKE 'QA Audit 1110%'
+       OR name ILIKE 'QA Audit1110%'
+       OR name ILIKE 'QA Probe%'
   `;
 }
 

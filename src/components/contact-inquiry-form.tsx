@@ -15,12 +15,13 @@ export function ContactInquiryForm({
   heading?: string;
   includeAddress?: boolean;
 }) {
-  const { add } = useLeads();
+  const { capture } = useLeads();
   const [sent, setSent] = useState(false);
+  const [pending, setPending] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     const data = new FormData(e.currentTarget);
@@ -37,17 +38,23 @@ export function ContactInquiryForm({
       setError("Enter the home address.");
       return;
     }
-    add({
+    setPending(true);
+    const result = await capture({
       name: fullName,
       email,
       phone,
       smsOptIn: true,
       source,
       propertyAddress: address || undefined,
-      notes: message,
+      notes: message ? `Contact inquiry: ${message}` : "Contact inquiry",
       consent: true,
       intent: includeAddress ? "valuation" : "inquiry",
     });
+    setPending(false);
+    if (!result.ok || !result.persisted) {
+      setError(result.message || "We could not save your inquiry just now. Please call (604) 363-7858.");
+      return;
+    }
     setName(fullName);
     setSent(true);
   }
@@ -150,9 +157,10 @@ export function ContactInquiryForm({
         {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
         <button
           type="submit"
-          className="h-11 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95"
+          disabled={pending}
+          className="h-11 w-full bg-[var(--cedar)] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:brightness-95 disabled:opacity-60"
         >
-          Submit
+          {pending ? "Sending…" : "Submit"}
         </button>
       </form>
     </div>

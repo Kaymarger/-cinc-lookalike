@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
+import { PublicPageSections } from "@/components/public-page-sections";
 import { HeroSearch } from "@/components/hero-search";
 import { catalogFeatured } from "@/lib/catalog";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
@@ -86,6 +87,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <PublicPageSections page="home" />
 
       <section className="bg-white pb-14">
         <div className="mx-auto max-w-[1170px] px-4 sm:px-6">

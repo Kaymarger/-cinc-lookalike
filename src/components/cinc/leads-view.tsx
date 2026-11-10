@@ -934,9 +934,11 @@ export function LeadsView({
       {open && !expanded ? null : (
       <div className="flex items-center justify-end bg-white px-3 py-1">
         <button type="button" className="inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+          const digits = input.phone.replace(/\D/g, "");
+          const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
           add({ ...input, source: "general", notes: "Added by an agent" });
           chrome.closeModal();
-          chrome.toast("Lead added.");
+          chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
         }} />)}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
           Add New Lead
@@ -1313,7 +1315,7 @@ function LeadDetail({
             <div className="mt-2">
               <Menu
                 className="w-full"
-                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} ({state.pipeline[row.id] ? new Intl.DateTimeFormat("en-US", { timeZone: "America/Vancouver", month: "2-digit", day: "2-digit", year: "2-digit" }).format(new Date()) : "10/20/26"}) ▾</span>}
+                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} ({new Intl.DateTimeFormat("en-US", { timeZone: "America/Vancouver", month: "2-digit", day: "2-digit", year: "2-digit" }).format(new Date(row.registeredAt || Date.now()))}) ▾</span>}
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
@@ -1345,7 +1347,7 @@ function LeadDetail({
             </div>
             <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Email Information</div>
             <div className="grid grid-cols-2 gap-1 bg-[#e7f4f8] p-2 text-left text-[10px]">
-              <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>Phone</b></p>
+              <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>—</b></p>
             </div>
             <p className="mt-3 flex items-center gap-1 text-left text-[11px] text-[#666]">🪪 Registered {row.registered} ago from {row.source}</p>
           </div>
@@ -1545,7 +1547,7 @@ function LeadDetail({
                 />,
               )}>+</button>
             </div>
-            {(state.leadTracks[row.id] ?? [{ id: "sample-follow", name: "Follow Up Reminders", status: "active" as const }]).map((track) => {
+            {(state.leadTracks[row.id] ?? []).map((track) => {
               const paused = track.status === "paused";
               return (
               <article key={track.id} className="relative mb-3 border border-[#e5e5e5] bg-white p-3 shadow-sm">
@@ -1558,7 +1560,7 @@ function LeadDetail({
                   </div>
                 ) : null}
                 <p className="pr-16 font-bold">{track.name}</p>
-                <p className="text-[12px] text-[#888]">General | Started on Oct 18, 2026 at 2:10 PM</p>
+                <p className="text-[12px] text-[#888]">General | Assigned to this lead</p>
                 <p className="mt-2 text-[12px]">0 of 6 steps completed</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <div className="bg-[#e7f5f8] p-2"><p className="text-[12px] font-bold">Triggered by New Lead</p><p className="text-[11px] text-[#888]">Start Trigger(s)</p></div>
@@ -1578,6 +1580,7 @@ function LeadDetail({
               </article>
               );
             })}
+            {(state.leadTracks[row.id] ?? []).length ? null : <p className="text-[13px] text-[#666]">No AutoTracks are assigned to this lead.</p>}
           </div>
         ) : null}
       </section>
@@ -1613,6 +1616,60 @@ function LeadCustomFields({ leadId }: { leadId: string }) {
               body: JSON.stringify({ fields: { [field.id]: event.target.value } }),
             });
           }} />
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function CustomFieldValues({ leadId, editing }: { leadId: string; editing: boolean }) {
+  const [defs, setDefs] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    void loadOfficePrefs().then((prefs) => {
+      const seeded = [
+        { id: "birthdate", name: "Birthdate", type: "Date" },
+        { id: "birthday", name: "Birthday", type: "Date" },
+        { id: "main-birth", name: "Main Contact Birth Date", type: "Date" },
+        { id: "move-in", name: "Move In Date", type: "Date" },
+        { id: "spouse-birth", name: "SpousePartner Birth Date", type: "Date" },
+      ];
+      const saved = Array.isArray(prefs.customFieldDefs) ? prefs.customFieldDefs as { id: string; name: string; type: string }[] : seeded;
+      setDefs(saved);
+    });
+    void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { fields?: Record<string, string> } | null;
+      const custom = data?.fields?.customFields;
+      if (!custom) return;
+      try { setValues(JSON.parse(custom) as Record<string, string>); } catch { /* ignore malformed saved values */ }
+    });
+  }, [leadId]);
+  if (!defs.length) return null;
+  function save(next: Record<string, string>) {
+    setValues(next);
+    void fetch(`/api/office/lead-fields/${encodeURIComponent(leadId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: { customFields: JSON.stringify(next) } }),
+    });
+  }
+  return (
+    <div className="mt-3">
+      <p className="mb-2 border-b border-[#ddd] pb-1 text-[12px] font-semibold">Custom Fields</p>
+      {defs.map((field) => (
+        <label key={field.id} className="mb-2 block text-[12px]">
+          {field.name}
+          {editing ? (
+            field.type === "True/False" ? (
+              <select className={inputCls} value={values[field.id] || ""} onChange={(event) => save({ ...values, [field.id]: event.target.value })}>
+                <option value="">—</option>
+                <option>True</option>
+                <option>False</option>
+              </select>
+            ) : (
+              <input className={inputCls} type={field.type === "Date" ? "date" : field.type === "Number" ? "number" : "text"} value={values[field.id] || ""} onChange={(event) => save({ ...values, [field.id]: event.target.value })} />
+            )
+          ) : <p className="text-[13px]">{values[field.id] || "—"}</p>}
         </label>
       ))}
     </div>
@@ -1695,6 +1752,7 @@ function InfoTab({
             </div>
           ))}
           <button type="button" className="mt-2 inline-flex items-center gap-1 bg-[#eee] px-2 py-1 text-[12px] text-[#555]" onClick={onTrash}>🗑 Trash</button>
+          <CustomFieldValues leadId={row.id} editing={edit} />
           <p className="mt-3 border-b border-[#ddd] pb-1 text-[12px] font-semibold">Social Info</p>
           <p className="mt-1 text-[12px] text-[#888]">No social info found.</p>
         </div>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { PlaceSuggest } from "@/components/place-suggest";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads } from "@/lib/leads";
 
@@ -19,6 +20,7 @@ export function HomeEstimateHero({
   const { capture } = useLeads();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -32,8 +34,11 @@ export function HomeEstimateHero({
     }
     const fullName = String(data.get("FullName") || "").trim();
     const unit = String(data.get("Unit") || "").trim();
-    const address = String(data.get("Address") || "").trim();
     const propertyAddress = unit ? `${unit} - ${address}` : address;
+    if (!address.trim()) {
+      setError("Enter the home address.");
+      return;
+    }
     setPending(true);
     const result = await capture({
       name: fullName,
@@ -47,7 +52,7 @@ export function HomeEstimateHero({
       consent: true,
     });
     setPending(false);
-    if (!result.ok) {
+    if (!result.ok || !result.persisted) {
       setError(result.message || "Please check the form and try again.");
       return;
     }
@@ -101,9 +106,30 @@ export function HomeEstimateHero({
           ) : (
             <>
               <p className="text-sm font-medium text-[#444]">
-                Enter your home and how to reach you
+                Start with the home address
               </p>
               <form onSubmit={onSubmit} className="mt-4 space-y-3" id="estimate">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <label className="block w-full shrink-0 text-xs text-[#666] sm:w-40">
+                    Unit number (optional)
+                    <input
+                      name="Unit"
+                      placeholder="Unit number (optional)"
+                      aria-label="Unit number (optional)"
+                      className="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
+                    />
+                  </label>
+                  <label className="block min-w-0 flex-1 text-xs text-[#666]">
+                    Home address
+                    <PlaceSuggest
+                      value={address}
+                      onChange={setAddress}
+                      aria-label="Home address"
+                      placeholder="Home address"
+                      inputClassName="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
+                    />
+                  </label>
+                </div>
                 <input
                   name="FullName"
                   required
@@ -127,27 +153,6 @@ export function HomeEstimateHero({
                   aria-label="Phone"
                   className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
                 />
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <label className="block w-full shrink-0 text-xs text-[#666] sm:w-40">
-                    Unit number (optional)
-                    <input
-                      name="Unit"
-                      placeholder="Unit number (optional)"
-                      aria-label="Unit number (optional)"
-                      className="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                    />
-                  </label>
-                  <label className="block min-w-0 flex-1 text-xs text-[#666]">
-                    Home address
-                    <input
-                      name="Address"
-                      required
-                      placeholder="Home address"
-                      aria-label="Home address"
-                      className="mt-1 h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                    />
-                  </label>
-                </div>
                 <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
                   <input name="consent" type="checkbox" required className="mt-1" />
                   <span>

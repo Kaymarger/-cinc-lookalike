@@ -1,46 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageAssist } from "@/components/page-assist";
-import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "FAQ" };
 
 const faqs = [
   {
-    q: "Who provides the real estate information for this website?",
-    a: "This website is a real estate search platform powered by CINC, a real estate technology company. CINC provides the website, search tools, and technology infrastructure only. All real estate related services referenced on this site are provided exclusively by Archibald Real Estate Group.",
-  },
-  {
-    q: "Where is Archibald Real Estate Group located?",
-    a: `${SITE.addressLine}, ${SITE.cityLine}. Phone: ${SITE.phoneDisplay}. Use the contact form to write the office.`,
-  },
-  {
-    q: "How do I search for homes?",
-    a: "Use Search Homes in the header, the hero search on the home page, or any Quick Search link. You can filter by city, price, beds, baths, and property type, and switch between list and map views.",
-  },
-  {
-    q: "How do I request a showing?",
-    a: "Open any listing and choose Request a showing, or use Ask Casey Archibald on the listing page. You can also use the contact form.",
-  },
-  {
-    q: "Can I get a home estimate?",
-    a: "Yes — visit Home Estimate, enter your address (unit number optional), and submit. There is also a Home Value Calculator for a rough payment estimate.",
-  },
-  {
     q: "How much out-of-pocket expenses do I need to purchase a home?",
-    a: "Buyers typically need a down payment, closing costs, property transfer tax where applicable, and inspection/appraisal fees. Casey can walk you through a personalized estimate for a specific listing.",
+    a: "Buyers typically need a down payment, closing costs, property transfer tax where it applies, and inspection or appraisal fees. The office can walk through a specific home with you.",
   },
   {
     q: "How much down-payment would I need to buy?",
-    a: "In Canada, minimum down payment rules depend on purchase price (often 5% on the first portion for insured mortgages, higher for luxury prices). Use the mortgage calculator on a listing for a rough scenario, then talk to a lender.",
-  },
-  {
-    q: "Is listing data live MLS® inventory?",
-    a: "Listings on this site are for search and inquiry. Confirm price, status, and availability with Archibald Real Estate Group. This is not a live board feed.",
-  },
-  {
-    q: "How do saved homes and alerts work?",
-    a: "Heart a listing to save it, or save a search to get email alerts. Creating an account or an alert sends your details to the office.",
+    a: "Minimum down payment rules depend on the purchase price. A lender can confirm the amount for the home you want. The mortgage calculator on a listing is only a rough scenario.",
   },
 ];
 

@@ -119,7 +119,7 @@ type Ctx = {
   leads: Lead[];
   database: DatabaseNotice | null;
   add: (input: CreateLeadInput) => Lead;
-  capture: (input: CreateLeadInput) => Promise<{ ok: boolean; message?: string }>;
+  capture: (input: CreateLeadInput) => Promise<{ ok: boolean; persisted?: boolean; message?: string }>;
   updateStatus: (id: string, status: LeadStatus) => void;
   updateNotes: (id: string, notes: string) => void;
   appendNote: (id: string, line: string) => void;
@@ -524,11 +524,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
     try {
       const result = await publish(prior ? { ...lead, id: prior.id } : lead, input);
-      if (!result.ok) {
+      if (!result.ok || !result.persisted) {
         if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
-        return { ok: false, message: result.message || "Please check the form and try again." };
+        return { ok: false, persisted: false, message: result.message || "We could not save your request just now. Please call (604) 363-7858." };
       }
-      return { ok: true };
+      return { ok: true, persisted: true };
     } catch {
       if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
       return {

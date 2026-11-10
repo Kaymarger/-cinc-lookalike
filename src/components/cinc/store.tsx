@@ -378,7 +378,25 @@ export const INTEGRATIONS = [
   "External Email Tracking",
 ];
 
-const DATA_VERSION = 9;
+const DATA_VERSION = 10;
+
+function templateBody(name: string, text: boolean, index: number) {
+  const texts = [
+    `Hi, it's Casey Archibald. Just checking in about ${name}. Want me to send a couple of homes that fit? Reply STOP to opt out.`,
+    `Casey at Archibald Real Estate Group here. ${name} is the note I saved for you. Call (604) 363-7858 if today is better. Reply STOP to opt out.`,
+    `Quick text from Casey Archibald. I can walk through ${name} whenever you are free. Reply STOP to opt out.`,
+    `Following up on ${name}. I am around this afternoon if you want a short call. Reply STOP to opt out.`,
+    `Casey Archibald, Archibald Real Estate Group. ${name} is still on my list for you. Reply STOP to opt out.`,
+  ];
+  const emails = [
+    `Hello,\n\nI wanted to send a proper note about ${name}.\n\nIf you tell me the neighbourhood and price range, I will pull a short list.\n\nCasey Archibald\n(604) 363-7858`,
+    `Hi,\n\n${name} usually means it is time for a quick market check.\n\nReply with the address and I will look at recent sales nearby.\n\nCasey Archibald\nArchibald Real Estate Group`,
+    `Hello,\n\nThis is the ${name} message from our office.\n\nYou can book a time at (604) 363-7858 or just reply to this email.\n\nCasey`,
+    `Hi,\n\nI am writing about ${name}.\n\nThe useful next step is a 10-minute call so I am not guessing at what you need.\n\nCasey Archibald\n300 - 1195 W Broadway, Vancouver`,
+    `Hello,\n\n${name} is ready when you are.\n\nI will keep this short: tell me if you are buying, selling, or just watching the market.\n\nCasey Archibald`,
+  ];
+  return (text ? texts : emails)[index % 5];
+}
 
 function buildTemplates(): Template[] {
   const rows: Template[] = [];
@@ -392,9 +410,7 @@ function buildTemplates(): Template[] {
         type: text ? "Text" : "Email",
         createdBy: group === "CINC Templates" ? "CINC" : "Kayla Gerak",
         edited: "10-30-2026",
-        body: text
-          ? `Hi, this is Casey Archibald with Archibald Real Estate Group. Thanks for your interest in ${name}. I can help with the next step. Reply STOP to opt out of texts.`
-          : `Hi,\n\nThis is Casey Archibald at Archibald Real Estate Group.\n\n${name}\n\nCall or text (604) 363-7858 when you want to talk it through.\n\nCasey Archibald\nArchibald Real Estate Group\n300 - 1195 W Broadway, Vancouver`,
+        body: templateBody(name, text, index),
       });
     });
   }

@@ -551,7 +551,7 @@ export function SearchFiltersBar({
             </button>
           </div>
 
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="hidden">
             <IdxSelect
               label="Min price"
               value={filters.minPrice != null ? String(filters.minPrice) : ""}

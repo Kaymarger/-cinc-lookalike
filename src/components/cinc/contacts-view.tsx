@@ -31,6 +31,8 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
   const [filter, setFilter] = useState("Show All");
   const [type, setType] = useState("");
   const [draft, setDraft] = useState<Vendor | null>(null);
+  const [query, setQuery] = useState("");
+  const [formError, setFormError] = useState("");
   useEffect(() => {
     if (mode !== "vendors") return;
     void fetch("/api/office/vendors", { cache: "no-store" }).then(async (response) => {
@@ -47,8 +49,14 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
     );
   }
   const types = [...new Set(vendors.map((vendor) => vendor.type).filter(Boolean))];
-  const shown = vendors.filter((vendor) => (filter !== "Preferred" || vendor.preferred) && (!type || vendor.type === type));
+  const shown = vendors.filter((vendor) => (filter !== "Preferred" || vendor.preferred) && (!type || vendor.type === type) && (!query || `${vendor.name} ${vendor.email} ${vendor.company} ${vendor.type}`.toLowerCase().includes(query.toLowerCase())));
   async function save(vendor: Vendor) {
+    setFormError("");
+    if (!vendor.type.trim() || !vendor.firstName.trim() || !vendor.lastName.trim() || !vendor.email.trim()) {
+      setFormError("Enter a vendor type, first name, last name, and primary email.");
+      return;
+    }
+    try {
     const response = await fetch(vendor.id ? `/api/office/vendors/${vendor.id}` : "/api/office/vendors", {
       method: vendor.id ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,13 +64,19 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
     });
     const data = (await response.json().catch(() => null)) as { vendor?: Vendor; message?: string } | null;
     if (!response.ok || !data?.vendor) {
-      chrome.toast(data?.message || "Could not save that vendor.");
+      const message = data?.message || "Could not save that vendor.";
+      setFormError(message);
+      chrome.toast(message);
       return;
     }
     const saved = data.vendor;
     setVendors((current) => current.some((item) => item.id === saved.id) ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved]);
     setDraft(null);
     chrome.toast("Vendor saved.");
+    } catch {
+      setFormError("Could not save that vendor.");
+      chrome.toast("Could not save that vendor.");
+    }
   }
   async function remove(id: string) {
     const response = await fetch(`/api/office/vendors/${id}`, { method: "DELETE" });
@@ -79,13 +93,13 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
           <button key={item} type="button" className={`border px-2 py-1 ${filter === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc] bg-white"}`} onClick={() => setFilter(item)}>{item}{item === "Preferred" ? " ★" : ""}</button>
         ))}
         <label className="flex items-center gap-1">Vendor Type
-          <select className="border border-[#ccc] bg-white px-2 py-1" disabled={!vendors.length} value={type} onChange={(event) => setType(event.target.value)}>
+          <select className="border border-[#ccc] bg-white px-2 py-1" value={type} onChange={(event) => setType(event.target.value)}>
             <option value="">All</option>
             {types.map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
       </div>
-      <input className="mb-3 w-full max-w-sm border border-transparent bg-transparent text-[16px] font-bold outline-none placeholder:font-normal placeholder:text-[#bbb]" placeholder="Replace with title" defaultValue="" />
+      <input className="mb-3 h-8 w-full max-w-sm border border-[#ccc] bg-white px-2 text-[13px]" placeholder="Search vendors" value={query} onChange={(event) => setQuery(event.target.value)} />
       <h2 className="mb-3 text-[16px] font-bold">ALL VENDORS • {shown.length}</h2>
       <div className="flex flex-wrap gap-3">
         <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>• {vendors.length}<br />ADD VENDOR</button>
@@ -124,6 +138,7 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
             <textarea className="mt-1 h-16 w-full border border-[#ccc] px-2 py-1" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
           </label>
           <label className="mb-2 block"><input type="checkbox" checked={draft.preferred} onChange={(event) => setDraft({ ...draft, preferred: event.target.checked })} /> ★ Preferred</label>
+          {formError ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[#c62828]">{formError}</p> : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setDraft(null)}>Cancel</button>
             <button type="submit" className="bg-[#1c93b5] px-3 py-1 text-white">Save</button>
