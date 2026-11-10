@@ -71,7 +71,7 @@ export default async function HomePage() {
             Featured Listings
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
-            Active listings from Archibald Real Estate Group in the CREA feed.
+            Homes Casey Archibald is featuring right now.
           </p>
           {featured.length ? (
             <div className="mt-8">
@@ -79,7 +79,7 @@ export default async function HomePage() {
             </div>
           ) : (
             <p className="mx-auto mt-8 max-w-xl text-center text-sm text-[#4a5560]">
-              No active Archibald Real Estate Group listings are in the CREA feed right now.
+              No featured listings are available right now.
             </p>
           )}
           <div className="mt-8 text-center">

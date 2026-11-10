@@ -440,7 +440,9 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
   return value;
 }
 
-export async function featuredDdfListings(limit = 12): Promise<Property[]> {
+export async function featuredDdfListingsByMls(ids: string[]): Promise<Property[]> {
+  const wanted = [...new Set(ids.map((id) => id.toUpperCase()))];
+  if (!wanted.length) return [];
   const sql = await officeDb();
   if (!sql) return [];
   const rows = await sql<ListingRow[]>`
@@ -453,13 +455,14 @@ export async function featuredDdfListings(limit = 12): Promise<Property[]> {
         ELSE '[]'::jsonb
       END AS photos
     FROM ddf_listings
-    WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
+    WHERE upper(listing_id) = ANY(${wanted})
       AND COALESCE(list_price, 0) > 0
-      AND brokerage_name ~* 'archibald|re/?max crest'
-    ORDER BY COALESCE(listed_at, modification_timestamp) DESC NULLS LAST, listing_id DESC
-    LIMIT ${limit}
   `;
-  return rows.map(propertyFromRow);
+  const byId = new Map(rows.map((row) => [row.listing_id.toUpperCase(), propertyFromRow(row)]));
+  return wanted.flatMap((id) => {
+    const property = byId.get(id);
+    return property ? [property] : [];
+  });
 }
 
 export async function stampNeighbourhoods(stamps: { listingKey: string; city: string; neighbourhood: string }[]): Promise<number> {

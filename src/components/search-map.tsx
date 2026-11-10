@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import {
   Circle,
   MapContainer,
@@ -8,7 +8,6 @@ import {
   Popup,
   TileLayer,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import type { Property } from "@/lib/types";
@@ -44,13 +43,25 @@ function priceIcon(price: number, selected: boolean) {
 function FitBounds({
   properties,
   selectedId,
+  circle,
 }: {
   properties: Property[];
   selectedId: string | null;
+  circle?: { lat: number; lng: number; km: number } | null;
 }) {
   const map = useMap();
+  const fitted = useRef("");
 
   useEffect(() => {
+    if (circle && !selectedId) {
+      const key = `${circle.lat.toFixed(4)}:${circle.lng.toFixed(4)}:${circle.km}`;
+      if (fitted.current === key) return;
+      fitted.current = key;
+      const bounds = L.latLng(circle.lat, circle.lng).toBounds(Math.max(circle.km, 0.4) * 2200);
+      if (bounds.isValid()) map.fitBounds(bounds, { animate: true, padding: [28, 28] });
+      return;
+    }
+    fitted.current = "";
     const withCoords = properties.filter(
       (p) =>
         Number.isFinite(p.lat) &&
@@ -78,7 +89,7 @@ function FitBounds({
     if (bounds.isValid()) {
       map.fitBounds(bounds.pad(0.18), { animate: true, maxZoom: 13 });
     }
-  }, [map, properties, selectedId]);
+  }, [map, properties, selectedId, circle]);
 
   return null;
 }
@@ -119,7 +130,7 @@ export function SearchMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitBounds properties={properties} selectedId={selectedId} />
+      <FitBounds properties={properties} selectedId={selectedId} circle={drawing ? null : circle} />
       <CircleDraw drawing={drawing} circle={circle ?? null} onCircle={(next) => { setDrawing(false); onCircle?.(next); }} />
       {properties
         .filter(
@@ -165,11 +176,28 @@ export function SearchMap({
               Clear circle
             </button>
           ) : null}
-          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Tap the map for the centre, then tap the edge. Homes inside the circle stay.</p> : null}
+          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Press on the map and drag outward to draw. Drag the centre or the edge handle to edit.</p> : null}
         </div>
       ) : null}
     </div>
   );
+}
+
+type MapCircle = { lat: number; lng: number; km: number };
+
+function edgeOf(circle: MapCircle): [number, number] {
+  const meters = Math.max(circle.km, 0.2) * 1000;
+  const lat = circle.lat + meters / 111320;
+  return [lat, circle.lng];
+}
+
+function handleIcon(label: string) {
+  return L.divIcon({
+    className: "",
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    html: `<div data-circle-handle role="button" aria-label="${label}" style="width:32px;height:32px;border-radius:999px;border:3px solid #04427d;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+  });
 }
 
 function CircleDraw({
@@ -178,29 +206,146 @@ function CircleDraw({
   onCircle,
 }: {
   drawing: boolean;
-  circle: { lat: number; lng: number; km: number } | null;
-  onCircle?: (circle: { lat: number; lng: number; km: number } | null) => void;
+  circle: MapCircle | null;
+  onCircle?: (circle: MapCircle | null) => void;
 }) {
-  const [center, setCenter] = useState<L.LatLng | null>(null);
-  const [km, setKm] = useState(0.5);
-  useMapEvents({
-    click(event) {
-      if (!drawing) return;
-      if (!center) {
-        setCenter(event.latlng);
-        setKm(0.4);
-        return;
-      }
-      const nextKm = Math.min(40, Math.max(0.2, Math.round((event.latlng.distanceTo(center) / 1000) * 10) / 10));
-      onCircle?.({ lat: center.lat, lng: center.lng, km: nextKm });
-      setCenter(null);
-    },
-    mousemove(event) {
-      if (!drawing || !center) return;
-      setKm(Math.max(0.2, event.latlng.distanceTo(center) / 1000));
-    },
-  });
-  const shown = center ? { lat: center.lat, lng: center.lng, km } : circle;
-  if (!shown) return null;
-  return <Circle center={[shown.lat, shown.lng]} radius={shown.km * 1000} pathOptions={{ color: "#04427d", weight: 2 }} />;
+  const map = useMap();
+  const [draft, setDraft] = useState<MapCircle | null>(null);
+  const onCircleRef = useRef(onCircle);
+  useEffect(() => {
+    onCircleRef.current = onCircle;
+  }, [onCircle]);
+
+  useEffect(() => {
+    if (!drawing) return;
+    const container = map.getContainer();
+    map.dragging.disable();
+    map.doubleClickZoom.disable();
+    const previousTouchAction = container.style.touchAction;
+    container.style.cursor = "crosshair";
+    container.style.touchAction = "none";
+    let start: L.LatLng | null = null;
+
+    const pointFromClient = (clientX: number, clientY: number) => {
+      const origin = container.getBoundingClientRect();
+      return map.containerPointToLatLng(L.point(clientX - origin.left, clientY - origin.top));
+    };
+    const begin = (latlng: L.LatLng) => {
+      start = latlng;
+      setDraft({ lat: latlng.lat, lng: latlng.lng, km: 0.2 });
+    };
+    const moveTo = (latlng: L.LatLng) => {
+      if (!start) return;
+      setDraft({ lat: start.lat, lng: start.lng, km: Math.max(0.2, start.distanceTo(latlng) / 1000) });
+    };
+    const finish = (latlng: L.LatLng | null) => {
+      if (!start) return;
+      const origin = start;
+      start = null;
+      setDraft(null);
+      if (!latlng) return;
+      const km = Math.round((origin.distanceTo(latlng) / 1000) * 10) / 10;
+      if (km < 0.3) return;
+      onCircleRef.current?.({ lat: origin.lat, lng: origin.lng, km: Math.min(40, km) });
+    };
+    const down = (event: PointerEvent) => {
+      if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-circle-handle], button, a, input")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      begin(pointFromClient(event.clientX, event.clientY));
+      container.setPointerCapture(event.pointerId);
+    };
+    const move = (event: PointerEvent) => {
+      if (!start) return;
+      event.preventDefault();
+      moveTo(pointFromClient(event.clientX, event.clientY));
+    };
+    const up = (event: PointerEvent) => {
+      if (!start) return;
+      finish(pointFromClient(event.clientX, event.clientY));
+    };
+    container.addEventListener("pointerdown", down);
+    container.addEventListener("pointermove", move);
+    container.addEventListener("pointerup", up);
+    container.addEventListener("pointercancel", up);
+    return () => {
+      container.removeEventListener("pointerdown", down);
+      container.removeEventListener("pointermove", move);
+      container.removeEventListener("pointerup", up);
+      container.removeEventListener("pointercancel", up);
+      map.dragging.enable();
+      map.doubleClickZoom.enable();
+      container.style.cursor = "";
+      container.style.touchAction = previousTouchAction;
+    };
+  }, [drawing, map]);
+
+  if (draft) {
+    return (
+      <Circle
+        center={[draft.lat, draft.lng]}
+        radius={draft.km * 1000}
+        pathOptions={{ color: "#04427d", weight: 2, fillColor: "#04427d", fillOpacity: 0.12 }}
+      />
+    );
+  }
+  if (!circle || drawing) return null;
+  return <CircleEditor circle={circle} onCircleRef={onCircleRef} />;
+}
+
+function CircleEditor({
+  circle,
+  onCircleRef,
+}: {
+  circle: MapCircle;
+  onCircleRef: MutableRefObject<((circle: MapCircle | null) => void) | undefined>;
+}) {
+  const map = useMap();
+  const { lat, lng, km } = circle;
+  useEffect(() => {
+    const shape = L.circle([lat, lng], {
+      radius: km * 1000,
+      color: "#04427d",
+      weight: 2,
+      fillColor: "#04427d",
+      fillOpacity: 0.12,
+    }).addTo(map);
+    const center = L.marker([lat, lng], {
+      draggable: true,
+      icon: handleIcon("Move circle"),
+      zIndexOffset: 800,
+    }).addTo(map);
+    const edge = L.marker(edgeOf({ lat, lng, km }), {
+      draggable: true,
+      icon: handleIcon("Resize circle"),
+      zIndexOffset: 800,
+    }).addTo(map);
+    center.on("drag", () => {
+      const next = center.getLatLng();
+      shape.setLatLng(next);
+      edge.setLatLng(edgeOf({ lat: next.lat, lng: next.lng, km: shape.getRadius() / 1000 }));
+    });
+    center.on("dragend", () => {
+      const next = center.getLatLng();
+      const km = Math.round((shape.getRadius() / 1000) * 10) / 10;
+      onCircleRef.current?.({ lat: next.lat, lng: next.lng, km });
+    });
+    edge.on("drag", () => {
+      const km = Math.max(0.3, shape.getLatLng().distanceTo(edge.getLatLng()) / 1000);
+      shape.setRadius(km * 1000);
+    });
+    edge.on("dragend", () => {
+      const next = shape.getLatLng();
+      const km = Math.min(40, Math.max(0.3, Math.round((next.distanceTo(edge.getLatLng()) / 1000) * 10) / 10));
+      onCircleRef.current?.({ lat: next.lat, lng: next.lng, km });
+    });
+    return () => {
+      shape.remove();
+      center.remove();
+      edge.remove();
+    };
+  }, [lat, lng, km, map, onCircleRef]);
+  return null;
 }

@@ -249,6 +249,27 @@ function quote(value: string): string {
   return value.replace(/'/g, "''");
 }
 
+/** CREA rows for these exact MLS® numbers. Empty when the feed cannot be queried. */
+export async function fetchListingsByMls(ids: string[]): Promise<DdfListing[]> {
+  const wanted = [...new Set(ids.map((id) => id.toUpperCase()).filter((id) => /^R\d{5,}$/.test(id)))].slice(0, 24);
+  if (!wanted.length) return [];
+  const active = await session();
+  if (active.mode !== "oauth") return [];
+  const found: DdfListing[] = [];
+  for (let index = 0; index < wanted.length; index += 8) {
+    const batch = wanted.slice(index, index + 8);
+    const filter = batch.map((id) => `ListingId eq '${quote(id)}'`).join(" or ");
+    const url = `${ODATA}/Property?$top=${batch.length}&$filter=${encodeURIComponent(filter)}&$expand=Media`;
+    try {
+      const payload = await oauthGet(url, active.token);
+      found.push(...listingsFromJson(payload));
+    } catch {
+      continue;
+    }
+  }
+  return found;
+}
+
 /** Listings whose MLS sub-area is exactly this name. Tries the CREA area fields. */
 export async function fetchAreaListings(name: string): Promise<DdfListing[]> {
   const cleaned = name.trim();

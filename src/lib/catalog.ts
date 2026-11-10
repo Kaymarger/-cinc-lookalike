@@ -1,7 +1,8 @@
-import { fetchListingDetail } from "@/lib/ddf/client";
+import { fetchListingDetail, fetchListingsByMls } from "@/lib/ddf/client";
 import { pullAreaIntoSearch } from "@/lib/ddf/areas";
 import { ddfConfigured } from "@/lib/ddf/credentials";
-import { featuredDdfListings, getDdfListing, searchDdfListings, upsertDdfListings } from "@/lib/ddf/db";
+import { featuredDdfListingsByMls, getDdfListing, searchDdfListings, upsertDdfListings } from "@/lib/ddf/db";
+import { activeFeaturedMlsIds } from "@/lib/featured-source";
 import type { Property, SearchFilters } from "@/lib/types";
 
 const detailReads = new Map<string, Promise<void>>();
@@ -31,11 +32,29 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
   };
 }
 
-/** Active Archibald / RE/MAX Crest listings from the CREA feed. Empty when none are active. */
+/** Active listings featured on Casey Archibald's public site, matched to CREA rows. */
 export async function catalogFeatured(limit = 12): Promise<Property[]> {
   if (!ddfConfigured()) return [];
-  const live = await featuredDdfListings(limit);
-  return live.map((property) => ({ ...property, images: property.images.slice(0, 1) }));
+  const ids = await activeFeaturedMlsIds();
+  if (!ids?.length) return [];
+  let live = await featuredDdfListingsByMls(ids);
+  const have = new Set(live.map((property) => property.mlsNumber.toUpperCase()));
+  const missing = ids.filter((id) => !have.has(id));
+  if (missing.length) {
+    try {
+      const pulled = await Promise.race([
+        fetchListingsByMls(missing),
+        new Promise<Awaited<ReturnType<typeof fetchListingsByMls>>>((resolve) => setTimeout(() => resolve([]), 8000)),
+      ]);
+      if (pulled.length) {
+        await upsertDdfListings(pulled);
+        live = await featuredDdfListingsByMls(ids);
+      }
+    } catch {
+      live = await featuredDdfListingsByMls(ids);
+    }
+  }
+  return live.slice(0, limit).map((property) => ({ ...property, images: property.images.slice(0, 1) }));
 }
 
 export async function catalogListing(id: string): Promise<Property | null> {

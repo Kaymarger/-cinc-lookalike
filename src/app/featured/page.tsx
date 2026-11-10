@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Featured Listings",
-  description: "Active Archibald Real Estate Group listings from the CREA feed.",
+  description: "Active homes featured on Casey Archibald's site.",
 };
 
 export default async function FeaturedPage() {
-  const list = await catalogFeatured(9);
+  const list = await catalogFeatured(24);
 
   return (
     <div className="bg-white">
@@ -24,7 +24,7 @@ export default async function FeaturedPage() {
           Featured Listings
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-center text-[15px] text-[#666]">
-          Active listings from Archibald Real Estate Group. General-market homes stay on Search Homes.
+          Homes Casey Archibald is featuring right now.
         </p>
         {list.length ? (
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -34,7 +34,7 @@ export default async function FeaturedPage() {
         </div>
         ) : (
           <p className="mx-auto mt-10 max-w-xl text-center text-[15px] text-[#666]">
-            No active Archibald Real Estate Group listings are in the CREA feed right now.
+            No featured listings are available right now.
           </p>
         )}
 
