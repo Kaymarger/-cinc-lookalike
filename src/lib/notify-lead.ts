@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
 import { officeDb } from "@/lib/leads-db";
 import { sendOfficeSms } from "@/lib/office-mail";
+import { registrationWelcome } from "./welcome-email";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
 
@@ -97,7 +98,7 @@ export function assignedAgentName(): string {
   return process.env.AGENT_ALERT_NAME?.trim() || SITE.agent;
 }
 
-export async function sendLeadEmail(toRaw: string, subject: string, text: string): Promise<AlertChannel> {
+export async function sendLeadEmail(toRaw: string, subject: string, text: string, html?: string): Promise<AlertChannel> {
   const to = toRaw.trim();
   if (!to) return "skipped";
   const resendKey = process.env.RESEND_API_KEY?.trim();
@@ -113,7 +114,7 @@ export async function sendLeadEmail(toRaw: string, subject: string, text: string
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to: [to], subject, text }),
+        body: JSON.stringify({ from, to: [to], subject, text, ...(html ? { html } : {}) }),
         signal: AbortSignal.timeout(8000),
       });
       return response.ok ? "sent" : "failed";
@@ -125,7 +126,10 @@ export async function sendLeadEmail(toRaw: string, subject: string, text: string
         personalizations: [{ to: [{ email: to }] }],
         from: { email: from, name: SITE.company },
         subject,
-        content: [{ type: "text/plain", value: text }],
+        content: [
+          { type: "text/plain", value: text },
+          ...(html ? [{ type: "text/html", value: html }] : []),
+        ],
       }),
       signal: AbortSignal.timeout(8000),
     });
@@ -144,7 +148,6 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
   if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
   const first = lead.name.split(" ")[0] || "there";
   const origin = siteOrigin();
-  const unsubscribe = `Unsubscribe: ${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`;
   const savedSearch = lead.source === "search_alert";
   const subject = savedSearch
     ? `Saved search: ${lead.searchLabel || "Greater Vancouver homes"}`
@@ -155,26 +158,14 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
         "",
         `Your saved search is on: ${lead.searchLabel || "Greater Vancouver homes"}.`,
         "We'll email you when homes that match are listed.",
-        unsubscribe,
+        `Unsubscribe: ${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`,
         "",
         SITE.agent,
         SITE.phoneDisplay,
       ].join("\n")
-    : [
-        `Hi ${first},`,
-        "",
-        `Thanks for registering with ${SITE.company}.`,
-        "You can search homes and save a search for alerts.",
-        lead.searchLabel ? `Your saved search: ${lead.searchLabel}` : "",
-        unsubscribe,
-        "",
-        SITE.agent,
-        SITE.phoneDisplay,
-      ]
-        .filter((line) => line !== undefined)
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n");
-  const email = await sendLeadEmail(lead.email, subject, welcome);
+    : registrationWelcome(lead).text;
+  const html = savedSearch ? undefined : registrationWelcome(lead).html;
+  const email = await sendLeadEmail(lead.email, subject, welcome, html);
   const sms = lead.smsOptIn
     ? await sendLeadSms(lead.phone, `${SITE.company}: you're signed up for home alerts. Reply STOP to opt out.`)
     : "skipped";

@@ -74,6 +74,11 @@ export interface SearchFilters {
   maxDays?: number;
   tag?: string;
   openHouse?: boolean;
+  /** Limit open houses to the upcoming Vancouver Saturday and Sunday. */
+  weekend?: boolean;
+  circleLat?: number;
+  circleLng?: number;
+  circleKm?: number;
   newListings?: boolean;
   virtualTour?: boolean;
   sort?:

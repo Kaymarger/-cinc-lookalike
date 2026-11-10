@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { DDF_DISCLAIMER } from "@/components/ddf-attribution";
+import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 import { SITE } from "@/lib/site";
 
 const MENU = [
@@ -12,6 +13,20 @@ const MENU = [
   { href: "/seller/homeestimate/homevaluation", label: "Home Estimate" },
 ];
 
+const NEIGHBOURHOODS = QUICK_SEARCHES.filter((item) =>
+  [
+    "homes-for-sale-in-kitsilano",
+    "homes-for-sale-in-yaletown",
+    "homes-for-sale-in-coal-harbour",
+    "homes-for-sale-in-mount-pleasant",
+    "homes-for-sale-in-dunbar",
+    "homes-for-sale-in-point-grey",
+    "homes-for-sale-in-fairview",
+    "homes-for-sale-in-cambie",
+    "homes-for-sale-in-arbutus",
+    "homes-for-sale-in-lynn-valley",
+  ].includes(item.slug)
+);
 const LEGAL = [
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
@@ -103,7 +118,18 @@ export function SiteFooter() {
             ))}
           </ul>
         </div>
-        <div />
+        <div>
+          <h4 className="text-base font-bold text-[#1f2930]">Neighbourhoods</h4>
+          <ul className="mt-3 columns-2 text-sm">
+            {NEIGHBOURHOODS.map((item) => (
+              <li key={item.slug} className="mb-2 break-inside-avoid">
+                <Link href={quickSearchHref(item)} className="hover:underline">
+                  {item.label.replace("Homes for Sale in ", "")}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="mx-auto flex max-w-[1170px] flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">

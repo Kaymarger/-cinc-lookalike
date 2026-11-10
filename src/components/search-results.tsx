@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { List, Map as MapIcon } from "lucide-react";
 import { PropertyCard } from "@/components/property-card";
-import type { Property } from "@/lib/types";
+import type { Property, SearchFilters } from "@/lib/types";
+import { filtersToQuery } from "@/lib/search";
+import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +28,7 @@ export function SearchResults({
   properties,
   stats,
   showMap = true,
+  filters,
 }: {
   properties: Property[];
   stats: {
@@ -35,7 +38,9 @@ export function SearchResults({
     avgBeds: number;
   };
   showMap?: boolean;
+  filters?: SearchFilters;
 }) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(8);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
@@ -65,36 +70,38 @@ export function SearchResults({
       { href: "/search?city=Burnaby&maxPrice=1000000", label: "Burnaby under $1M" },
       { href: "/search?city=Vancouver&beds=2", label: "Vancouver 2+ beds" },
       { href: "/search?propertyType=Condo&maxPrice=900000", label: "Condos under $900k" },
-      { href: "/search?openHouse=1", label: "This weekend’s open houses" },
+      { href: "/search?openHouse=1&weekend=1", label: "This weekend’s open houses" },
       { href: "/search?sort=newest", label: "Newest listings" },
     ];
 
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
-        <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--cedar-deep)]">
-          No homes match these filters
-        </h2>
-        <p className="mt-3 text-[var(--ink-muted)]">
-          Try widening the price range, removing a city filter, or jump to a
-          suggested search below.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-2">
-          {suggestions.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="inline-flex rounded-sm border border-[var(--cedar)] bg-white px-3 py-2 text-sm font-medium text-[var(--cedar)] hover:bg-[#edf5fd]"
-            >
-              {s.label}
-            </Link>
+      <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--cedar-deep)]">
+            No homes match these filters
+          </h2>
+          <p className="mt-3 text-[var(--ink-muted)]">
+            Try widening the price range, removing a city filter, or draw a circle on the map.
+          </p>
+        </div>
+        {showMap ? (
+          <div className="mt-6 h-[420px] overflow-hidden border border-border">
+            <SearchMap
+              properties={[]}
+              selectedId={null}
+              onSelect={() => undefined}
+              circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
+              onCircle={filters ? (next) => {
+                router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
+              } : undefined}
+            />
+          </div>
+        ) : null}
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {suggestions.map((item) => (
+            <Link key={item.href} href={item.href} className="rounded-full border border-[#d7e0e8] px-3 py-1 text-sm">{item.label}</Link>
           ))}
         </div>
-        <Link
-          href="/search"
-          className="mt-8 inline-flex rounded-sm bg-[var(--cedar)] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
-        >
-          Reset search
-        </Link>
       </div>
     );
   }
@@ -221,6 +228,10 @@ export function SearchResults({
             <SearchMap
               properties={properties}
               selectedId={selectedId}
+              circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
+              onCircle={filters ? (next) => {
+                router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
+              } : undefined}
               onSelect={(id) => {
                 setSelectedId(id);
                 setMobileView("list");

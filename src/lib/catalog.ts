@@ -2,7 +2,6 @@ import { fetchListingDetail } from "@/lib/ddf/client";
 import { pullAreaIntoSearch } from "@/lib/ddf/areas";
 import { ddfConfigured } from "@/lib/ddf/credentials";
 import { featuredDdfListings, getDdfListing, searchDdfListings, upsertDdfListings } from "@/lib/ddf/db";
-import { getPropertyById, searchProperties } from "@/lib/search";
 import type { Property, SearchFilters } from "@/lib/types";
 
 const detailReads = new Map<string, Promise<void>>();
@@ -13,8 +12,8 @@ async function refreshListingDetails(id: string): Promise<void> {
 }
 
 export async function catalogSearch(filters: SearchFilters): Promise<{ properties: Property[]; total: number; live: boolean }> {
-  if (ddfConfigured()) {
-    let result = await searchDdfListings(filters);
+  if (!ddfConfigured()) return { properties: [], total: 0, live: false };
+  let result = await searchDdfListings(filters);
     const needle = filters.q?.trim() || "";
     const placeName = needle.length >= 4 && !/^\d/.test(needle) && !/^[a-z]\d{4,}/i.test(needle);
     const unlabeled = result.properties.length > 0 && result.properties.every((property) => !property.neighborhood);
@@ -26,26 +25,21 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
       if (pulled > 0) result = await searchDdfListings(filters);
     }
     return {
-      properties: result.properties.map((property) => ({ ...property, images: property.images.slice(0, 1) })),
-      total: result.total,
-      live: true,
-    };
-  }
-  const properties = searchProperties(filters);
-  return { properties, total: properties.length, live: false };
+    properties: result.properties.map((property) => ({ ...property, images: property.images.slice(0, 1) })),
+    total: result.total,
+    live: true,
+  };
 }
 
-/** Team listings first, then the newest Greater Vancouver homes. */
+/** Active Archibald / RE/MAX Crest listings from the CREA feed. Empty when none are active. */
 export async function catalogFeatured(limit = 12): Promise<Property[]> {
-  if (ddfConfigured()) {
-    const live = await featuredDdfListings(limit);
-    if (live.length) return live.map((property) => ({ ...property, images: property.images.slice(0, 1) }));
-  }
-  return searchProperties({ sort: "newest" }).slice(0, limit);
+  if (!ddfConfigured()) return [];
+  const live = await featuredDdfListings(limit);
+  return live.map((property) => ({ ...property, images: property.images.slice(0, 1) }));
 }
 
 export async function catalogListing(id: string): Promise<Property | null> {
-  if (ddfConfigured()) {
+  if (!ddfConfigured()) return null;
     let listing = await getDdfListing(id);
     if (listing && !listing.detailsSynced) {
       const listingId = listing.id;
@@ -58,6 +52,5 @@ export async function catalogListing(id: string): Promise<Property | null> {
       listing = (await getDdfListing(id)) || listing;
     }
     if (listing) return listing;
-  }
-  return getPropertyById(id) ?? null;
+  return null;
 }

@@ -1,4 +1,5 @@
 import { properties } from "./properties";
+import { insideCircle } from "./geo";
 import type { Property, SearchFilters } from "./types";
 
 export function formatPrice(price: number): string {
@@ -106,8 +107,11 @@ export function parseFilters(
     maxYear: num("maxYear"),
     maxDays: num("maxDays"),
     tag: get("tag") || undefined,
-    openHouse:
-      openHouse === "1" || openHouse === "true" ? true : undefined,
+    openHouse: openHouse === "1" || openHouse === "true" ? true : undefined,
+    circleLat: num("circleLat"),
+    circleLng: num("circleLng"),
+    circleKm: num("circleKm"),
+    weekend: get("weekend") === "1" || get("weekend") === "true" ? true : undefined,
     newListings:
       newListings === "1" || newListings === "true" ? true : undefined,
     virtualTour:
@@ -138,6 +142,11 @@ export function searchProperties(filters: SearchFilters): Property[] {
         .toLowerCase();
       return hay.includes(q);
     });
+  }
+
+  if (filters.circleLat != null && filters.circleLng != null && filters.circleKm != null) {
+    const circle = { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm };
+    results = results.filter((property) => insideCircle({ lat: property.lat, lng: property.lng }, circle));
   }
 
   if (filters.city) {

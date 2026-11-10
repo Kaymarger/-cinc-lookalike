@@ -33,7 +33,7 @@ const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
 );
 
 export const maxDuration = 60;
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const featured = await catalogFeatured(8);
@@ -71,11 +71,17 @@ export default async function HomePage() {
             Featured Listings
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
-            Archibald Real Estate Group listings come first, then the newest homes for sale across Greater Vancouver.
+            Active listings from Archibald Real Estate Group in the CREA feed.
           </p>
-          <div className="mt-8">
-            <FeaturedCarousel properties={featured} />
-          </div>
+          {featured.length ? (
+            <div className="mt-8">
+              <FeaturedCarousel properties={featured} />
+            </div>
+          ) : (
+            <p className="mx-auto mt-8 max-w-xl text-center text-sm text-[#4a5560]">
+              No active Archibald Real Estate Group listings are in the CREA feed right now.
+            </p>
+          )}
           <div className="mt-8 text-center">
             <Link
               href="/featured"

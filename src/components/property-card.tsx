@@ -5,6 +5,7 @@ import { propertyHref } from "@/lib/listing-url";
 import type { Property } from "@/lib/types";
 import { RealtorBadge } from "@/components/ddf-attribution";
 import { formatPrice, formatSqft } from "@/lib/search";
+import { weekendOpenHouseLabel } from "@/lib/weekend-open-house";
 import { cn } from "@/lib/utils";
 
 export function PropertyCard({
@@ -23,6 +24,7 @@ export function PropertyCard({
     property.beds === 1 ? "1 Bed" : `${property.beds} Beds`;
   const bathsLabel =
     property.baths === 1 ? "1 Bath" : `${property.baths} Baths`;
+  const weekend = weekendOpenHouseLabel(property.openHouses);
 
   return (
     <div
@@ -61,11 +63,16 @@ export function PropertyCard({
               Virtual Tour
             </span>
           )}
-          {property.listedDaysAgo <= 7 && property.status === "Active" && (
+          {weekend ? (
+            <span className="absolute top-2 right-2 z-[2] max-w-[70%] bg-[#04427d] px-2 py-1 text-left text-[11px] font-semibold text-white">
+              {weekend}
+            </span>
+          ) : null}
+            {property.listedDaysAgo <= 7 && property.status === "Active" ? (
             <span className="absolute top-2 left-2 z-[2] bg-[var(--cedar)] px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
               New
             </span>
-          )}
+          ) : null}
         </div>
 
         <div

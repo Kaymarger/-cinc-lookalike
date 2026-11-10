@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Circle,
   MapContainer,
   Marker,
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import type { Property } from "@/lib/types";
@@ -85,21 +87,28 @@ export function SearchMap({
   properties,
   selectedId,
   onSelect,
+  circle,
+  onCircle,
 }: {
   properties: Property[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  circle?: { lat: number; lng: number; km: number } | null;
+  onCircle?: (circle: { lat: number; lng: number; km: number } | null) => void;
 }) {
   const center = useMemo<[number, number]>(() => {
+    if (circle) return [circle.lat, circle.lng];
     if (properties.length === 0) return [49.2827, -123.1207];
     const lat =
       properties.reduce((s, p) => s + p.lat, 0) / properties.length;
     const lng =
       properties.reduce((s, p) => s + p.lng, 0) / properties.length;
     return [lat, lng];
-  }, [properties]);
+  }, [properties, circle]);
+  const [drawing, setDrawing] = useState(false);
 
   return (
+    <div className="relative h-full w-full">
     <MapContainer
       center={center}
       zoom={11}
@@ -111,6 +120,7 @@ export function SearchMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds properties={properties} selectedId={selectedId} />
+      <CircleDraw drawing={drawing} circle={circle ?? null} onCircle={(next) => { setDrawing(false); onCircle?.(next); }} />
       {properties
         .filter(
           (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)
@@ -145,5 +155,52 @@ export function SearchMap({
         </Marker>
       ))}
     </MapContainer>
+      {onCircle ? (
+        <div className="absolute top-3 right-3 z-[500] flex max-w-[240px] flex-col items-end gap-2">
+          <button type="button" className="h-9 rounded bg-[#04427d] px-3 text-xs font-semibold text-white shadow" onClick={() => setDrawing((value) => !value)}>
+            {drawing ? "Cancel circle" : "Draw circle"}
+          </button>
+          {circle ? (
+            <button type="button" className="h-9 rounded bg-white px-3 text-xs font-semibold text-[#04427d] shadow" onClick={() => onCircle(null)}>
+              Clear circle
+            </button>
+          ) : null}
+          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Tap the map for the centre, then tap the edge. Homes inside the circle stay.</p> : null}
+        </div>
+      ) : null}
+    </div>
   );
+}
+
+function CircleDraw({
+  drawing,
+  circle,
+  onCircle,
+}: {
+  drawing: boolean;
+  circle: { lat: number; lng: number; km: number } | null;
+  onCircle?: (circle: { lat: number; lng: number; km: number } | null) => void;
+}) {
+  const [center, setCenter] = useState<L.LatLng | null>(null);
+  const [km, setKm] = useState(0.5);
+  useMapEvents({
+    click(event) {
+      if (!drawing) return;
+      if (!center) {
+        setCenter(event.latlng);
+        setKm(0.4);
+        return;
+      }
+      const nextKm = Math.min(40, Math.max(0.2, Math.round((event.latlng.distanceTo(center) / 1000) * 10) / 10));
+      onCircle?.({ lat: center.lat, lng: center.lng, km: nextKm });
+      setCenter(null);
+    },
+    mousemove(event) {
+      if (!drawing || !center) return;
+      setKm(Math.max(0.2, event.latlng.distanceTo(center) / 1000));
+    },
+  });
+  const shown = center ? { lat: center.lat, lng: center.lng, km } : circle;
+  if (!shown) return null;
+  return <Circle center={[shown.lat, shown.lng]} radius={shown.km * 1000} pathOptions={{ color: "#04427d", weight: 2 }} />;
 }

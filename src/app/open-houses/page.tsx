@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 import { PropertyCard } from "@/components/property-card";
 import { searchDdfListings } from "@/lib/ddf/db";
+import { weekendHeading } from "@/lib/weekend-open-house";
 
 export const metadata: Metadata = {
   title: "Open Houses",
@@ -10,13 +11,14 @@ export const metadata: Metadata = {
 };
 
 export default async function OpenHousesPage() {
-  const { properties: openHouses } = await searchDdfListings({ openHouse: true }, 24);
+  const weekend = weekendHeading();
+  const { properties: openHouses } = await searchDdfListings({ openHouse: true, weekend: true }, 24);
 
   return (
     <div className="bg-white">
       <CamelotPageHeader
         title="Open Houses"
-        subtitle="Homes with a scheduled open house."
+        subtitle={`Verified open houses for ${weekend}.`}
       />
       <div className="mx-auto max-w-[1200px] px-4 pb-14 sm:px-6 lg:px-8">
         <p className="mt-2 text-[15px] text-[#666]">
@@ -38,7 +40,7 @@ export default async function OpenHousesPage() {
         {openHouses.length === 0 ? (
           <div className="mt-12 border border-[#e5e5e5] bg-[#fafafa] px-6 py-12 text-center">
             <p className="text-[#666]">
-              No open houses are scheduled right now.
+              No verified open houses are scheduled for {weekend}.
             </p>
             <Link
               href="/search"

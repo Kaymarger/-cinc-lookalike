@@ -4,11 +4,11 @@ import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
 import { catalogFeatured } from "@/lib/catalog";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Featured Listings",
-  description: "Archibald Real Estate Group listings, then the newest Greater Vancouver homes.",
+  description: "Active Archibald Real Estate Group listings from the CREA feed.",
 };
 
 export default async function FeaturedPage() {
@@ -24,14 +24,19 @@ export default async function FeaturedPage() {
           Featured Listings
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-center text-[15px] text-[#666]">
-          Archibald Real Estate Group listings come first, then the newest homes for sale across Greater Vancouver.
+          Active listings from Archibald Real Estate Group. General-market homes stay on Search Homes.
         </p>
-
+        {list.length ? (
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((p, i) => (
             <PropertyCard key={p.id} property={p} priority={i < 3} />
           ))}
         </div>
+        ) : (
+          <p className="mx-auto mt-10 max-w-xl text-center text-[15px] text-[#666]">
+            No active Archibald Real Estate Group listings are in the CREA feed right now.
+          </p>
+        )}
 
         <div className="mt-12 flex justify-center">
           <Link

@@ -60,7 +60,7 @@ function FactGroup({
 }
 
 export function PropertyDetail({ property }: { property: Property }) {
-  const similar = getSimilarProperties(property);
+  const similar = property.feed === "ddf" ? [] : getSimilarProperties(property);
   const facts = listingKeyFacts(property);
   const attached =
     property.propertyType === "Condo" ||

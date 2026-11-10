@@ -63,6 +63,8 @@ function chipsFrom(filters: SearchFilters): Chip[] {
     chips.push({ key: "maxDays", label: `${filters.maxDays} days on site` });
   if (filters.tag) chips.push({ key: "tag", label: filters.tag });
   if (filters.openHouse) chips.push({ key: "openHouse", label: "Open houses" });
+  if (filters.weekend) chips.push({ key: "weekend", label: "This weekend" });
+  if (filters.circleKm) chips.push({ key: "circleKm", label: `Circle ${filters.circleKm} km` });
   if (filters.newListings) chips.push({ key: "newListings", label: "New" });
   if (filters.virtualTour)
     chips.push({ key: "virtualTour", label: "Virtual tours" });
@@ -456,7 +458,11 @@ export function SearchFiltersBar({
   function removeChip(key: keyof SearchFilters) {
     const next = { ...filters };
     delete next[key];
-    if (key === "q") setKeyword("");
+    if (key === "circleKm") {
+      delete next.circleLat;
+      delete next.circleLng;
+      delete next.circleKm;
+    }
     pushFilters(next);
   }
 
@@ -777,6 +783,29 @@ export function SearchFiltersBar({
                   </select>
                 </label>
               </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {([
+                  ["Any price", undefined, undefined],
+                  ["Under $800k", undefined, 800000],
+                  ["$800k–$1.2M", 800000, 1200000],
+                  ["$1.2M–$2M", 1200000, 2000000],
+                  ["$2M+", 2000000, undefined],
+                ] as const).map(([label, min, max]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="rounded-full border border-[#d7e0e8] px-2 py-1 text-xs"
+                    onClick={() => pushFilters({ ...filters, minPrice: min, maxPrice: max })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <PriceRangeInputs
+                minPrice={filters.minPrice}
+                maxPrice={filters.maxPrice}
+                onApply={(minPrice, maxPrice) => pushFilters({ ...filters, minPrice, maxPrice })}
+              />
             </FilterMenu>
 
             <FilterMenu
@@ -966,5 +995,50 @@ export function SearchFiltersBar({
         </div>
       )}
     </div>
+  );
+}
+
+function PriceRangeInputs({
+  minPrice,
+  maxPrice,
+  onApply,
+}: {
+  minPrice?: number;
+  maxPrice?: number;
+  onApply: (minPrice?: number, maxPrice?: number) => void;
+}) {
+  const [min, setMin] = useState(minPrice != null ? String(minPrice) : "");
+  const [max, setMax] = useState(maxPrice != null ? String(maxPrice) : "");
+  const [error, setError] = useState("");
+  useEffect(() => {
+    setMin(minPrice != null ? String(minPrice) : "");
+    setMax(maxPrice != null ? String(maxPrice) : "");
+  }, [minPrice, maxPrice]);
+  return (
+    <form
+      className="mt-3 space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const nextMin = min.trim() ? Number(min.replace(/[^0-9]/g, "")) : undefined;
+        const nextMax = max.trim() ? Number(max.replace(/[^0-9]/g, "")) : undefined;
+        if (nextMin != null && nextMax != null && nextMin > nextMax) {
+          setError("Minimum must be less than or equal to the maximum.");
+          return;
+        }
+        setError("");
+        onApply(nextMin, nextMax);
+      }}
+    >
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs text-[#666]">Custom minimum
+          <input inputMode="numeric" className="mt-1 h-9 w-full rounded-lg border border-[#ddd] px-2 text-sm" value={min} onChange={(event) => setMin(event.target.value)} placeholder="650000" />
+        </label>
+        <label className="text-xs text-[#666]">Custom maximum
+          <input inputMode="numeric" className="mt-1 h-9 w-full rounded-lg border border-[#ddd] px-2 text-sm" value={max} onChange={(event) => setMax(event.target.value)} placeholder="1250000" />
+        </label>
+      </div>
+      {error ? <p role="alert" className="text-xs text-red-600">{error}</p> : null}
+      <button type="submit" className="h-8 rounded-full bg-[#1976d2] px-3 text-xs font-semibold text-white">Apply price</button>
+    </form>
   );
 }

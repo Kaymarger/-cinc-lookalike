@@ -3,7 +3,6 @@ import Link from "next/link";
 import { LeadCaptureForms } from "@/components/lead-capture-forms";
 import { PropertyCard } from "@/components/property-card";
 import { catalogSearch } from "@/lib/catalog";
-import { getFeaturedProperties, searchProperties } from "@/lib/search";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -24,9 +23,8 @@ export default async function StartPage({
   const errorRaw = params.error;
   const error = Array.isArray(errorRaw) ? errorRaw[0] : errorRaw;
   const live = await catalogSearch(query ? { q: query } : { sort: "newest" });
-  const matches = live.live ? live.properties : query ? searchProperties({ q: query }) : [];
-  const listings = (live.live ? live.properties : query ? matches : getFeaturedProperties()).slice(0, 6);
-  const count = live.live ? (query ? live.total : listings.length) : matches.length;
+  const listings = live.properties.slice(0, 6);
+  const count = query ? live.total : listings.length;
   const heading = query
     ? `${count} ${count === 1 ? "home" : "homes"} for “${query}”`
     : "Homes across British Columbia";
@@ -77,9 +75,9 @@ export default async function StartPage({
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#1f2930] sm:text-3xl">
             {heading}
           </h2>
-          {query && matches.length > listings.length && (
+          {query && live.total > listings.length && (
             <Link href={`/search?q=${encodeURIComponent(query)}`} className="text-sm font-semibold text-[#1976d2] hover:underline">
-              View all {matches.length}
+              View all {live.total}
             </Link>
           )}
         </div>
@@ -94,9 +92,9 @@ export default async function StartPage({
             ))}
           </div>
         )}
-        {query && matches.length > listings.length && (
+        {query && live.total > listings.length && (
           <p className="mt-4 text-sm text-[#666]">
-            Showing {listings.length} of {matches.length} matches.
+            Showing {listings.length} of {live.total} matches.
           </p>
         )}
       </section>

@@ -38,6 +38,7 @@ export function SearchExperience({
         properties={properties}
         stats={stats}
         showMap={showMap}
+        filters={filters}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import { officeDb } from "@/lib/leads-db";
 import type { DdfFloorPlan, DdfListing, DdfOpenHouse, DdfPhoto } from "@/lib/ddf/normalize";
+import { upcomingWeekendDates } from "@/lib/weekend-open-house";
 import type { Property, SearchFilters } from "@/lib/types";
 
 export const SEARCH_PAGE_SIZE = 24;
@@ -367,11 +368,13 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
   const text = metro ? "" : q;
   const typePattern = filters.propertyType ? TYPE_SQL[filters.propertyType.toLowerCase()] || filters.propertyType : "";
   const newestOnly = Boolean(filters.newListings);
+  const weekendDates = filters.weekend ? upcomingWeekendDates() : [];
+  const circleOn = filters.circleLat != null && filters.circleLng != null && (filters.circleKm || 0) > 0;
   const rows = await sql<ListingRow[]>`
     SELECT
       listing_key, listing_id, list_price, address, city, province, postal_code,
       beds, baths, sqft, property_type, ''::text AS public_remarks, brokerage_name, realtor_url,
-      latitude, longitude, listed_at, modification_timestamp, neighbourhood,
+      latitude, longitude, listed_at, modification_timestamp, neighbourhood, open_houses,
       CASE
         WHEN jsonb_typeof(photos) = 'array' AND jsonb_array_length(photos) > 0 THEN jsonb_build_array(photos->0)
         ELSE '[]'::jsonb
@@ -390,6 +393,27 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
       AND (${filters.maxDays ?? null}::int IS NULL OR COALESCE(listed_at, modification_timestamp) >= now() - ((${filters.maxDays ?? 0})::text || ' days')::interval)
       AND (${!newestOnly} OR COALESCE(listed_at, modification_timestamp) >= now() - interval '14 days')
       AND (${filters.openHouse !== true} OR jsonb_array_length(open_houses) > 0)
+      AND (
+        ${!filters.weekend}
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements(COALESCE(open_houses, '[]'::jsonb)) AS oh
+          WHERE oh->>'date' = ANY(${weekendDates})
+        )
+      )
+      AND (
+        ${!circleOn}
+        OR (
+          latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND (
+            6371 * acos(least(1.0::float,
+              cos(radians(${filters.circleLat ?? 0})) * cos(radians(latitude))
+              * cos(radians(longitude) - radians(${filters.circleLng ?? 0}))
+              + sin(radians(${filters.circleLat ?? 0})) * sin(radians(latitude))
+            ))
+          ) <= ${filters.circleKm ?? 0}
+        )
+      )
       AND (${filters.virtualTour !== true} OR virtual_tour_url <> '')
       AND (
         ${text} = ''
@@ -431,13 +455,8 @@ export async function featuredDdfListings(limit = 12): Promise<Property[]> {
     FROM ddf_listings
     WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
       AND COALESCE(list_price, 0) > 0
-    ORDER BY
-      CASE
-        WHEN brokerage_name ~* 'archibald|re/?max crest' THEN 0
-        ELSE 1
-      END,
-      COALESCE(listed_at, modification_timestamp) DESC NULLS LAST,
-      listing_id DESC
+      AND brokerage_name ~* 'archibald|re/?max crest'
+    ORDER BY COALESCE(listed_at, modification_timestamp) DESC NULLS LAST, listing_id DESC
     LIMIT ${limit}
   `;
   return rows.map(propertyFromRow);
