@@ -512,15 +512,7 @@ export async function deleteAuditTestLeads(): Promise<void> {
   if (!sql) return;
   await sql`
     DELETE FROM captured_leads
-    WHERE lower(email) LIKE 'qa-audit-1106@example.com'
-       OR lower(email) LIKE 'qa-audit-1110%@example.com'
-       OR lower(email) LIKE 'qa-contact-1110%@example.com'
-       OR lower(email) LIKE 'qa-estimate-1110%@example.com'
-       OR lower(email) LIKE 'qa-probe-%@example.com'
-       OR name ILIKE 'QA Audit1106%'
-       OR name ILIKE 'QA Audit 1106%'
-       OR name ILIKE 'QA Audit 1110%'
-       OR name ILIKE 'QA Audit1110%'
+    WHERE lower(email) LIKE 'qa-probe-%@example.com'
        OR name ILIKE 'QA Probe%'
   `;
 }
