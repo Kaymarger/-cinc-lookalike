@@ -187,21 +187,14 @@ function SubIcon({ label }: { label: string }) {
 function Logo() {
   return (
     <span className="flex items-center gap-2">
-      <span className="grid h-7 w-7 place-items-center rounded-[5px] bg-[#1eb4d4]">
-        <span className="grid grid-cols-2 gap-[2px]">
-          <i className="block h-[7px] w-[3px] bg-white" />
-          <i className="block h-[7px] w-[3px] bg-white" />
-          <i className="block h-[3px] w-[7px] bg-white" />
-          <i className="block h-[3px] w-[7px] bg-white" />
-        </span>
-      </span>
-      <span className="text-[18px] leading-none font-semibold tracking-tight text-white">CINC</span>
+      <span className="grid h-7 w-7 place-items-center rounded-[3px] bg-[#329bb9] text-[16px] font-semibold text-white">A</span>
+      <span className="text-[18px] leading-none font-semibold tracking-tight text-white">AREG</span>
     </span>
   );
 }
 
 function NavIcon({ id }: { id: NavSection }) {
-  const common = "h-5 w-5";
+  const common = "h-6 w-6";
   if (id === "launchpad") {
     return (
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -361,7 +354,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const [helpOpen, setHelpOpen] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [rail, setRail] = useState(true);
+  const [rail, setRail] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [feed, setFeed] = useState("All");
   const { leads } = useLeads();
@@ -434,12 +427,12 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
 
   return (
     <ChromeContext.Provider value={api}>
-      <div className={`cinc-root relative flex overflow-hidden bg-[#f4f4f4] font-[Arial,Helvetica,sans-serif] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
-        <aside className={`flex w-[196px] shrink-0 flex-col bg-[#2d3c4b] text-white max-md:fixed max-md:inset-y-0 max-md:z-40 max-md:transition-transform ${navOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"}`}>
-          <div className="flex h-[58px] items-center bg-[#2d3c4b] px-4">
+      <div className={`cinc-root relative flex overflow-hidden bg-[#f5f5f5] font-[family-name:var(--font-sans)] text-[13px] text-[#333] ${office.impersonating ? "mt-10 h-[calc(100vh-2.5rem)]" : "h-screen"}`}>
+        <aside className={`flex w-[220px] shrink-0 flex-col bg-[#2d3e4c] text-white max-md:fixed max-md:inset-y-0 max-md:z-40 max-md:transition-transform ${navOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"}`}>
+          <div className="flex h-[60px] items-center bg-[#24313c] px-4">
             <Logo />
           </div>
-          <nav className="pt-2" onClick={() => setNavOpen(false)}>
+          <nav className="pt-1" onClick={() => setNavOpen(false)}>
             {NAV.map((item) => {
               const active = section === item.id;
               const kids = item.children ?? [];
@@ -447,7 +440,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 <div key={item.id}>
                   <a
                     href={item.href}
-                    className={`flex h-[34px] items-center gap-2 px-4 text-[13px] whitespace-nowrap ${active ? "bg-[#243240] text-[#3db5d6]" : "text-[#f4f7f8] hover:bg-[#36485a]"}`}
+                    className={`flex h-[46px] items-center gap-3 px-4 text-[14px] whitespace-nowrap ${active ? "bg-[#263644] text-[#329bb9]" : "text-[#f4f7f8] hover:bg-[#36485a]"}`}
                   >
                     <span className="grid h-6 w-6 shrink-0 place-items-center">
                       <NavIcon id={item.id} />
@@ -455,15 +448,15 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     <span>{item.label}</span>
                   </a>
                   {active && kids.length ? (
-                    <div className="bg-[#1e2c38] py-1">
+                    <div className="bg-[#24313c] py-1">
                       {kids.map((child) => {
                         if (child.group || !child.href) {
                           return <p key={child.label} className="px-5 py-1 text-[11px] font-bold text-[#9fd7ea]">{child.label}</p>;
                         }
                         const on = childOn(child.label, route);
                         return (
-                          <a key={child.label} href={child.href} className={`flex h-[26px] items-center gap-2 pr-1 pl-5 text-[12px] whitespace-nowrap ${on ? "text-[#1b9cb8]" : "text-[#d5dde1] hover:text-white"}`} onClick={() => { if (child.label === "Agent") window.dispatchEvent(new Event("cinc-launchpad-home")); }}>
-                            {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${on ? "bg-[#1b9cb8]" : "border border-[#8aa] bg-transparent"}`} />}
+                          <a key={child.label} href={child.href} className={`flex h-9 items-center gap-2 pr-1 pl-8 text-[13px] whitespace-nowrap ${on ? "text-[#329bb9]" : "text-[#d5dde1] hover:text-white"}`} onClick={() => { if (child.label === "Agent") window.dispatchEvent(new Event("cinc-launchpad-home")); }}>
+                            {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${on ? "bg-[#329bb9]" : "border border-[#8aa] bg-transparent"}`} />}
                             {child.label}
                           </a>
                         );
@@ -477,7 +470,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="relative z-50 flex h-11 shrink-0 items-center gap-3 border-b border-[#e5e5e5] bg-white pr-4 pl-3 md:pl-5">
+          <header className="relative z-50 flex h-[60px] shrink-0 items-center gap-3 border-b border-[#e6e6e6] bg-white pr-4 pl-5">
             <button
               type="button"
               className="grid h-11 w-11 place-items-center text-[#2d3c4b] md:hidden"
@@ -492,7 +485,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[18px] leading-none font-light text-[#4aa8c8]"
+                className="flex items-center gap-2 text-[22px] leading-none font-light text-[#329bb9]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>

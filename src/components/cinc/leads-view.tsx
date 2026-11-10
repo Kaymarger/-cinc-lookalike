@@ -804,7 +804,7 @@ export function LeadsView({
     else if (action === "Untrash Selected Leads") untrash(selected.length ? selected : state.trashed);
   }
 
-  const rowPad = view === "Compact" ? "[&>td]:py-1" : view === "Roomy" ? "[&>td]:py-4" : "[&>td]:py-3";
+  const rowPad = view === "Compact" ? "[&>td]:py-1" : view === "Roomy" ? "[&>td]:py-6" : "[&>td]:py-[22px]";
 
   if (mode === "history") {
     return (
@@ -849,7 +849,7 @@ export function LeadsView({
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
       ) : null}
-      <div className="flex flex-wrap items-center gap-1 border-b border-[#eee] bg-white px-2 py-1">
+      <div className="flex h-[41px] flex-wrap items-center gap-1 border-b border-[#e5e5e5] bg-white px-2">
         <span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white">
           <input
             className={checkCls}
@@ -863,7 +863,7 @@ export function LeadsView({
           ]} />
         </span>
         <Menu
-          label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">Mass Actions ▾</span>}
+          label={<span className="inline-flex h-[26px] items-center rounded-[2px] border border-[#d9d9d9] bg-white px-2 text-[13px] text-[#329bb9]">Mass Actions ▾</span>}
           items={[
             "Send Email to Selected",
             "Send Text to Selected",
@@ -958,10 +958,10 @@ export function LeadsView({
             </ul>
           ) : (
             <table className="w-full min-w-[1100px] border-collapse bg-white text-left">
-              <thead className="sticky top-0 z-10 bg-[#f7f7f7] text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
-                <tr>
+              <thead className="sticky top-0 z-10 bg-white text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
+                <tr className="h-[41px]">
                   {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
-                    <th key={`${col}-${index}`} className="border-b border-[#eee] px-2 py-2 whitespace-nowrap">
+                    <th key={`${col}-${index}`} className="border-b border-[#e5e5e5] px-2 whitespace-nowrap">
                       {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button> : null}
                     </th>
                   ))}

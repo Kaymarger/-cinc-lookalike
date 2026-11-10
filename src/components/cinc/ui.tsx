@@ -33,7 +33,7 @@ export function Btn({
 }) {
   const cls =
     kind === "teal"
-      ? "border-[#1c93b5] bg-[#1c93b5] text-white hover:bg-[#187f9c]"
+      ? "border-[#329bb9] bg-[#329bb9] text-white hover:bg-[#287f99]"
       : kind === "blue"
         ? "border-[#2f8fb8] bg-[#2f8fb8] text-white hover:bg-[#257aa0]"
         : kind === "danger"
@@ -91,11 +91,11 @@ export function ModalFrame({
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/35 px-4 py-10" onMouseDown={onClose}>
       <div
-        className={`max-h-[86vh] w-full overflow-auto bg-white shadow-xl ${wide ? "max-w-[760px]" : "max-w-[480px]"}`}
+        className={`max-h-[86vh] w-full overflow-auto border border-[#e5e5e5] bg-white ${wide ? "max-w-[760px]" : "max-w-[480px]"}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">
-          <h2 className="text-[16px] font-semibold text-[#24323a]">{title}</h2>
+          <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
           <button type="button" className="text-[18px] text-[#888]" onClick={onClose} aria-label="Close">
             ×
           </button>

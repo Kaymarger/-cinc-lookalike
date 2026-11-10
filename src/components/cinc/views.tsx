@@ -105,20 +105,16 @@ export function LaunchpadView() {
     return true;
   });
   return (
-    <div className="p-4">
-      <h1 className="text-[22px] font-bold text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
+    <div className="bg-[#f5f5f5] p-4">
+      <h1 className="text-[22px] font-normal text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
       </p>
-      <section className="mt-4 border border-[#e5e5e5] bg-white shadow-sm">
-        <header className="flex items-center gap-2 border-b border-[#eee] px-4 py-2 text-[12px] font-bold">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 4h10M3 8h10M3 12h7" /></svg>
-          Today
-        </header>
-        <div className="flex flex-wrap gap-1 border-b border-[#e5e5e5] px-3">
+      <section className="mt-4 border border-[#e5e5e5] bg-white">
+        <div className="flex flex-wrap items-end gap-1 border-b border-[#e5e5e5] px-3">
           {tabs.map(([label, count]) => (
-            <button key={label} type="button" className={`px-3 py-2 text-[13px] ${tab === label ? "border-b-2 border-[#1c93b5] font-semibold text-[#1c93b5]" : "text-[#666]"}`} onClick={() => setTab(label)}>
+            <button key={label} type="button" className={`h-[54px] px-3 text-[14px] ${tab === label ? "border-b-2 border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`} onClick={() => setTab(label)}>
               {label}
               {label === "Contact Requested" && count ? <span className="ml-1 rounded-full bg-[#d9363e] px-1.5 py-0.5 text-[10px] font-bold text-white">{count > 99 ? "99+" : count}</span> : null}
             </button>
@@ -129,14 +125,14 @@ export function LaunchpadView() {
             <>
               <div className="mb-3 flex gap-3 text-[12px]">
                 <Menu
-                  label={<span className="inline-flex h-[22px] w-[130px] items-center justify-between border border-[#ccc] bg-white px-2">Type: <b>{types[0]}</b> ▾</span>}
+                  label={<span className="inline-flex h-8 w-[150px] items-center justify-between border border-[#ccc] bg-white px-2 text-[13px]">Type: {types[0]} ▾</span>}
                   items={["All", "AI Ready", "Cash Offer Inquiry", "Etta Message", "HomePulse Inquiry", "Property Inquiry", "Showing Request", "Clear"].map((label) => ({
                     label,
                     onClick: () => setTypes(label === "Clear" || label === "All" ? ["All"] : types.includes("All") ? [label] : types.includes(label) ? types.filter((item) => item !== label) : [...types, label]),
                   }))}
                 />
                 <Menu
-                  label={<span className="inline-flex h-[22px] w-[180px] items-center justify-between border border-[#ccc] bg-white px-2">Status: <b>{statuses[0]}</b> ▾</span>}
+                  label={<span className="inline-flex h-8 w-[190px] items-center justify-between border border-[#ccc] bg-white px-2 text-[13px]">{statuses[0]} ▾</span>}
                   items={["Awaiting Response", "Acted On", "Dismissed", "Clear"].map((label) => ({
                     label,
                     onClick: () => setStatuses(label === "Clear" ? ["Awaiting Response"] : statuses.includes(label) ? statuses.filter((item) => item !== label) : [...statuses, label]),
@@ -2260,7 +2256,7 @@ export function CalendarView() {
   const todayMonth = Number(vancouver.find((part) => part.type === "month")?.value);
   const todayDay = Number(vancouver.find((part) => part.type === "day")?.value);
   const [cursor, setCursor] = useState(new Date(todayYear, todayMonth - 1, 1));
-  const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("month");
+  const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("day");
   const office = useOfficeSession();
   const { leads } = useLeads();
   const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || ""));
@@ -2283,35 +2279,63 @@ export function CalendarView() {
     chrome.openModal(<CalendarAppointmentForm dayLabel={`${names[(m || 1) - 1]} ${d}`} when={iso} onClose={chrome.closeModal} />);
   }
   const owner = office.user ? `${office.user.name}, You` : "Casey Archibald, You";
+  const selectedDate = new Date(`${selected}T12:00:00`);
+  const agendaLabel = selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   return (
-    <div className="grid gap-3 p-4 lg:grid-cols-[220px_1fr_260px]">
-      <aside className="bg-white p-3 text-[13px]">
-        <p className="font-bold">Mini Calendar</p>
-        <p className="mt-1 text-[#1c93b5]">{names[month]} {year}</p>
-        <div className="mt-1 grid grid-cols-7 gap-px text-center text-[10px]">
-          {["S", "M", "T", "W", "T", "F", "S"].map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}
-          {cells.map((day, index) => (
-            <button key={`mini-${index}`} type="button" className={`h-5 ${day && isoFor(year, month + 1, day) === selected ? "bg-[#1c93b5] text-white" : ""}`} onClick={() => { if (!day) return; setSelected(isoFor(year, month + 1, day)); setMode("day"); }}>{day || ""}</button>
-          ))}
+    <div className="grid gap-[11px] bg-[#f5f5f5] p-3 lg:grid-cols-[321px_1fr]">
+      <aside className="border border-[#e5e5e5] bg-white text-[13px]">
+        <div className="flex items-center justify-between bg-[#329bb9] px-3 py-2 text-[13px] font-semibold text-white">
+          Mini Calendar
+          <span aria-hidden>⌃</span>
         </div>
-        <p className="mt-3 font-bold">CINC Calendars</p>
-        <p>{owner}</p>
-        <p className="mt-3 font-bold">Event Calendars</p>
-        <p>US Holiday</p>
-        <p>CA Holiday</p>
-        <p>CINC University</p>
-      </aside>
-      <div className="bg-white p-3">
-        <div className="mb-3 flex items-center gap-2">
-          <button type="button" onClick={() => setCursor(new Date(year, month - 1, 1))}>‹</button>
-          <span className="font-semibold">{names[month]} {year}</span>
-          <button type="button" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
-          <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[12px] text-white" onClick={() => openNew(selected)}>Add Appointment</button>
-          <div className="ml-auto flex gap-1">
-            {([["agenda", "my agenda"], ["week", "week"], ["month", "month"], ["day", "day"]] as const).map(([item, label]) => (
-              <button key={item} type="button" className={`border px-2 py-1 lowercase ${mode === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{label}</button>
+        <div className="px-3 py-2">
+          <div className="mb-1 flex items-center justify-between text-[13px]">
+            <button type="button" onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="Previous month">‹</button>
+            <span>{names[month]} {year}</span>
+            <button type="button" onClick={() => setCursor(new Date(year, month + 1, 1))} aria-label="Next month">›</button>
+          </div>
+          <div className="grid grid-cols-7 text-center text-[12px] text-[#666]">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}
+          </div>
+          <div className="grid grid-cols-7 text-center text-[13px]">
+            {cells.map((day, index) => (
+              <button key={`mini-${index}`} type="button" className={`h-7 ${day && isoFor(year, month + 1, day) === selected ? "rounded-full bg-[#329bb9] text-white" : ""}`} onClick={() => { if (!day) return; setSelected(isoFor(year, month + 1, day)); setMode("day"); }}>{day || ""}</button>
             ))}
           </div>
+        </div>
+        <p className="px-3 py-2 text-[12px] text-[#666]">{owner}</p>
+        <div className="flex items-center justify-between bg-[#4a4a4a] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">
+          <span>Event Calendars</span>
+          <span aria-hidden>⌃</span>
+        </div>
+        {["US Holiday", "CA Holiday", "CINC University"].map((label) => (
+          <label key={label} className="flex items-center justify-between border-b border-[#eee] px-3 py-2 text-[13px]">
+            {label}
+            <input type="checkbox" className="size-3.5" />
+          </label>
+        ))}
+      </aside>
+      <div className="min-w-0 bg-[#f5f5f5]">
+        <div className="flex h-12 items-center bg-[#4a4a4a] px-4 text-[26px] font-semibold text-white">
+          <span>{agendaLabel}</span>
+          <button type="button" className="ml-3 text-[20px]" aria-label="Previous day" onClick={() => {
+            const next = new Date(`${selected}T12:00:00`);
+            next.setDate(next.getDate() - 1);
+            setSelected(isoFor(next.getFullYear(), next.getMonth() + 1, next.getDate()));
+            setMode("day");
+          }}>‹</button>
+          <button type="button" className="ml-1 text-[20px]" aria-label="Next day" onClick={() => {
+            const next = new Date(`${selected}T12:00:00`);
+            next.setDate(next.getDate() + 1);
+            setSelected(isoFor(next.getFullYear(), next.getMonth() + 1, next.getDate()));
+            setMode("day");
+          }}>›</button>
+          <button type="button" className="ml-auto bg-[#329bb9] px-2 py-1 text-[12px] font-normal text-white" onClick={() => openNew(selected)}>Add Appointment</button>
+        </div>
+        <div className="flex gap-1 bg-white px-2 py-1">
+          {([["day", "day"], ["agenda", "my agenda"], ["week", "week"], ["month", "month"]] as const).map(([item, label]) => (
+            <button key={item} type="button" className={`border px-2 py-1 text-[12px] lowercase ${mode === item ? "border-[#329bb9] text-[#329bb9]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{label}</button>
+          ))}
         </div>
         {mode === "agenda" ? (
           <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
@@ -2336,6 +2360,15 @@ export function CalendarView() {
             <p className="font-semibold">{names[Number(selected.slice(5, 7)) - 1]} {Number(selected.slice(8, 10))}, {selected.slice(0, 4)}</p>
             {appointments.filter((item) => apptDay(item.when) === selected).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title} · {item.when}</p>)}
             {!appointments.some((item) => apptDay(item.when) === selected) ? <p className="text-[13px] text-[#888]">No appointments on this day.</p> : null}
+            <h2 className="mt-4 font-bold">Appointment Requests</h2>
+            {requests.length ? requests.map((lead) => (
+              <article key={lead.id} className="mt-3 border-t border-[#eee] pt-2">
+                <p className="font-semibold text-[#329bb9]">{lead.name}</p>
+                <p>{lead.propertyAddress || "Showing request"}</p>
+                <p className="text-[12px] text-[#666]">Expiry Date: {lead.createdAt.slice(0, 10) || "—"}</p>
+                <p className="text-[12px]">Agent Accepted: {appointments.some((item) => item.leadId === lead.id) ? "Yes" : "No"}</p>
+              </article>
+            )) : <p className="mt-3 text-[#888]">No appointment requests.</p>}
           </div>
         ) : (
           <>
@@ -2363,17 +2396,6 @@ export function CalendarView() {
           </>
         )}
       </div>
-      <aside className="bg-white p-3 text-[13px]">
-        <h2 className="font-bold">Appointment Requests</h2>
-        {requests.length ? requests.map((lead) => (
-          <article key={lead.id} className="mt-3 border-t border-[#eee] pt-2">
-            <p className="font-semibold text-[#1c93b5]">{lead.name}</p>
-            <p>{lead.propertyAddress || "Showing request"}</p>
-            <p className="text-[12px] text-[#666]">Expiry Date: {lead.createdAt.slice(0, 10) || "—"}</p>
-            <p className="text-[12px]">Agent Accepted: {appointments.some((item) => item.leadId === lead.id) ? "Yes" : "No"}</p>
-          </article>
-        )) : <p className="mt-3 text-[#888]">No appointment requests.</p>}
-      </aside>
     </div>
   );
 }
