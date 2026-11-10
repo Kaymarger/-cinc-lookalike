@@ -358,7 +358,7 @@ export function PropertyDetail({ property }: { property: Property }) {
                 source="showing_request"
               />
               <CompareToggle
-                propertyId={property.id}
+                property={property}
                 className="h-10 justify-center text-sm"
               />
             </div>

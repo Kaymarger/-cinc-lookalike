@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SaveHomeButton } from "@/components/save-home-button";
+import { CompareToggle } from "@/components/compare-toggle";
+import { useCompare } from "@/lib/compare";
 import { propertyHref } from "@/lib/listing-url";
 import type { Property } from "@/lib/types";
 import { RealtorBadge } from "@/components/ddf-attribution";
@@ -25,11 +27,14 @@ export function PropertyCard({
   const bathsLabel =
     property.baths === 1 ? "1 Bath" : `${property.baths} Baths`;
   const weekend = weekendOpenHouseLabel(property.openHouses);
+  const { ready, isCompared } = useCompare();
+  const selected = ready && isCompared(property.id);
 
   return (
     <div
       className={cn(
         "card--property2 group relative overflow-hidden rounded-[3px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.1)]",
+        selected && "ring-2 ring-[#1976d2]",
         className
       )}
       data-pdid={property.id}
@@ -130,6 +135,9 @@ export function PropertyCard({
                 </span>
               ) : null}
             </span>
+          </div>
+          <div className="relative z-[2] mt-3">
+            <CompareToggle property={property} className="w-full" />
           </div>
         </div>
       </div>

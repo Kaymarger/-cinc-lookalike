@@ -4,8 +4,8 @@ import { Phone } from "lucide-react";
 import { useCompare } from "@/lib/compare";
 
 export function MobileAssistBar() {
-  const { ready, ids } = useCompare();
-  if (!ready || ids.length > 0) return null;
+  const { ready, homes } = useCompare();
+  if (!ready || homes.length > 0) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[65] border-t border-border bg-white/95 backdrop-blur-sm md:hidden">

@@ -9,15 +9,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  COMPARE_MAX,
+  nextCompare,
+  type ComparedHome,
+} from "@/lib/compare-state";
 
 const STORAGE_KEY = "gvhs-compare";
-const MAX = 3;
 
 type Ctx = {
   ready: boolean;
-  ids: string[];
+  homes: ComparedHome[];
+  notice: string;
   isCompared: (id: string) => boolean;
-  toggle: (id: string) => { ok: boolean; reason?: string };
+  toggle: (home: ComparedHome) => { ok: boolean; reason?: string };
   remove: (id: string) => void;
   clear: () => void;
   max: number;
@@ -25,57 +30,61 @@ type Ctx = {
 
 const CompareContext = createContext<Ctx | null>(null);
 
-function readIds(): string[] {
+function readHomes(): ComparedHome[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((v): v is string => typeof v === "string").slice(0, MAX)
-      : [];
+    if (!parsed || typeof parsed !== "object" || !("homes" in parsed)) return [];
+    const homes = (parsed as { homes?: unknown }).homes;
+    if (!Array.isArray(homes)) return [];
+    return homes.filter((item): item is ComparedHome => {
+      if (!item || typeof item !== "object") return false;
+      const row = item as Partial<ComparedHome>;
+      return typeof row.id === "string" && typeof row.address === "string" && typeof row.price === "number";
+    }).slice(0, COMPARE_MAX);
   } catch {
     return [];
   }
 }
 
 export function CompareProvider({ children }: { children: ReactNode }) {
-  const [ids, setIds] = useState<string[]>([]);
+  const [homes, setHomes] = useState<ComparedHome[]>([]);
   const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    setIds(readIds());
+    setHomes(readHomes());
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  }, [ids, ready]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ homes }));
+  }, [homes, ready]);
 
-  const isCompared = useCallback((id: string) => ids.includes(id), [ids]);
+  const isCompared = useCallback((id: string) => homes.some((home) => home.id === id), [homes]);
 
-  const toggle = useCallback((id: string) => {
-    let result: { ok: boolean; reason?: string } = { ok: true };
-    setIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= MAX) {
-        result = { ok: false, reason: `Compare up to ${MAX} homes` };
-        return prev;
-      }
-      return [...prev, id];
-    });
-    return result;
-  }, []);
+  const toggle = useCallback((home: ComparedHome) => {
+    const next = nextCompare(homes, home);
+    setHomes(next.homes);
+    setNotice(next.reason || "");
+    return { ok: next.ok, reason: next.reason };
+  }, [homes]);
 
   const remove = useCallback((id: string) => {
-    setIds((prev) => prev.filter((x) => x !== id));
+    setHomes((prev) => prev.filter((home) => home.id !== id));
+    setNotice("");
   }, []);
 
-  const clear = useCallback(() => setIds([]), []);
+  const clear = useCallback(() => {
+    setHomes([]);
+    setNotice("");
+  }, []);
 
   const value = useMemo(
-    () => ({ ready, ids, isCompared, toggle, remove, clear, max: MAX }),
-    [ready, ids, isCompared, toggle, remove, clear]
+    () => ({ ready, homes, notice, isCompared, toggle, remove, clear, max: COMPARE_MAX }),
+    [ready, homes, notice, isCompared, toggle, remove, clear]
   );
 
   return (
@@ -88,3 +97,5 @@ export function useCompare() {
   if (!ctx) throw new Error("useCompare must be used within CompareProvider");
   return ctx;
 }
+
+export type { ComparedHome };
