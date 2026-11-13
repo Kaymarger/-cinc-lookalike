@@ -200,7 +200,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       <>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-light text-[#329bb9]">{users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length} Total Agents</h1>
+          <h1 className="text-[28px] font-light text-[#329bb9]">{(users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length || (office.user ? 1 : 0))} Total Agents</h1>
           <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
           <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
         </div>
@@ -230,13 +230,13 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
           </div>
         </div>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-            {users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).map((user) => (
-              <article key={user.id} className="relative flex justify-between rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white p-4 text-[14px] shadow-sm">
-                <div className="flex gap-3">
-                  <div className="relative h-20 w-20 shrink-0">
-                    <div className="grid h-20 w-20 place-items-center rounded-full bg-[#329bb9] text-[20px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
-                    <img alt="" className="absolute inset-0 h-20 w-20 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
+      <div className="grid gap-4 sm:grid-cols-2">
+            {(users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length ? users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")) : office.user ? [office.user] : []).map((user) => (
+              <article key={user.id} className="relative flex justify-between rounded-md border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white p-5 text-[14px] shadow-sm">
+                <div className="flex gap-4">
+                  <div className="relative h-24 w-24 shrink-0">
+                    <div className="grid h-24 w-24 place-items-center rounded-full bg-[#329bb9] text-[22px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
+                    <img alt="" className="absolute inset-0 h-24 w-24 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   </div>
                   <div>
                     <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => office.canManageUsers ? startEdit(user) : void become(user, "leads")}>{user.name}</button>
@@ -245,7 +245,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                     {user.role === "isa" ? <p className="text-[#243238]">Pond owner: {user.pondOwner || "Kayla Gerak"}</p> : null}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex w-[150px] shrink-0 flex-col items-stretch gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
                   {office.canBecome && user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Become User</button> : null}

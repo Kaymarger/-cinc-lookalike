@@ -965,10 +965,10 @@ export function LeadsView({
                     <td className="px-2">
                       <div className="flex items-center gap-1">
                         <a href={href.lead(row.id, "activity")} className="text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
-                        <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}>{row.verified ? "✓" : "🔒"}</span>
+                        <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}><ValidityIcon ok={row.verified} /></span>
                       </div>
                       <div className="text-[12px]">
-                        {row.phone} <span className={row.phoneValid ? "text-[#2e9e5b]" : "text-[#e39b2b]"}>{row.phoneValid ? "✓" : "!"}</span>
+                        {row.phone} <span className={row.phoneValid ? "text-[#2e9e5b]" : "text-[#c9a227]"}><ValidityIcon ok={row.phoneValid} /></span>
                         <Menu
                           label={<span className="ml-1 text-[10px] text-[#888]">▾</span>}
                           items={[
@@ -978,7 +978,7 @@ export function LeadsView({
                         />
                       </div>
                       <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => composer.email(row.email, (sent, value) => { if (!sent) { log(row, "email", "Draft", value.body); chrome.toast("Draft saved."); return true; } return sendLead("email", row, value); })}>
-                        {row.email} {row.emailValid ? <span className="text-[#2e9e5b]">✓</span> : <span className="text-[#e39b2b]">!</span>}
+                        {row.email} <span className={row.emailValid ? "text-[#2e9e5b]" : "text-[#c9a227]"}><ValidityIcon ok={row.emailValid} /></span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
                         <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[12px] text-white">★ {row.origin === "site" ? "n/a" : row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
@@ -1037,9 +1037,9 @@ export function LeadsView({
                         <span>—</span>
                       ) : (
                         <>
-                          <span title="Call">☎ {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
-                          <span title="Email">✉ {row.email ? `${(row.logins % 8) + 1}d` : "-"}</span><br />
-                          <span title="Text">✎ {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
+                          <span title="Call">Call {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
+                          <span title="Email">Email {row.email ? `${(row.logins % 8) + 1}d` : "-"}</span><br />
+                          <span title="Text">Text {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
                         </>
                       )}
                     </td>
@@ -1125,6 +1125,20 @@ export function LeadsView({
       ) : null}
     </div>
   );
+}
+
+function ValidityIcon({ ok }: { ok: boolean }) {
+  if (ok) return <svg viewBox="0 0 16 16" className="inline h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M3 8.5 6.2 12 13 4" /></svg>;
+  return <svg viewBox="0 0 16 16" className="inline h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>;
+}
+
+function RailIcon({ name }: { name: string }) {
+  const props = { viewBox: "0 0 16 16", className: "h-5 w-5", fill: "none", stroke: "currentColor", strokeWidth: 1.5, "aria-hidden": true } as const;
+  if (name === "Call") return <svg {...props}><path d="M3.5 3h2l1 2.2-1.2 1a7 7 0 0 0 3.5 3.5l1-1.2L12.5 10v2a1 1 0 0 1-1 1A8.5 8.5 0 0 1 3 4.5a1 1 0 0 1 .5-1.5z" /></svg>;
+  if (name === "Dialer") return <svg {...props}><rect x="4" y="2" width="8" height="12" rx="1.5" /><path d="M7 12h2" /></svg>;
+  if (name === "Text") return <svg {...props}><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" /></svg>;
+  if (name === "Email") return <svg {...props}><path d="M2 4h12v8H2zM2 5l6 4 6-4" /></svg>;
+  return <svg {...props}><circle cx="4" cy="8" r="1" fill="currentColor" /><circle cx="8" cy="8" r="1" fill="currentColor" /><circle cx="12" cy="8" r="1" fill="currentColor" /></svg>;
 }
 
 function LeadDetail({
@@ -1227,14 +1241,14 @@ function LeadDetail({
     <div className={`${expanded ? "relative flex min-w-0 flex-1" : "absolute top-0 left-[310px] z-30 flex h-full w-[calc(100%-310px)]"} bg-[#f5f5f5] shadow-lg`}>
       {!expanded ? (
         <div className="absolute top-14 left-0 z-20 flex w-16 -translate-x-1/2 flex-col items-center gap-2">
-          {rail.map(([label, icon, action]) => (
+          {rail.map(([label, , action]) => (
             <button key={label} type="button" title={label === "Email" ? "Email Lead" : label === "Text" ? "Text Lead" : label} className="grid place-items-center text-[#1c93b5]" onClick={action}>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1c93b5] text-[16px] text-white">{icon}</span>
-              <span className="text-[11px] leading-tight">{label}</span>
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-[#329bb9] text-white"><RailIcon name={label} /></span>
+              <span className="text-[12px] leading-tight">{label}</span>
             </button>
           ))}
           <Menu
-            label={<span className="grid place-items-center text-[#1c93b5]"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#1c93b5] text-[18px] text-white">⋯</span><span className="text-[11px]">More</span></span>}
+            label={<span className="grid place-items-center text-[#1c93b5]"><span className="grid h-11 w-11 place-items-center rounded-full bg-[#329bb9] text-white"><RailIcon name="More" /></span><span className="text-[12px]">More</span></span>}
             items={[
               { label: "Add Reminder", onClick: () => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />) },
               { label: "Add Appointment", onClick: () => chrome.openModal(<ApptModal leadId={row.id} onClose={chrome.closeModal} />) },
@@ -1270,7 +1284,7 @@ function LeadDetail({
           </div>
           <div className="px-3 py-3 text-center">
             <span className="mx-auto grid h-7 w-7 place-items-center rounded-full border border-[#2f6fed] text-[11px] font-bold">{row.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
-            <p className="mt-1 flex items-center justify-center gap-1 text-[13px] font-bold">
+            <div className="mt-2 flex items-center justify-center gap-1 text-[20px] font-semibold">
               {row.name}
               <span className="inline-flex h-4 w-4 text-[#2f6fed]" title={verify}>{verify === "locked" ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg>}</span>
               <Menu
@@ -1281,9 +1295,9 @@ function LeadDetail({
                   { label: "Unverified & locked", onClick: () => update((current) => ({ ...current, verify: { ...current.verify, [row.id]: "locked" } })) },
                 ]}
               />
-            </p>
-            <p className="text-[12px]">
-              {row.phone} <span className="text-[#2e9e5b]">✓</span>
+            </div>
+            <div className="text-[15px]">
+              {row.phone} <span className="inline-flex align-middle text-[#2e9e5b]"><ValidityIcon ok /></span>
               <Menu
                 label={<span className="ml-1 text-[12px] text-[#888]">▾</span>}
                 items={[
@@ -1292,8 +1306,8 @@ function LeadDetail({
                   { label: "Copy number", onClick: () => { navigator.clipboard?.writeText(row.phone); chrome.toast("Phone copied."); } },
                 ]}
               />
-            </p>
-            <p className="text-[12px]">{row.email} <span className="text-[#2e9e5b]">✓</span></p>
+            </div>
+            <p className="text-[15px]">{row.email} <span className="inline-flex align-middle text-[#2e9e5b]"><ValidityIcon ok /></span></p>
             <div className="mt-2 space-y-1 text-left text-[11px]">
               {["Buyer", "Seller", "Partial", "Recruit"].map((type) => (
                 <label key={type} className="flex items-center gap-1">
@@ -1303,7 +1317,9 @@ function LeadDetail({
               ))}
             </div>
             <LeadSearches leadId={row.id} leadEmail={row.email} />
-            <p className="mt-2 flex justify-center gap-2 text-[11px] text-[#666]"><span>👁 {row.views}</span><span>🔖 {row.saved}</span><span>♥ {row.fav}</span><span>? {row.inq}</span><span>📎 0</span></p>
+            <p className="mt-3 flex justify-center gap-3 text-[14px] text-[#555]">
+              <span>{row.views} views</span><span>{row.saved} saved</span><span>{row.fav} fav</span><span>{row.inq} inq</span>
+            </p>
             <div className="mt-2">
               <Menu
                 className="w-full"
@@ -1332,16 +1348,16 @@ function LeadDetail({
             </div>
             {deals.length ? deals.map((deal) => <p key={deal.id} className="text-left text-[12px]">{deal.address}</p>) : <p className="text-left text-[11px] text-[#888]">Track the revenue opportunities associated with this lead.</p>}
             <div className="mt-3 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Communication</div>
-            <div className="grid grid-cols-3 gap-1 bg-[#e7f4f8] p-2 text-[10px]">
+            <div className="grid grid-cols-3 gap-2 bg-[#e7f4f8] p-3 text-[13px]">
               {[["Last Touch", row.lastTouch], ["Last Login", row.lastLogin], ["Calls", String(calls)], ["Texts", String(texts)], ["Alerts", String(state.alertFreq[row.id] ? 1 : 0)], ["Emails", String(emails)]].map(([label, value]) => (
-                <div key={label}><p className="text-[#666]">{label}</p><p className="text-[16px] font-semibold text-[#243238]">{value}</p></div>
+                <div key={label}><p className="text-[#666]">{label}</p><p className="text-[20px] font-semibold text-[#243238]">{value}</p></div>
               ))}
             </div>
             <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Email Information</div>
             <div className="grid grid-cols-2 gap-1 bg-[#e7f4f8] p-2 text-left text-[10px]">
               <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>—</b></p>
             </div>
-            <p className="mt-3 flex items-center gap-1 text-left text-[11px] text-[#666]">🪪 Registered {row.registered} ago from {row.source}</p>
+            <p className="mt-3 text-left text-[14px] text-[#666]">Registered {row.registered} ago from {row.source}</p>
           </div>
         </aside>
       ) : null}
@@ -1355,9 +1371,9 @@ function LeadDetail({
           </div>
         ) : null}
         <NoteComposer onSave={(body, pinned) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
-        <div className="mb-3 grid grid-cols-6 border border-[#e5e5e5] bg-[#fafafa]">
+        <div className="mb-4 flex gap-2">
           {tabs.map((item) => (
-            <a key={item.id} href={href.lead(row.id, item.id)} className={`border-t-2 bg-white py-2 text-center text-[11px] ${tab === item.id ? "border-[#1c93b5] text-[#1c93b5]" : "border-transparent text-[#666]"}`}>
+            <a key={item.id} href={href.lead(row.id, item.id)} className={`flex-1 rounded border bg-white py-3 text-center text-[14px] shadow-sm ${tab === item.id ? "border-[#329bb9] text-[#329bb9]" : "border-[#e5e5e5] text-[#666]"}`}>
               {item.label}
             </a>
           ))}
@@ -1985,7 +2001,7 @@ function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => 
   const [pinned, setPinned] = useState(false);
   const [people, setPeople] = useState<string[]>([]);
   if (!open) {
-    return <button type="button" className="mb-2 h-[28px] w-full rounded border border-[#d5d5d5] bg-white px-2 text-left text-[12px] text-[#888]" onClick={() => setOpen(true)}>Add a note...</button>;
+    return <button type="button" className="mb-3 h-10 w-full rounded border border-[#d5d5d5] bg-white px-3 text-left text-[15px] text-[#888] shadow-sm" onClick={() => setOpen(true)}>Add a note...</button>;
   }
   return (
     <div className="mb-2 border border-[#d5d5d5] bg-white p-2 text-[12px]">

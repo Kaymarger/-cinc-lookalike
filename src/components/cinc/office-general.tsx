@@ -67,21 +67,34 @@ export function OfficeGeneralSettings() {
         </Field>
         <Save onClick={() => void save()} />
       </Box>
-      <Box title="Website">
-        <Field label="Home Banner Text"><input className={inputCls} value={form.homeBanner} onChange={(event) => set("homeBanner", event.target.value)} /></Field>
-        <p className="mb-2 text-[12px] text-[#666]">Home Cover Image — suggested 1200×600. <button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Cover image upload is stored with the site files once a file is chosen. Use the banner text until then.")}>Edit</button> / <button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Cover image removed.")}>Remove Image</button></p>
-        <label className="mb-2 block"><input type="checkbox" checked={form.softenCover} onChange={(event) => set("softenCover", event.target.checked)} /> Apply softening effect to home cover image</label>
-        <p className="mb-2 text-[12px]"><button type="button" className="text-[#1c93b5]" onClick={() => chrome.toast("Home cover video can be linked from the site host. Nothing was uploaded.")}>Edit Video</button></p>
-        <div className="mb-2 grid gap-1 sm:grid-cols-2">
-          {TABS.map(([label, key]) => (
-            <label key={key}><input type="checkbox" checked={Boolean(form[key])} onChange={(event) => set(key, event.target.checked as never)} /> {label}</label>
-          ))}
+      <Box title="Website" onUpdate={() => void save()}>
+        <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
+          <span className="text-right">Home Banner Text</span>
+          <input className={inputCls} value={form.homeBanner} onChange={(event) => set("homeBanner", event.target.value)} />
+        </label>
+        <div className="mb-3 grid grid-cols-[180px_1fr] gap-3">
+          <span className="pt-2 text-right">Cover image</span>
+          <div>
+            <div className="mb-2 flex h-[140px] items-center justify-center rounded border border-[#ddd] bg-[#f3f3f3] text-[#888]">Cover preview · 1200×600</div>
+            <div className="flex gap-2">
+              <button type="button" className="h-[30px] rounded border border-[#329bb9] px-3 text-[#329bb9]" onClick={() => chrome.toast("Cover image is stored with the site files once a file is chosen.")}>Edit Image</button>
+              <button type="button" className="h-[30px] rounded border border-[#ccc] px-3" onClick={() => chrome.toast("Cover image removed.")}>Remove Image</button>
+            </div>
+          </div>
+          <span className="pt-2 text-right">Video</span>
+          <button type="button" className="flex h-36 items-center justify-center rounded border border-dashed border-[#bbb] bg-[#fafafa] text-[#666]" onClick={() => chrome.toast("Home cover video can be linked from the site host. Nothing was uploaded.")}>Wide video region</button>
+          <span className="pt-1 text-right">Visibility</span>
+          <div className="flex flex-col gap-2">
+            {TABS.map(([label, key]) => (
+              <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={Boolean(form[key])} onChange={(event) => set(key, event.target.checked as never)} /> {label}</label>
+            ))}
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.softenCover} onChange={(event) => set("softenCover", event.target.checked)} /> Apply softening effect to home cover image</label>
+          </div>
         </div>
         <Field label="HomeValueTagLine"><input className={inputCls} value={form.homeValueTagLine} onChange={(event) => set("homeValueTagLine", event.target.value)} /></Field>
         <Field label="HomeSearch_URL"><input className={inputCls} value={form.homeSearchUrl} onChange={(event) => set("homeSearchUrl", event.target.value)} /></Field>
-        <Save onClick={() => void save()} />
       </Box>
-      <Box title="Social Media">
+      <Box title="Social Media" onUpdate={() => void save()}>
         {([
           ["Facebook Page", "facebook"],
           ["Google+ Page", "googlePage"],
@@ -94,9 +107,8 @@ export function OfficeGeneralSettings() {
         ] as const).map(([label, key]) => (
           <Field key={key} label={label}><input className={inputCls} value={form[key]} onChange={(event) => set(key, event.target.value)} /></Field>
         ))}
-        <Save onClick={() => void save()} />
       </Box>
-      <Box title="Property Alerts">
+      <Box title="Property Alerts" onUpdate={() => void save()}>
         <Field label="Custom Body Text"><textarea className="h-20 w-full border border-[#ccc] p-2" value={form.propertyAlertBody} onChange={(event) => set("propertyAlertBody", event.target.value)} /></Field>
         <Save onClick={() => void save()} />
       </Box>
@@ -131,8 +143,16 @@ export function OfficeGeneralSettings() {
   );
 }
 
-function Box({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="border border-[#ddd] bg-white p-4 text-[13px]"><h2 className="mb-2 text-[16px] font-bold">{title}</h2>{children}</section>;
+function Box({ title, onUpdate, children }: { title: string; onUpdate?: () => void; children: ReactNode }) {
+  return (
+    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white text-[14px] shadow-sm">
+      <header className="flex items-center justify-between border-b border-[#eee] px-4 py-3">
+        <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
+        {onUpdate ? <Btn kind="blue" onClick={onUpdate}>Update</Btn> : null}
+      </header>
+      <div className="p-4">{children}</div>
+    </section>
+  );
 }
 function Save({ onClick }: { onClick: () => void }) {
   return <div className="text-right"><Btn kind="blue" onClick={onClick}>Update</Btn></div>;

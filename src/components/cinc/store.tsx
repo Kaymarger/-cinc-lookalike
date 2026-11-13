@@ -418,7 +418,12 @@ function buildTemplates(): Template[] {
 }
 
 function buildMail(): Mail[] {
-  return [];
+  return [
+    { id: "mail-1", folder: "inbox", kind: "email", from: "Office", to: "agent", subject: "Mailbox ready", body: "Your office mailbox is ready for sample messages.", at: "9:10 AM", unread: true },
+    { id: "mail-2", folder: "inbox", kind: "text", from: "System", to: "agent", subject: "Text", body: "A text thread was logged in the office.", at: "Yesterday", unread: false },
+    { id: "mail-3", folder: "inbox", kind: "email", from: "Alerts", to: "agent", subject: "Saved search", body: "A saved search finished with no new matches.", at: "Mon", unread: false },
+    { id: "mail-4", folder: "inbox", kind: "email", from: "Office", to: "agent", subject: "Reminder", body: "One office reminder is still open.", at: "Sun", unread: true },
+  ];
 }
 
 const DEFAULT: SpaState = {

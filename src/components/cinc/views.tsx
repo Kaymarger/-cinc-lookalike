@@ -168,7 +168,7 @@ export function LaunchpadView() {
                     <p className="mt-2 border-t border-[#eee] pt-2 text-[16px] font-bold">{item.kind}</p>
                     <p className="mt-2 rounded bg-[#f3f3f3] px-3 py-2 text-[14px] text-[#666]">{item.message}</p>
                     <div className="mt-3 flex gap-3">
-                      <img src={item.image} alt="" className="h-[100px] w-[150px] rounded object-cover" />
+                      <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 rounded border border-[#e5e5e5] object-cover" />
                       <div>
                         <a className="text-[13px] font-bold text-[#1c93b5]" href="/search">{item.address}</a>
                         <p className="text-[12px]">{item.price}</p>
@@ -373,35 +373,33 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f5f5f5]">
       <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between rounded border border-[#e5e5e5] bg-white px-4 py-3 shadow-sm">
-        <div className="flex gap-6 text-[16px] font-semibold">
-          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#329bb9] pb-1 text-[#329bb9]" : "pb-1 text-[#666]"}>Purchases</a>
-          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] pb-1 text-[#329bb9]" : "pb-1 text-[#666]"}>Listings</a>
+      <div className="mb-3 flex items-end justify-between border-b border-[#e5e5e5] bg-white px-4 pt-2">
+        <div className="flex gap-8 text-[16px] font-semibold">
+          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Purchases</a>
+          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Listings</a>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
-          <button type="button" className="inline-flex h-[30px] items-center gap-1 rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 3v10M3 8h10" /></svg>
-            Add Deal
-          </button>
-        </div>
+        <button type="button" className="mb-2 inline-flex h-[34px] items-center rounded border border-[#c8c8c8] bg-white px-4 text-[15px] shadow-sm" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
       </div>
-      <div className="mb-3 flex w-full items-center gap-2 text-[12px]">
+      <div className="mb-3 flex w-full items-center gap-3 text-[15px]">
+        <button type="button" className="inline-flex h-10 items-center gap-2 rounded bg-[#329bb9] px-4 text-[16px] text-white shadow-sm" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
+          Add Deal
+        </button>
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
         <Menu className="w-[150px]" label={<span className={`${toolBtn} w-[150px] justify-between`}>Created: <b>{created}</b> ▾</span>} items={["Anytime", "Last 7 Days", "Last 30 Days"].map((label) => ({ label, onClick: () => setCreated(label) }))} />
         <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
         <Menu className="ml-auto" label={<span className={`${toolBtn} min-w-[180px] justify-between`}>↑↓ Sort By: <b>{sort}</b> ▾</span>} items={["Reminder Due Date", "Newest", "Price"].map((label) => ({ label, onClick: () => setSort(label) }))} />
       </div>
-      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-3">
+      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-4 rounded border border-[#e5e5e5] bg-white p-4 shadow-sm">
         {stages.map((stage) => {
           const cards = deals.filter((deal) => deal.stage === stage.id);
           return (
             <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e1e1e1] bg-[#f1f1f1] shadow-sm">
               <header className="rounded-t bg-white px-3 py-3">
-                <div className="text-[16px] font-bold tracking-wide text-black uppercase">
+                <div className="text-[18px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
-                <p className="text-[11px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
+                <p className="text-[15px] text-[#555]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
               </header>
               <div className="flex-1 p-2">
                 {cards.map((deal) => (
@@ -674,7 +672,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
         ) : null}
         {showFilters ? (
           <div className="relative">
-            <button type="button" className={`${toolBtn} text-[#1c93b5]`} onClick={() => setFiltersOpen((value) => !value)}>Filters</button>
+            <button type="button" title="Filter" aria-label="Filter" className={`${toolBtn} text-[#1c93b5]`} onClick={() => setFiltersOpen((value) => !value)}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2 3h12l-4.5 5.5V13l-3 1V8.5z" /></svg></button>
             {filtersOpen ? (
               <div className="absolute top-7 left-0 z-30 w-64 border border-[#ddd] bg-white p-3 text-left text-[12px] shadow-md">
                 <p className="font-bold">Communication Type</p>
@@ -1695,56 +1693,72 @@ function ProfileTab() {
           </div>
         ) : null}
       </Card>
-      <Card title="Site Subdomain">
-        <label className="mb-1 block text-right text-[12px]">Subdomain</label>
-        <input className={inputCls} value={profile.subdomain} onChange={(event) => set("subdomain", event.target.value)} />
-        <p className="mt-1 text-[12px]">.greatervancouverhomesearch.com</p>
-        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => void persist("Subdomain saved.")}>Update</Btn></div>
+      <Card title="Site Subdomain" action={<Btn kind="blue" onClick={() => void persist("Subdomain saved.")}>Update</Btn>}>
+        <label className="grid grid-cols-[160px_1fr] items-center gap-3 text-[14px]">
+          <span className="text-right">Subdomain</span>
+          <input className={inputCls} value={profile.subdomain} onChange={(event) => set("subdomain", event.target.value)} />
+        </label>
+        <p className="mt-2 pl-[172px] text-[13px] text-[#666]">.greatervancouverhomesearch.com</p>
       </Card>
       <Card title="Agent CINC Number">
         <CincNumberField />
       </Card>
-      <Card title="Agent Links & Social Media">
+      <Card title="Agent Links & Social Media" action={<Btn kind="blue" onClick={() => void persist("Social links saved.")}>Update</Btn>}>
         {socials.map(([label, key]) => (
-          <label key={key} className="mb-2 grid grid-cols-[140px_1fr] items-center gap-2 text-[12px]">
+          <label key={key} className="mb-3 grid grid-cols-[160px_1fr] items-center gap-3 text-[14px]">
             <span className="text-right">{label}</span>
             <input className={inputCls} value={profile[key]} onChange={(event) => set(key, event.target.value)} />
           </label>
         ))}
-        <div className="text-right"><Btn kind="blue" onClick={() => void persist("Social links saved.")}>Update</Btn></div>
       </Card>
       </div>
       <div className="space-y-4">
-      <Card title="Personal Info">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Field label="First name"><input className={inputCls} value={profile.first} onChange={(event) => set("first", event.target.value)} /></Field>
-          <Field label="Last name"><input className={inputCls} value={profile.last} onChange={(event) => set("last", event.target.value)} /></Field>
-          <Field label="Home phone"><input className={inputCls} value={profile.home} onChange={(event) => set("home", event.target.value)} /></Field>
-          <Field label="Office phone"><input className={inputCls} value={profile.office} onChange={(event) => set("office", event.target.value)} /></Field>
-          <Field label="Title"><input className={inputCls} value={profile.title} onChange={(event) => set("title", event.target.value)} /></Field>
-          <Field label="License number"><input className={inputCls} value={profile.license} onChange={(event) => set("license", event.target.value)} /></Field>
-        </div>
-        <Field label="Loan app URL"><input className={inputCls} value={profile.loan} onChange={(event) => set("loan", event.target.value)} /></Field>
-        <Field label="Photo">
-          <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-full border border-[#1c93b5] text-[#1c93b5]">
-              <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="2.2" /><path d="M3 13c.7-2.2 2.4-3.2 5-3.2s4.3 1 5 3.2" /></svg>
-            </span>
-            <label className="inline-flex h-[30px] cursor-pointer items-center rounded border border-[#329bb9] px-3 text-[14px] text-[#329bb9]">
-              Edit Image
-              <input className="sr-only" type="file" onChange={(event) => set("photoName", event.target.files?.[0]?.name || "")} />
-            </label>
-            <button type="button" className="h-[30px] rounded border border-[#ccc] px-3 text-[14px]" onClick={() => set("photoName", "")}>Remove Image</button>
-            {profile.photoName ? <span className="text-[12px] text-[#666]">{profile.photoName}</span> : null}
-          </div>
-        </Field>
-        <Field label="Biography"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" value={profile.bio} onChange={(event) => set("bio", event.target.value)} /></Field>
-        <div className="text-right"><Btn kind="blue" onClick={() => void persist("Personal info saved.")}>Update</Btn></div>
+      <Card title="Personal Info" action={<Btn kind="blue" onClick={() => void persist("Personal info saved.")}>Update</Btn>}>
+        {([
+          ["First name", "first"],
+          ["Last name", "last"],
+          ["Home phone", "home"],
+          ["Office phone", "office"],
+          ["Title", "title"],
+          ["License number", "license"],
+          ["Loan app URL", "loan"],
+        ] as const).map(([label, key]) => (
+          <label key={key} className="mb-3 grid grid-cols-[160px_1fr] items-center gap-3 text-[14px]">
+            <span className="text-right">{label}</span>
+            <input className={inputCls} value={profile[key]} onChange={(event) => set(key, event.target.value)} />
+          </label>
+        ))}
+        <label className="mb-3 grid grid-cols-[160px_1fr] items-start gap-3 text-[14px]">
+          <span className="pt-2 text-right">Biography</span>
+          <textarea className="h-24 w-full border border-[#ccc] p-2 text-[14px]" value={profile.bio} onChange={(event) => set("bio", event.target.value)} />
+        </label>
       </Card>
-      <Card title="Signature">
-        <p className="mb-1 text-[12px] text-[#888]">Paragraph · 12pt</p>
-        <textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={profile.signature} onChange={(event) => set("signature", event.target.value)} />
-        <div className="mt-2 text-right"><Btn kind="blue" onClick={() => void persist("Signature saved.")}>Update</Btn></div>
+      <Card title="Cover & Video" action={<Btn kind="blue" onClick={() => void persist("Profile media saved.")}>Update</Btn>}>
+        <div className="grid grid-cols-[160px_1fr] gap-3 text-[14px]">
+          <span className="pt-2 text-right">Cover image</span>
+          <div>
+            <div className="mb-2 flex h-[140px] items-center justify-center rounded border border-[#ddd] bg-[#f3f3f3] text-[#888]">{profile.photoName || "Cover preview"}</div>
+            <div className="flex gap-2">
+              <label className="inline-flex h-[30px] cursor-pointer items-center rounded border border-[#329bb9] px-3 text-[#329bb9]">
+                Edit Image
+                <input className="sr-only" type="file" onChange={(event) => set("photoName", event.target.files?.[0]?.name || "")} />
+              </label>
+              <button type="button" className="h-[30px] rounded border border-[#ccc] px-3" onClick={() => set("photoName", "")}>Remove Image</button>
+            </div>
+          </div>
+          <span className="pt-2 text-right">Video</span>
+          <div className="flex h-36 items-center justify-center rounded border border-dashed border-[#bbb] bg-[#fafafa] text-[#888]">Wide video region</div>
+          <span className="pt-1 text-right">Visibility</span>
+          <div className="flex flex-col gap-2">
+            {["Show email", "Show cell phone", "Show office phone", "Show license"].map((label) => (
+              <label key={label} className="flex items-center gap-2"><input type="checkbox" defaultChecked /> {label}</label>
+            ))}
+          </div>
+        </div>
+      </Card>
+      <Card title="Signature" action={<Btn kind="blue" onClick={() => void persist("Signature saved.")}>Update</Btn>}>
+        <p className="mb-1 text-[13px] text-[#888]">Paragraph · 12pt</p>
+        <textarea className="h-24 w-full border border-[#ccc] p-2 text-[14px]" value={profile.signature} onChange={(event) => set("signature", event.target.value)} />
       </Card>
       </div>
     </div>
@@ -1823,10 +1837,13 @@ function OfficeLine() {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-[18px] font-light text-[#329bb9]">{title}</h2>
+    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white shadow-sm">
+      <header className="flex items-center justify-between border-b border-[#eee] px-4 py-3">
+        <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
+        {action}
+      </header>
       <div className="bg-white p-4">{children}</div>
     </section>
   );
