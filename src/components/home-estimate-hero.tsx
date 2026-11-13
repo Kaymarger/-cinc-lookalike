@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { PlaceSuggest } from "@/components/place-suggest";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
+import { EmailField } from "@/components/email-field";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
 
@@ -137,7 +138,7 @@ export function HomeEstimateHero({
                 ) : (
                   <>
                     <input name="FullName" required placeholder="Full name" aria-label="Full name" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
-                    <input name="Email" type="email" required placeholder="Email" aria-label="Email" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
+                    <EmailField name="Email" required placeholder="Email" aria-label="Email" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
                     <input name="Phone" type="tel" required placeholder="Phone" aria-label="Phone" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
                     <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
                       <input name="consent" type="checkbox" required className="mt-1" />

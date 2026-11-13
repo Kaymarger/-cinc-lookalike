@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { EmailField } from "@/components/email-field";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { SITE } from "@/lib/site";
@@ -104,7 +105,7 @@ export function ContactInquiryForm({
         ) : (
           <>
             <input name="FullName" required placeholder="Full Name" aria-label="Full Name" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
-            <input name="Email" type="email" required placeholder="Email" aria-label="Email" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
+            <EmailField name="Email" required placeholder="Email" aria-label="Email" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
             <input name="Phone" type="tel" required placeholder="Phone" aria-label="Phone" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
           </>
         )}

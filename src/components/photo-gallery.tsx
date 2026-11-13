@@ -196,7 +196,7 @@ export function PhotoGallery({
 
       <div
         id="gallerypreview_imgspreviewdesktop"
-        className="hidden gap-3 md:grid md:grid-cols-3 md:grid-rows-2"
+        className="hidden gap-3 overflow-hidden md:grid md:grid-cols-3 md:grid-rows-2"
       >
         <button
           type="button"

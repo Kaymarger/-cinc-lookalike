@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT, type LeadIntent } from "@/lib/lead-intake";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { SITE } from "@/lib/site";
@@ -144,11 +145,9 @@ function CaptureForm({ form }: { form: FormKind }) {
         </label>
         <label className="block text-sm font-medium text-[#1f2930]">
           Email
-          <input
+          <EmailField
             name="email"
-            type="email"
             required
-            autoComplete="email"
             className="mt-1 h-12 w-full border border-[#ddd] px-3 text-base outline-none focus:border-[var(--cedar)]"
           />
         </label>

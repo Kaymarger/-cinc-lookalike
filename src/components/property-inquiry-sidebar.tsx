@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads } from "@/lib/leads";
 import type { Property } from "@/lib/types";
@@ -98,9 +99,8 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
           aria-label="Full Name"
           className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
         />
-        <input
+        <EmailField
           name="Email"
-          type="email"
           required
           placeholder="Email Address"
           aria-label="Email Address"

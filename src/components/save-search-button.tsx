@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, CheckCircle2 } from "lucide-react";
+import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
@@ -168,9 +169,8 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                     <label htmlFor="alert-email" className="text-sm font-medium">
                       Email
                     </label>
-                    <input
+                    <EmailField
                       id="alert-email"
-                      type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

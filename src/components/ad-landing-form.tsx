@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useLeads, type LeadSource } from "@/lib/leads";
 
@@ -66,7 +67,7 @@ export function AdLandingForm({
     <form onSubmit={onSubmit} className="space-y-3 bg-white p-4">
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <input name="name" required aria-label="Full name" placeholder="Full name" className="h-12 w-full border border-[#ccc] px-3 text-[16px]" />
-      <input name="email" type="email" required aria-label="Email" placeholder="Email" className="h-12 w-full border border-[#ccc] px-3 text-[16px]" />
+      <EmailField name="email" required aria-label="Email" placeholder="Email" className="h-12 w-full border border-[#ccc] px-3 text-[16px]" />
       <input name="phone" type="tel" required aria-label="Phone" placeholder="Phone" className="h-12 w-full border border-[#ccc] px-3 text-[16px]" />
       {intent === "valuation" ? (
         <input name="address" aria-label="Home address" placeholder="Home address" className="h-12 w-full border border-[#ccc] px-3 text-[16px]" />

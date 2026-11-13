@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 import Link from "next/link";
+import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads, type LeadSource } from "@/lib/leads";
@@ -192,12 +193,10 @@ export function LeadDialog({
                   <label htmlFor={`${panelId}-email`} className="text-sm font-medium">
                     Email
                   </label>
-                  <input
+                  <EmailField
                     id={`${panelId}-email`}
                     name="email"
-                    type="email"
                     required
-                    autoComplete="email"
                     placeholder="you@email.com"
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />

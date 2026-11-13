@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { EmailField } from "@/components/email-field";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
 
@@ -55,11 +56,15 @@ function Field({
   label,
   ...props
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const className = "mb-3 h-11 w-full border border-[#dbe3e8] px-3 text-sm text-[#1f2930] outline-none focus:border-[#1976d2]";
+  if (props.type === "email") {
+    return <EmailField aria-label={label} placeholder={label} className={className} {...props} />;
+  }
   return (
     <input
       aria-label={label}
       placeholder={label}
-      className="mb-3 h-11 w-full border border-[#dbe3e8] px-3 text-sm text-[#1f2930] outline-none focus:border-[#1976d2]"
+      className={className}
       {...props}
     />
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EmailField } from "@/components/email-field";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountBenefits } from "@/components/account-benefits";
@@ -74,9 +75,8 @@ export default function AccountRegisterPage() {
               aria-label="Full name"
               className="h-12 w-full rounded-xl border border-[#d7e0e8] px-4 text-[16px] outline-none focus:border-[var(--cedar)] sm:text-sm"
             />
-            <input
+            <EmailField
               name="Email"
-              type="email"
               required
               placeholder="Email"
               aria-label="Email"

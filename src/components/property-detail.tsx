@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import {
   Bath,
   BedDouble,
@@ -54,7 +55,71 @@ function FactGroup({
   );
 }
 
+function SummaryBar({ property }: { property: Property }) {
+  return (
+    <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[#333]">
+        <span className="font-[family-name:var(--font-display)] text-xl font-medium text-[var(--cedar)] sm:text-2xl">
+          {formatPrice(property.price)}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <BedDouble className="size-4 text-[var(--cedar)]" />
+          {property.beds} beds
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Bath className="size-4 text-[var(--cedar)]" />
+          {property.baths} baths
+        </span>
+        {property.sqft > 0 ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Maximize className="size-4 text-[var(--cedar)]" />
+            {property.sqft.toLocaleString("en-CA")} sqft
+          </span>
+        ) : null}
+        <span className="hidden text-[#666] lg:inline">
+          {property.address}
+        </span>
+      </div>
+      <div className="relative z-[2] flex items-center gap-2">
+        <SaveHomeButton propertyId={property.id} />
+        <ShareListing
+          variant="icon"
+          className="!text-[var(--cedar)] hover:!bg-[#edf5fd]"
+          title={`${property.address} · ${formatPrice(property.price)}`}
+        />
+        <div className="hidden min-w-[160px] lg:block">
+          <LeadDialog
+            triggerLabel="Request a showing"
+            propertyAddress={property.address}
+            propertyId={property.id}
+            source="showing_request"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PropertyDetail({ property }: { property: Property }) {
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const [pinBar, setPinBar] = useState(false);
+  const [headerOffset, setHeaderOffset] = useState(75);
+  useEffect(() => {
+    const header = document.getElementById("header");
+    const measure = () => setHeaderOffset(header?.offsetHeight ?? 75);
+    const onScroll = () => {
+      measure();
+      const bottom = galleryRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
+      setPinBar(bottom <= (header?.offsetHeight ?? 75));
+    };
+    onScroll();
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
   const similar = property.feed === "ddf" ? [] : getSimilarProperties(property);
   const facts = listingKeyFacts(property);
   const attached =
@@ -182,55 +247,24 @@ export function PropertyDetail({ property }: { property: Property }) {
   ];
 
   return (
-    <div className="bg-white">
+    <div className="min-h-full w-full overflow-x-clip bg-white">
       <TrackView propertyId={property.id} />
       <ViewGate propertyId={property.id} />
 
-      {/* Compact sticky summary — desktop/tablet */}
-      <div className="details-toolbar sticky top-[75px] z-30 hidden border-b border-[#e8eef3] bg-white/95 shadow-sm backdrop-blur md:block">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[#333]">
-            <span className="font-[family-name:var(--font-display)] text-xl font-medium text-[var(--cedar)] sm:text-2xl">
-              {formatPrice(property.price)}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BedDouble className="size-4 text-[var(--cedar)]" />
-              {property.beds} beds
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Bath className="size-4 text-[var(--cedar)]" />
-              {property.baths} baths
-            </span>
-            {property.sqft > 0 ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Maximize className="size-4 text-[var(--cedar)]" />
-                {property.sqft.toLocaleString("en-CA")} sqft
-              </span>
-            ) : null}
-            <span className="hidden text-[#666] lg:inline">
-              {property.address}
-            </span>
-          </div>
-          <div className="relative z-[2] flex items-center gap-2">
-            <SaveHomeButton propertyId={property.id} />
-            <ShareListing
-              variant="icon"
-              className="!text-[var(--cedar)] hover:!bg-[#edf5fd]"
-              title={`${property.address} · ${formatPrice(property.price)}`}
-            />
-            <div className="hidden min-w-[160px] lg:block">
-              <LeadDialog
-                triggerLabel="Request a showing"
-                propertyAddress={property.address}
-                propertyId={property.id}
-                source="showing_request"
-              />
-            </div>
-          </div>
-        </div>
+      <div className="details-toolbar hidden border-b border-[#e8eef3] bg-white md:block">
+        <SummaryBar property={property} />
       </div>
+      {pinBar ? (
+        <div
+          className="details-toolbar fixed inset-x-0 z-30 hidden border-b border-[#e8eef3] bg-white shadow-sm md:block"
+          style={{ top: headerOffset }}
+        >
+          <SummaryBar property={property} />
+        </div>
+      ) : null}
 
-      <div className="mx-auto max-w-[1200px] px-4 py-5 pb-28 sm:px-6 lg:px-8 lg:pb-6">
+      <div className="mx-auto w-full max-w-[1200px] bg-white px-4 py-5 pb-28 sm:px-6 lg:px-8 lg:pb-6">
+        <div ref={galleryRef}>
         <PhotoGallery
           images={property.images}
           alt={property.address}
@@ -240,6 +274,7 @@ export function PropertyDetail({ property }: { property: Property }) {
           lat={property.lat}
           lng={property.lng}
         />
+        </div>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[1.35fr_0.75fr]">
           <div>
