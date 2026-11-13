@@ -219,7 +219,7 @@ export function sectionOf(route: CincRoute): NavSection {
 export function titleOf(route: CincRoute): string {
   switch (route.view) {
     case "launchpad":
-      return "Launchpad";
+      return "Agent Launchpad";
     case "broker":
       return "Broker Launchpad";
     case "gmail":

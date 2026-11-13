@@ -18,7 +18,7 @@ import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer
 const AGENT_NUMBER = "4829103344556677";
 const MDID = "MM8D0000AAAA0000BBBB0000CCCC0001";
 
-const toolBtn = "inline-flex h-[22px] items-center gap-1 rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px] text-[#333] disabled:opacity-40";
+const toolBtn = "inline-flex h-[30px] items-center gap-1 rounded border border-[#d0d0d0] bg-white px-3 text-[14px] text-[#333] shadow-sm disabled:opacity-40";
 
 function queuedMail(partial: Pick<Mail, "kind" | "to" | "subject" | "body"> & Partial<Pick<Mail, "folder" | "from" | "unread">>): Mail {
   return {
@@ -105,16 +105,16 @@ export function LaunchpadView() {
     return true;
   });
   return (
-    <div className="bg-[#f5f5f5] p-4">
-      <h1 className="text-[22px] font-normal text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
+    <div className="bg-[#f5f5f5] px-2 pt-6 pb-8">
+      <h1 className="text-[34px] font-light text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
       </p>
-      <section className="mt-4 border border-[#e5e5e5] bg-white">
-        <div className="flex flex-wrap items-end gap-1 border-b border-[#e5e5e5] px-3">
+      <section className="mt-6 rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white shadow-sm">
+        <div className="flex flex-wrap items-end gap-1 border-b border-[#e5e5e5] px-4">
           {tabs.map(([label, count]) => (
-            <button key={label} type="button" className={`h-[54px] px-3 text-[14px] ${tab === label ? "border-b-2 border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`} onClick={() => setTab(label)}>
+            <button key={label} type="button" className={`h-[64px] px-4 text-[16px] ${tab === label ? "border-b-[3px] border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`} onClick={() => setTab(label)}>
               {label}
               {label === "Contact Requested" && count ? <span className="ml-1 rounded-full bg-[#d9363e] px-1.5 py-0.5 text-[10px] font-bold text-white">{count > 99 ? "99+" : count}</span> : null}
             </button>
@@ -125,14 +125,14 @@ export function LaunchpadView() {
             <>
               <div className="mb-3 flex gap-3 text-[12px]">
                 <Menu
-                  label={<span className="inline-flex h-8 w-[150px] items-center justify-between border border-[#ccc] bg-white px-2 text-[13px]">Type: {types[0]} ▾</span>}
+                  label={<span className="inline-flex h-[34px] w-[170px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">Type: {types[0]} ▾</span>}
                   items={["All", "AI Ready", "Cash Offer Inquiry", "Etta Message", "HomePulse Inquiry", "Property Inquiry", "Showing Request", "Clear"].map((label) => ({
                     label,
                     onClick: () => setTypes(label === "Clear" || label === "All" ? ["All"] : types.includes("All") ? [label] : types.includes(label) ? types.filter((item) => item !== label) : [...types, label]),
                   }))}
                 />
                 <Menu
-                  label={<span className="inline-flex h-8 w-[190px] items-center justify-between border border-[#ccc] bg-white px-2 text-[13px]">{statuses[0]} ▾</span>}
+                  label={<span className="inline-flex h-[34px] w-[210px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">{statuses[0]} ▾</span>}
                   items={["Awaiting Response", "Acted On", "Dismissed", "Clear"].map((label) => ({
                     label,
                     onClick: () => setStatuses(label === "Clear" ? ["Awaiting Response"] : statuses.includes(label) ? statuses.filter((item) => item !== label) : [...statuses, label]),
@@ -140,7 +140,7 @@ export function LaunchpadView() {
                 />
               </div>
               {shownRequests.length ? shownRequests.map((item) => (
-                <article key={item.id} className="mb-3 flex min-h-[150px] gap-0 border border-[#e3e3e3] bg-white">
+                <article key={item.id} className="mb-4 flex min-h-[290px] gap-0 rounded border border-[#e3e3e3] bg-white shadow-sm">
                   <div className="grid w-14 shrink-0 place-items-center border-r border-[#eee] text-[#1c93b5]">
                     {item.kind === "Showing Request" ? (
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="5" width="16" height="15" rx="1" /><path d="M4 9h16M8 3v4M16 3v4" /></svg>
@@ -151,9 +151,9 @@ export function LaunchpadView() {
                   <div className="min-w-0 flex-1 p-3">
                     <div className="flex items-start gap-2">
                       <div>
-                        <a className="text-[13px] font-bold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
-                        <span className="ml-1 text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? "✓" : "🔒"}</span>
-                        <p className="text-[11px] text-[#999]">{item.at}</p>
+                        <a className="text-[18px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
+                        <span className="ml-1 inline-block h-4 w-4 align-middle text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>}</span>
+                        <p className="text-[13px] text-[#999]">{item.at}</p>
                       </div>
                       <span className="ml-auto">
                         <Menu
@@ -165,10 +165,10 @@ export function LaunchpadView() {
                         />
                       </span>
                     </div>
-                    <p className="mt-1 text-[13px] font-bold">{item.kind}</p>
-                    <p className="mt-1 bg-[#f3f3f3] px-2 py-1.5 text-[12px] text-[#666]">{item.message}</p>
-                    <div className="mt-2 flex gap-2">
-                      <img src={item.image} alt="" className="h-[58px] w-[80px] object-cover" />
+                    <p className="mt-2 border-t border-[#eee] pt-2 text-[16px] font-bold">{item.kind}</p>
+                    <p className="mt-2 rounded bg-[#f3f3f3] px-3 py-2 text-[14px] text-[#666]">{item.message}</p>
+                    <div className="mt-3 flex gap-3">
+                      <img src={item.image} alt="" className="h-[100px] w-[150px] rounded object-cover" />
                       <div>
                         <a className="text-[13px] font-bold text-[#1c93b5]" href="/search">{item.address}</a>
                         <p className="text-[12px]">{item.price}</p>
@@ -371,17 +371,20 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
 
   const money = (amount: number) => (amount > 0 ? `$${amount.toLocaleString("en-CA")}` : "$--");
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#eef3f6]">
-      <div className="flex min-h-0 flex-1 flex-col p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex gap-5 text-[15px] font-semibold">
-          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Purchases</a>
-          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#1c93b5] pb-1 text-[#1c93b5]" : "pb-1 text-[#666]"}>Listings</a>
-          <button type="button" className="pb-1 text-[13px] font-normal text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+    <div className="flex h-full min-h-0 flex-col bg-[#f5f5f5]">
+      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-3 flex items-center justify-between rounded border border-[#e5e5e5] bg-white px-4 py-3 shadow-sm">
+        <div className="flex gap-6 text-[16px] font-semibold">
+          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#329bb9] pb-1 text-[#329bb9]" : "pb-1 text-[#666]"}>Purchases</a>
+          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] pb-1 text-[#329bb9]" : "pb-1 text-[#666]"}>Listings</a>
         </div>
-        <button type="button" className="inline-flex h-[22px] items-center rounded-[2px] bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
-          Add Deal
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" className={toolBtn} onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className="inline-flex h-[30px] items-center gap-1 rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 3v10M3 8h10" /></svg>
+            Add Deal
+          </button>
+        </div>
       </div>
       <div className="mb-3 flex w-full items-center gap-2 text-[12px]">
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
@@ -393,9 +396,9 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
         {stages.map((stage) => {
           const cards = deals.filter((deal) => deal.stage === stage.id);
           return (
-            <section key={stage.id} className="flex min-h-[420px] flex-col border border-[#e1e1e1] bg-[#f1f1f1]">
-              <header className="bg-white px-2 py-2">
-                <div className="text-[12px] font-bold tracking-wide text-black uppercase">
+            <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e1e1e1] bg-[#f1f1f1] shadow-sm">
+              <header className="rounded-t bg-white px-3 py-3">
+                <div className="text-[16px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
                 <p className="text-[11px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
@@ -642,6 +645,25 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             { label: "Unread", onClick: () => setPicked(slice.filter((mail) => mail.unread).map((mail) => mail.id)) },
           ]} />
         </span>
+        <button type="button" title="Mark read" className={toolBtn} onClick={() => {
+          if (needPick()) return;
+          update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, unread: false } : mail) }));
+          chrome.toast(`Marked ${picked.length} read.`);
+          setPicked([]);
+        }}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2 4h12v8H2zM2 5l6 4 6-4" /></svg></button>
+        <button type="button" title="Mark unread" className={toolBtn} onClick={() => {
+          if (needPick()) return;
+          update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, unread: true } : mail) }));
+          chrome.toast(`Marked ${picked.length} unread.`);
+          setPicked([]);
+        }}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2 4h12v8H2z" /><circle cx="12" cy="5" r="2" fill="currentColor" /></svg></button>
+        <button type="button" title="Trash" className={toolBtn} onClick={() => {
+          if (needPick()) return;
+          update((current) => ({ ...current, mail: current.mail.map((mail) => picked.includes(mail.id) ? { ...mail, folder: mail.folder === "trashed" ? "inbox" : "trashed" } : mail) }));
+          chrome.toast("Updated the selected messages.");
+          setPicked([]);
+        }}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M3 4h10M6 4V3h4v1M5 4l.5 9h5L11 4" /></svg></button>
+        <button type="button" title="Refresh" className={toolBtn} onClick={() => { setPicked([]); setPage(0); setOpenId(null); chrome.toast("Mailbox refreshed."); }}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M13 8a5 5 0 1 1-1.5-3.5" /><path d="M12 2v3.5H8.5" /></svg></button>
         {folder === "trashed" ? (
           <button type="button" className={`${toolBtn} text-[#1c93b5]`} onClick={() => {
             if (needPick()) return;
@@ -668,15 +690,15 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             ) : null}
           </div>
         ) : null}
-        <span className="ml-auto text-[12px] font-bold">{countLabel}</span>
-        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
-        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
         {showCompose ? (
           <>
-            <button type="button" disabled={composeOff} className="h-[22px] bg-[#1c93b5] px-2 text-[12px] text-white disabled:opacity-40" onClick={() => composer.email("", (sent, value) => send("email", value, sent ? "sent" : "drafts"))}>New Email</button>
-            <button type="button" disabled={composeOff} className="h-[22px] border border-[#1c93b5] bg-white px-2 text-[12px] text-[#1c93b5] disabled:opacity-40" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</button>
+            <button type="button" disabled={composeOff} className="h-[30px] rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm disabled:opacity-40" onClick={() => composer.email("", (sent, value) => send("email", value, sent ? "sent" : "drafts"))}>New Email</button>
+            <button type="button" disabled={composeOff} className="h-[30px] rounded border border-[#329bb9] bg-white px-3 text-[14px] text-[#329bb9] shadow-sm disabled:opacity-40" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</button>
           </>
         ) : null}
+        <span className="ml-auto text-[14px] font-semibold">{countLabel}</span>
+        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
+        <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-[#f5f5f5] p-3">
         {opened ? (
@@ -692,8 +714,8 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
           </article>
         ) : (
           <div className="bg-white shadow-sm">
-            {slice.length ? slice.map((mail) => (
-              <div key={mail.id} className={`flex min-h-8 w-full items-center gap-2 border-b border-[#eee] px-2 py-1 text-left text-[12px] ${mail.unread ? "bg-[#f3fbfd] font-bold" : ""}`}>
+            {slice.length ? slice.map((mail, index) => (
+              <div key={mail.id} className={`flex h-[45px] w-full items-center gap-2 border-b border-[#eee] px-2 text-left text-[14px] ${mail.unread ? "bg-[#f3fbfd] font-semibold" : index % 2 ? "bg-[#f7f7f7]" : "bg-white"}`}>
                 <input className={checkCls} type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => { setOpenId(mail.id); update((current) => ({ ...current, mail: current.mail.map((item) => item.id === mail.id ? { ...item, unread: false } : item) })); }}>
                 {folder === "drafts" ? (
@@ -708,7 +730,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                   </>
                 ) : (
                   <>
-                    <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] text-white ${mail.kind === "text" ? "bg-[#2e9e5b]" : "bg-[#1c93b5]"}`}>{mail.kind === "text" ? "💬" : "✉"}</span>
+                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-white ${mail.kind === "text" ? "bg-[#2e9e5b]" : "bg-[#329bb9]"}`} aria-hidden><svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4">{mail.kind === "text" ? <path d="M3 4h10v7H3zM3 5l5 3 5-3" /> : <path d="M2 4h12v8H2zM2 5l6 4 6-4" />}</svg></span>
                     <span className="w-16 truncate font-bold">{mail.from || "System"}</span>
                     <span className="min-w-0 flex-1 truncate">{mail.body}</span>
                   </>
@@ -1538,7 +1560,7 @@ export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrati
       .catch(() => undefined);
   }, [update]);
   return (
-    <div className="p-4">
+    <div className="mx-auto max-w-[1335px]">
       {tab === "general" || tab === "searchpage" || tab === "dialer" || tab === "fields" || tab === "theme" || tab === "billing" ? <OfficeSettingsPage tab={tab} /> : <SettingsTabs active={tab} />}
       {tab === "profile" ? <ProfileTab /> : null}
       {tab === "settings" ? <SettingsTab /> : null}
@@ -1708,10 +1730,11 @@ function ProfileTab() {
             <span className="grid h-12 w-12 place-items-center rounded-full border border-[#1c93b5] text-[#1c93b5]">
               <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="2.2" /><path d="M3 13c.7-2.2 2.4-3.2 5-3.2s4.3 1 5 3.2" /></svg>
             </span>
-            <label className="inline-flex h-9 cursor-pointer items-center border border-[#1c93b5] px-3 text-[13px] text-[#1c93b5]">
-              Select File
+            <label className="inline-flex h-[30px] cursor-pointer items-center rounded border border-[#329bb9] px-3 text-[14px] text-[#329bb9]">
+              Edit Image
               <input className="sr-only" type="file" onChange={(event) => set("photoName", event.target.files?.[0]?.name || "")} />
             </label>
+            <button type="button" className="h-[30px] rounded border border-[#ccc] px-3 text-[14px]" onClick={() => set("photoName", "")}>Remove Image</button>
             {profile.photoName ? <span className="text-[12px] text-[#666]">{profile.photoName}</span> : null}
           </div>
         </Field>
@@ -1802,8 +1825,8 @@ function OfficeLine() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border border-[#1c93b5] bg-[#e6e6e6] p-4">
-      <h2 className="mb-3 text-center text-[20px] font-bold tracking-tight text-[#243238]">{title}</h2>
+    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 shadow-sm">
+      <h2 className="mb-3 text-[18px] font-light text-[#329bb9]">{title}</h2>
       <div className="bg-white p-4">{children}</div>
     </section>
   );
@@ -2256,7 +2279,7 @@ export function CalendarView() {
   const todayMonth = Number(vancouver.find((part) => part.type === "month")?.value);
   const todayDay = Number(vancouver.find((part) => part.type === "day")?.value);
   const [cursor, setCursor] = useState(new Date(todayYear, todayMonth - 1, 1));
-  const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("day");
+  const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("agenda");
   const office = useOfficeSession();
   const { leads } = useLeads();
   const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || ""));
@@ -2304,6 +2327,11 @@ export function CalendarView() {
           </div>
         </div>
         <p className="px-3 py-2 text-[12px] text-[#666]">{owner}</p>
+        <div className="bg-[#329bb9] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">CINC Calendars</div>
+        <div className="m-2 flex items-center gap-2 rounded border border-[#329bb9] bg-[#e7f6fb] px-2 py-2 text-[13px]">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#329bb9] text-[12px] font-semibold text-white">{owner.slice(0, 1)}</span>
+          <span>{owner}</span>
+        </div>
         <div className="flex items-center justify-between bg-[#4a4a4a] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">
           <span>Event Calendars</span>
           <span aria-hidden>⌃</span>
@@ -2316,7 +2344,7 @@ export function CalendarView() {
         ))}
       </aside>
       <div className="min-w-0 bg-[#f5f5f5]">
-        <div className="flex h-12 items-center bg-[#4a4a4a] px-4 text-[26px] font-semibold text-white">
+        <div className="flex h-16 items-center rounded bg-[#4a4a4a] px-4 text-[38px] font-bold text-white shadow-sm">
           <span>{agendaLabel}</span>
           <button type="button" className="ml-3 text-[20px]" aria-label="Previous day" onClick={() => {
             const next = new Date(`${selected}T12:00:00`);
@@ -2330,12 +2358,15 @@ export function CalendarView() {
             setSelected(isoFor(next.getFullYear(), next.getMonth() + 1, next.getDate()));
             setMode("day");
           }}>›</button>
-          <button type="button" className="ml-auto bg-[#329bb9] px-2 py-1 text-[12px] font-normal text-white" onClick={() => openNew(selected)}>Add Appointment</button>
+          <div className="ml-auto flex items-center gap-1 text-[14px] font-normal">
+            {([["agenda", "My Agenda"], ["week", "Week"], ["month", "Month"], ["day", "Day"]] as const).map(([item, label]) => (
+              <button key={item} type="button" className={`rounded px-2 py-1 ${mode === item ? "bg-white text-[#333]" : "text-white"}`} onClick={() => setMode(item)}>{label}</button>
+            ))}
+            <button type="button" className="ml-2 rounded bg-[#329bb9] px-2 py-1 text-[12px] text-white" onClick={() => openNew(selected)}>Add Appointment</button>
+          </div>
         </div>
-        <div className="flex gap-1 bg-white px-2 py-1">
-          {([["day", "day"], ["agenda", "my agenda"], ["week", "week"], ["month", "month"]] as const).map(([item, label]) => (
-            <button key={item} type="button" className={`border px-2 py-1 text-[12px] lowercase ${mode === item ? "border-[#329bb9] text-[#329bb9]" : "border-[#ccc]"}`} onClick={() => setMode(item)}>{label}</button>
-          ))}
+        <div className="mt-3 rounded border border-dashed border-[#bbb] bg-white p-4 shadow-sm">
+          <div className="flex h-24 items-center justify-center rounded bg-[#eee] text-[16px] font-semibold text-[#666]">+ Event</div>
         </div>
         {mode === "agenda" ? (
           <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>

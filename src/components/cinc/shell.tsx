@@ -448,14 +448,14 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     <span>{item.label}</span>
                   </a>
                   {active && kids.length ? (
-                    <div className="bg-[#24313c] py-1">
+                    <div className="bg-[#12161a] py-0.5">
                       {kids.map((child) => {
                         if (child.group || !child.href) {
                           return <p key={child.label} className="px-5 py-1 text-[11px] font-bold text-[#9fd7ea]">{child.label}</p>;
                         }
                         const on = childOn(child.label, route);
                         return (
-                          <a key={child.label} href={child.href} className={`flex h-9 items-center gap-2 pr-1 pl-8 text-[13px] whitespace-nowrap ${on ? "text-[#329bb9]" : "text-[#d5dde1] hover:text-white"}`} onClick={() => { if (child.label === "Agent") window.dispatchEvent(new Event("cinc-launchpad-home")); }}>
+                          <a key={child.label} href={child.href} className={`flex h-7 items-center gap-2 pr-1 pl-8 text-[13px] whitespace-nowrap ${on ? "text-[#329bb9]" : "text-[#d5dde1] hover:text-white"}`} onClick={() => { if (child.label === "Agent") window.dispatchEvent(new Event("cinc-launchpad-home")); }}>
                             {item.id === "comms" && child.label !== "Templates" ? <SubIcon label={child.label} /> : <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${on ? "bg-[#329bb9]" : "border border-[#8aa] bg-transparent"}`} />}
                             {child.label}
                           </a>
@@ -485,7 +485,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[22px] leading-none font-light text-[#329bb9]"
+                className="flex items-center gap-2 text-[28px] leading-none font-light text-[#9fd4ea]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -511,6 +511,22 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 </div>
               ) : null}
             </div>
+            {showSearch ? (
+              <div className="ml-3 flex items-center gap-2">
+                <button type="button" className="grid h-8 w-8 place-items-center text-[#329bb9]" aria-label="Search" onClick={() => setSearchOpen((value) => !value)}>
+                  <svg className="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="7" cy="7" r="4.2" /><path d="M10.5 10.5 14 14" /></svg>
+                </button>
+                {searchOpen ? <input className="h-[30px] w-52 rounded border border-[#d5e8ee] px-2 text-[14px] shadow-sm" placeholder="Search" value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  const q = leadSearch.trim().toLowerCase();
+                  if (!q) return;
+                  const digits = q.replace(/\D/g, "");
+                  const match = leads.find((lead) => lead.email.toLowerCase() === q || lead.name.toLowerCase() === q || (digits.length >= 7 && lead.phone.replace(/\D/g, "").includes(digits)));
+                  if (!match) { setMessage("No lead matches that search."); return; }
+                  window.location.href = href.lead(match.id);
+                }} /> : null}
+              </div>
+            ) : null}
             <div className="ml-auto flex items-center gap-3">
               {office.impersonating ? (
                 <button
@@ -522,18 +538,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <button type="button" className="grid h-8 w-8 place-items-center text-[#4aa8c8]" aria-label="Search" onClick={() => setSearchOpen((value) => !value)}>
-                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="7" cy="7" r="4.2" /><path d="M10.5 10.5 14 14" /></svg>
-              </button>
-              {searchOpen ? <input className="h-7 w-40 border border-[#d5e8ee] px-2 text-[12px]" placeholder="Search leads" value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                const q = leadSearch.trim().toLowerCase();
-                if (!q) return;
-                const digits = q.replace(/\D/g, "");
-                const match = leads.find((lead) => lead.email.toLowerCase() === q || lead.name.toLowerCase() === q || (digits.length >= 7 && lead.phone.replace(/\D/g, "").includes(digits)));
-                if (!match) { setMessage("No lead matches that search."); return; }
-                window.location.href = href.lead(match.id);
-              }} /> : null}
               <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
               <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
@@ -577,7 +581,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             </div>
           </header>
           <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+            <main className="min-w-0 flex-1 overflow-auto px-[30px] py-4">{children}</main>
             {rail && route.view !== "website" && route.view !== "settings" && route.view !== "seller" && route.view !== "landing" && route.view !== "leadsearch" ? (
               <aside className="flex w-[220px] shrink-0 flex-col border-l border-[#e5e5e5] bg-[#f4f4f4]">
                 <div className="border-b-2 border-[#1c93b5] bg-white px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">Activity</div>

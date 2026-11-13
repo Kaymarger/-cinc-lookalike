@@ -849,7 +849,7 @@ export function LeadsView({
       {mode === "export" ? (
         <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
       ) : null}
-      <div className="flex h-[41px] flex-wrap items-center gap-1 border-b border-[#e5e5e5] bg-white px-2">
+      <div className="flex min-h-[41px] flex-wrap items-center gap-2 rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white px-3 py-2 shadow-sm">
         <span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white">
           <input
             className={checkCls}
@@ -863,7 +863,7 @@ export function LeadsView({
           ]} />
         </span>
         <Menu
-          label={<span className="inline-flex h-[26px] items-center rounded-[2px] border border-[#d9d9d9] bg-white px-2 text-[13px] text-[#329bb9]">Mass Actions ▾</span>}
+          label={<span className="inline-flex h-[30px] items-center rounded border border-[#d9d9d9] bg-white px-3 text-[14px] text-[#329bb9] shadow-sm">Mass Actions ▾</span>}
           items={[
             "Send Email to Selected",
             "Send Text to Selected",
@@ -931,9 +931,8 @@ export function LeadsView({
           </>
         )}
       </div>
-      {open && !expanded ? null : (
-      <div className="flex items-center justify-end bg-white px-3 py-1">
-        <button type="button" className="inline-flex h-[22px] items-center gap-1 bg-[#1c93b5] px-2 text-[12px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+      <div className="mt-2 flex items-center justify-end rounded border border-[#e5e5e5] bg-white px-3 py-2 shadow-sm">
+        <button type="button" className="inline-flex h-[30px] items-center gap-1 rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
           const digits = input.phone.replace(/\D/g, "");
           const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
           add({ ...input, source: "general", notes: "Added by an agent" });
@@ -944,24 +943,14 @@ export function LeadsView({
           Add New Lead
         </button>
       </div>
-      )}
 
-      <div className="flex min-h-0 flex-1">
-        <div className={`min-w-0 overflow-auto ${open && !expanded ? "w-[140px] shrink-0 border-r border-[#e5e5e5]" : "flex-1"}`}>
-          {open && !expanded ? (
-            <ul className="bg-white">
-              {slice.map((row) => (
-                <li key={row.id} className={`border-b border-[#f0f0f0] ${row.id === leadId ? "bg-[#d5eaf2]" : ""}`}>
-                  <a href={href.lead(row.id, "activity")} className="block truncate px-2 py-2 text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <table className="w-full min-w-[1100px] border-collapse bg-white text-left">
+      <div className="relative mt-2 flex min-h-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[1280px] border-collapse bg-white text-left text-[14px]">
               <thead className="sticky top-0 z-10 bg-white text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
                 <tr className="h-[41px]">
                   {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
-                    <th key={`${col}-${index}`} className="border-b border-[#e5e5e5] px-2 whitespace-nowrap">
+                    <th key={`${col}-${index}`} className={`border-r border-b border-[#e5e5e5] px-2 whitespace-nowrap ${col === "Name/Info" ? "min-w-[260px]" : ""}`}>
                       {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button> : null}
                     </th>
                   ))}
@@ -969,7 +958,7 @@ export function LeadsView({
               </thead>
               <tbody>
                 {slice.map((row, index) => (
-                  <tr key={row.id} className={`group min-h-[72px] border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`}>
+                  <tr key={row.id} className={`group h-[105px] border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#eee] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`}>
                     <td className="px-2">
                       <input className={checkCls} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
                     </td>
@@ -1063,20 +1052,23 @@ export function LeadsView({
                       <span className="text-[#d9363e]">{row.fav} Fav</span><br />
                       <span className="text-[#1c93b5]">{row.inq} Inq</span>
                     </td>
-                    <td className="px-2 text-[12px] leading-5 uppercase">
-                      <Menu
-                        label={<span className="block text-[#1c93b5]">{row.assigned.agent} ▾</span>}
-                        items={assignChoices.agents.map((name) => ({
-                          label: name,
-                          onClick: () => saveAssign(row.id, { ...row.assigned, agent: name }),
-                        }))}
-                      />
+                    <td className="px-2 text-[13px] leading-6">
+                      {(["agent", "partner", "listing"] as const).map((slot) => (
+                        <div key={slot} className="block">
+                        <Menu
+                          label={<span className="block text-[#329bb9]">{row.assigned[slot]} ▾</span>}
+                          items={(slot === "agent" ? assignChoices.agents : slot === "partner" ? assignChoices.partners : assignChoices.listing).map((name) => ({
+                            label: name,
+                            onClick: () => saveAssign(row.id, { ...row.assigned, [slot]: name }),
+                          }))}
+                        />
+                        </div>
+                      ))}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
           {!slice.length ? <p className="bg-white px-4 py-10 text-center text-[13px] text-[#888]">No leads match these filters.</p> : null}
         </div>
         {open ? (
@@ -1232,7 +1224,7 @@ function LeadDetail({
     )],
   ] as const;
   return (
-    <div className="relative flex min-w-0 flex-1 bg-[#f5f5f5]">
+    <div className={`${expanded ? "relative flex min-w-0 flex-1" : "absolute top-0 left-[310px] z-30 flex h-full w-[calc(100%-310px)]"} bg-[#f5f5f5] shadow-lg`}>
       {!expanded ? (
         <div className="absolute top-14 left-0 z-20 flex w-16 -translate-x-1/2 flex-col items-center gap-2">
           {rail.map(([label, icon, action]) => (
@@ -1269,7 +1261,7 @@ function LeadDetail({
         </div>
       ) : null}
       {!expanded ? (
-        <aside className="w-[215px] shrink-0 overflow-auto border-r border-[#eee] bg-white pl-4">
+        <aside className="w-[320px] shrink-0 overflow-auto rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white shadow-md">
           <div className="flex items-center justify-between border-b border-[#eee] px-2 py-2 text-[18px] text-[#888]">
             <button type="button" aria-label="Close" className="px-1 text-[#666]" onClick={() => go(href.leadsReturn)}>✕</button>
             <button type="button" onClick={onExpand} aria-label="Expand" className="px-1 text-[16px]">⤢</button>
@@ -1280,7 +1272,7 @@ function LeadDetail({
             <span className="mx-auto grid h-7 w-7 place-items-center rounded-full border border-[#2f6fed] text-[11px] font-bold">{row.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
             <p className="mt-1 flex items-center justify-center gap-1 text-[13px] font-bold">
               {row.name}
-              <span className="text-[#2f6fed]">{verify === "locked" ? "🔒" : "✓"}</span>
+              <span className="inline-flex h-4 w-4 text-[#2f6fed]" title={verify}>{verify === "locked" ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg>}</span>
               <Menu
                 label={<span className="text-[12px] text-[#888]">▾</span>}
                 items={[
@@ -1432,8 +1424,8 @@ function LeadDetail({
               <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
             {activityChecks.includes("Notes") && notes[0] ? (
-              <article className="mb-3 border border-[#e5e5e5] bg-white p-3 shadow-sm">
-                <p className="text-[13px] font-bold">📝 Note Added</p>
+              <article className="mb-3 rounded border border-[#d5e8ee] bg-[#e7f6fb] p-4 text-[14px] shadow-sm">
+                <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
                 <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{notes[0].body}</p>
                 <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={notes[0].body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === notes[0].id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button></div>
@@ -1442,9 +1434,9 @@ function LeadDetail({
             <p className="my-2 border-t border-dotted border-[#ccc] pt-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
             <div className="ml-2 border-l border-[#ddd] pl-4">
             {activityChecks.includes("Notes") ? notes.slice(1).map((note) => (
-              <article key={note.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
+              <article key={note.id} className="relative mb-3 rounded border border-[#e5e5e5] bg-white p-4 text-[14px] shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#1c93b5]" />
-                <p className="text-[13px] font-bold">👤 Note Added</p>
+                <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">{friendlyWhen(note.at)} by {CRM_AGENT.name}</p>
                 <p className="mt-1 text-[13px]">{note.body}</p>
               </article>
@@ -1457,14 +1449,14 @@ function LeadDetail({
             }).map((call) => (
               <article key={call.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#2e9e5b]" />
-                <p className="text-[13px] font-bold">{call.kind === "email" ? "✉" : call.kind === "text" ? "💬" : "☎"} {call.body || call.kind}</p>
+                <p className="text-[15px] font-semibold">{call.body || call.kind}</p>
                 <p className="text-[11px] text-[#999]">{call.at} by {CRM_AGENT.name}</p>
               </article>
             ))}
             {activityChecks.some((item) => ["Assigned Agent", "Pipeline", "Label", "Appointments", "Reminders", "Lead Info Updates"].includes(item)) ? (crm?.activity ?? site?.activity ?? []).map((item) => (
               <article key={item.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#bbb]" />
-                <p className="text-[13px] font-bold">👤 {item.title}</p>
+                <p className="text-[15px] font-semibold">{item.title}</p>
                 {"body" in item && item.body ? <p className="text-[12px]">{item.body}</p> : null}
                 <p className="text-[11px] text-[#999]">{friendlyWhen(item.at)}{"actor" in item && item.actor ? ` by ${item.actor}` : ""}</p>
               </article>

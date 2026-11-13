@@ -198,16 +198,15 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       ) : null}
       {mode === "manage" ? (
       <>
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-      <h1 className="mb-1 text-[18px] font-semibold text-[#243238]">Manage Agents</h1>
-      <p className="mb-2 text-[13px] text-[#666]">{users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length} Total Agents</p>
-          <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
-            <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
-            <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setPond(false); startCreate(); }}>Add Agent</button>
-            <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>Add Pond</button>
-          </div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-[28px] font-light text-[#329bb9]">{users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length} Total Agents</h1>
+          <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
+          <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" className="h-[30px] rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>Add Pond</button>
+          <button type="button" className="h-[30px] rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => { setPond(false); startCreate(); }}>Add Agent</button>
         </div>
       </div>
       {dbOff ? (
@@ -233,11 +232,11 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
             {users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).map((user) => (
-              <article key={user.id} className="relative border border-[#e5e5e5] bg-white p-3 text-[13px]">
-                <div className="flex gap-2">
-                  <div className="relative h-12 w-12 shrink-0">
-                    <div className="grid h-12 w-12 place-items-center rounded-full bg-[#1c93b5] text-[14px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
-                    <img alt="" className="absolute inset-0 h-12 w-12 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
+              <article key={user.id} className="relative flex justify-between rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white p-4 text-[14px] shadow-sm">
+                <div className="flex gap-3">
+                  <div className="relative h-20 w-20 shrink-0">
+                    <div className="grid h-20 w-20 place-items-center rounded-full bg-[#329bb9] text-[20px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
+                    <img alt="" className="absolute inset-0 h-20 w-20 rounded-full object-cover" src={`/api/office/users/${user.id}/photo`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   </div>
                   <div>
                     <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => office.canManageUsers ? startEdit(user) : void become(user, "leads")}>{user.name}</button>
@@ -246,7 +245,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                     {user.role === "isa" ? <p className="text-[#243238]">Pond owner: {user.pondOwner || "Kayla Gerak"}</p> : null}
                   </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="flex flex-col items-end gap-2">
                   {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
                   {office.canBecome && user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Become User</button> : null}
