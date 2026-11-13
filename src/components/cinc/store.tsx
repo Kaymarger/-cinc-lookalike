@@ -194,6 +194,7 @@ export type SettingsForm = {
 export type SpaState = {
   pipeline: Record<string, string>;
   labels: Record<string, string[]>;
+  stars: Record<string, number>;
   assigned: Record<string, Assign>;
   leadType: Record<string, string>;
   trashed: string[];
@@ -429,6 +430,7 @@ function buildMail(): Mail[] {
 const DEFAULT: SpaState = {
   pipeline: {},
   labels: { "crm-1": ["H"], "crm-2": ["N", "B"], "crm-5": ["R"] },
+  stars: {},
   assigned: {},
   leadType: {},
   trashed: [],
@@ -505,6 +507,7 @@ function load(raw: string | null): SpaState {
       notifications: fresh ? DEFAULT.notifications : { ...DEFAULT.notifications, ...parsed.notifications },
       behavioral: fresh ? DEFAULT.behavioral : { ...DEFAULT.behavioral, ...parsed.behavioral },
       labels: { ...DEFAULT.labels, ...parsed.labels },
+      stars: { ...DEFAULT.stars, ...(parsed.stars ?? {}) },
       mail: fresh ? DEFAULT.mail : parsed.mail ?? DEFAULT.mail,
       templates: fresh ? DEFAULT.templates : parsed.templates ?? DEFAULT.templates,
       groups: fresh ? DEFAULT.groups : parsed.groups ?? DEFAULT.groups,

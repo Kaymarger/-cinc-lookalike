@@ -71,6 +71,9 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
 
   return (
     <section className="mb-4 border border-[#e5e5e5] bg-white p-4">
+      <p className="mb-3 text-[13px] text-[#444]" title="Agents marked In the Office are available for new-lead routing. Agents who are out of the office are skipped. If nobody is in the office, the lead stays with the office default.">
+        In the Office means the agent is available for new-lead routing. The routing engine picks uniformly at random among agents who are active and in the office. Out-of-office agents are skipped.
+      </p>
       <div className="mb-3 flex gap-4 border-b border-[#e5e5e5] text-[14px]">
         {(["Basic", "Advanced", "Routing Overview"] as const).map((label) => (
           <button key={label} type="button" className={tab === label ? "border-b-2 border-[#1c93b5] pb-2 font-semibold text-[#1c93b5]" : "pb-2 text-[#666]"} onClick={() => setTab(label)}>{label}</button>

@@ -38,6 +38,7 @@ export type OfficeUser = {
   bootstrap: boolean;
   mustSetPassword: boolean;
   routingHidden: boolean;
+  inOffice: boolean;
   pondOwner: string;
 };
 
@@ -68,6 +69,7 @@ type UserRow = {
   bootstrap: boolean;
   must_set_password: boolean;
   routing_hidden?: boolean;
+  in_office?: boolean;
   pond_owner?: string;
 };
 
@@ -111,6 +113,7 @@ function fromRow(row: UserRow): OfficeUser {
     bootstrap: Boolean(row.bootstrap),
     mustSetPassword: Boolean(row.must_set_password),
     routingHidden: Boolean(row.routing_hidden),
+    inOffice: row.in_office !== false,
     pondOwner: row.pond_owner || "",
   };
 }
@@ -143,6 +146,7 @@ export function syntheticBootstrap(): OfficeUser {
     bootstrap: true,
     mustSetPassword: false,
     routingHidden: false,
+    inOffice: true,
     pondOwner: "",
   };
 }

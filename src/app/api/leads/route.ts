@@ -278,6 +278,7 @@ export async function POST(request: Request) {
     return Response.json({
       ok: true,
       persisted: true,
+      existing: saved.id !== lead.id,
       storage: "postgres",
       alerts,
       lead: publicLead(saved),

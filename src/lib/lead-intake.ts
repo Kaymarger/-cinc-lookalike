@@ -32,6 +32,10 @@ export type LeadAttribution = {
   fbclid?: string;
   landingPath?: string;
   referrer?: string;
+  device?: "mobile" | "desktop";
+  timeframe?: string;
+  firstTimeBuyer?: boolean;
+  preApproved?: boolean;
 };
 
 export type SanitizedLead = {
@@ -88,6 +92,10 @@ export function sanitizeAttribution(value: unknown): LeadAttribution {
     fbclid: pick("fbclid"),
     landingPath: pick("landingPath", 500),
     referrer: pick("referrer", 500),
+    device: raw.device === "mobile" || raw.device === "desktop" ? raw.device : undefined,
+    timeframe: pick("timeframe", 80),
+    firstTimeBuyer: raw.firstTimeBuyer === true ? true : raw.firstTimeBuyer === false ? false : undefined,
+    preApproved: raw.preApproved === true ? true : raw.preApproved === false ? false : undefined,
   };
   return Object.fromEntries(
     Object.entries(attribution).filter(([, entry]) => entry)

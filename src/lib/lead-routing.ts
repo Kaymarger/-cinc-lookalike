@@ -1,5 +1,5 @@
 import { officeDb } from "@/lib/leads-db";
-import { isRoutingCandidate, nextPoolUser } from "@/lib/lead-routing-pick";
+import { isRoutingCandidate, nextPoolUser, pickUniform } from "@/lib/lead-routing-pick";
 import { assignedAgentName } from "@/lib/notify-lead";
 import type { OfficeRole } from "@/lib/office-access";
 import { findUserById, findUserByName, listUsers, type OfficeUser } from "@/lib/office-users";
@@ -118,7 +118,18 @@ export async function resolveNewLeadAssignee(): Promise<{ name: string; userId: 
     const sql = await officeDb();
     if (!sql) return { name: assignedAgentName(), userId: null };
     const current = await getLeadRouting();
-    if (current.mode === "default") return officeDefault();
+    if (current.mode === "default") {
+      const users = await listUsers();
+      const pool = users.filter(eligible);
+      const picked = pickUniform(pool.map((user) => user.id));
+      const user = picked ? pool.find((item) => item.id === picked) : undefined;
+      if (!user) return officeDefault();
+      await sql`
+        INSERT INTO office_notifications (id, kind, title, body)
+        VALUES (${`route-${Date.now()}`}, 'routing', ${`Lead routed to ${user.name}`}, ${`Uniform assignment among ${pool.length} in-office agents.`})
+      `.catch(() => undefined);
+      return { name: user.name, userId: user.id };
+    }
     if (current.mode === "source") {
       const users = await listUsers();
       const user = users.find((item) => current.poolIds.includes(item.id) && eligible(item));

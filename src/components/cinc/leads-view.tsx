@@ -147,6 +147,8 @@ type Row = {
   lastLogin: string;
   logins: number;
   lastTouch: string;
+  touchCount?: number;
+  reminderCount?: number;
   nextReminder: string;
   nextReminderId?: string;
   nextReminderTitle?: string;
@@ -231,20 +233,22 @@ function siteRow(lead: Lead): Row {
     registeredAt: new Date(lead.createdAt).getTime() || 0,
     source: lead.notes.startsWith("Added by an agent")
       ? "—"
-      : [SOURCE[lead.source] ?? "—", lead.attribution?.utmSource, lead.attribution?.utmCampaign].filter(Boolean).join(" · ") || "—",
+      : [SOURCE[lead.source] ?? "—", lead.attribution?.device === "mobile" ? "Mobile" : lead.attribution?.device === "desktop" ? "Desktop" : "", lead.attribution?.firstTimeBuyer ? "First-time buyer" : "", lead.attribution?.preApproved ? "Pre-approved" : "", lead.attribution?.utmSource].filter(Boolean).join(" · ") || "—",
     price: lead.propertyAddress ? "Inquiry" : "$ n/a",
-    city: lead.propertyAddress ? "Inquiry" : "—",
-    timeframe: "—",
-    lastLogin: "—",
-    logins: 0,
-    lastTouch: "—",
+    city: lead.searchLabel || (lead.propertyAddress ? "Inquiry" : "—"),
+    timeframe: lead.attribution?.timeframe || "—",
+    lastLogin: ago(lead.updatedAt || lead.createdAt),
+    logins: Math.max(1, lead.activity.filter((item) => /login|sign/i.test(item.title)).length),
+    lastTouch: lead.activity[0]?.title || "Registration",
+    touchCount: Math.max(1, lead.activity.length),
+    reminderCount: lead.tasks.length,
     nextReminder: lead.tasks.find((task) => !task.done)?.due || "n/a",
     nextReminderId: lead.tasks.find((task) => !task.done)?.id,
     nextReminderTitle: lead.tasks.find((task) => !task.done)?.title,
     overdue: false,
-    views: 0,
-    saved: 0,
-    fav: 0,
+    views: lead.viewedProperties?.length || 0,
+    saved: lead.savedSearches?.length || 0,
+    fav: lead.activity.filter((item) => /favou?rite/i.test(item.title)).length,
     inq: lead.source === "ask_question" || lead.source === "showing_request" ? 1 : 0,
     assigned: {
       agent: lead.assignedTo || CRM_AGENT.name,
@@ -286,6 +290,8 @@ function crmRows(): Row[] {
     lastLogin: lead.lastLogin,
     logins: lead.logins,
     lastTouch: lead.lastTouch,
+    touchCount: lead.views + lead.inq,
+    reminderCount: lead.nextReminder && lead.nextReminder !== "n/a" ? 1 : 0,
     nextReminder: lead.nextReminder,
     nextReminderTitle: lead.nextReminder,
     overdue: Boolean(lead.reminderOverdue),
@@ -487,6 +493,7 @@ export function LeadsView({
     const merged = [...leads.map(siteRow), ...crmRows()].map((row) => ({
       ...row,
       pipeline: state.pipeline[row.id] ?? row.pipeline,
+      score: state.stars[row.id] ?? row.score,
       type: state.leadType[row.id] ?? row.type,
       assigned: state.assigned[row.id] ?? row.assigned,
     }));
@@ -500,7 +507,7 @@ export function LeadsView({
         partnerUserId: state.assigned[row.id] ? null : row.partnerUserId,
       })
     );
-  }, [leads, state.pipeline, state.leadType, state.assigned, office.ready, office.user, office.seesAll]);
+  }, [leads, state.pipeline, state.leadType, state.assigned, state.stars, office.ready, office.user, office.seesAll]);
 
   const filtered = rows.filter((row, index) => {
     const trashed = state.trashed.includes(row.id);
@@ -538,11 +545,11 @@ export function LeadsView({
       case "Timeframe":
         return cmp(a.timeframe, b.timeframe);
       case "Last Login":
-        return cmp(a.logins, b.logins) || a.lastLogin.localeCompare(b.lastLogin) * dir;
+        return sortDir === 1 ? cmp(a.logins, b.logins) : cmp(b.registeredAt, a.registeredAt);
       case "Last Touch":
-        return cmp(a.lastTouch, b.lastTouch);
+        return sortDir === 1 ? cmp(a.touchCount || 0, b.touchCount || 0) : cmp(a.lastTouch, b.lastTouch);
       case "Next Reminder":
-        return cmp(a.nextReminder === "n/a" ? "" : a.nextReminder, b.nextReminder === "n/a" ? "" : b.nextReminder);
+        return sortDir === 1 ? cmp(a.reminderCount || 0, b.reminderCount || 0) : cmp(a.nextReminder === "n/a" ? "zzz" : a.nextReminder, b.nextReminder === "n/a" ? "zzz" : b.nextReminder);
       case "Activity":
         return cmp(a.views + a.saved + a.fav + a.inq, b.views + b.saved + b.fav + b.inq);
       case "Assigned To":
@@ -981,7 +988,11 @@ export function LeadsView({
                         {row.email} <span className={row.emailValid ? "text-[#2e9e5b]" : "text-[#c9a227]"}><ValidityIcon ok={row.emailValid} /></span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="rounded-full bg-[#4a4a4a] px-1.5 text-[12px] text-white">★ {row.origin === "site" ? "n/a" : row.score > 10 ? Math.round(row.score) : Math.round(row.score * 10)}</span>
+                        <span className="inline-flex gap-0.5 text-[#e39b2b]" aria-label={`Rating ${Math.min(5, Math.round(row.score || 0))}`}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button key={star} type="button" className="text-[14px] leading-none" onClick={() => update((current) => ({ ...current, stars: { ...current.stars, [row.id]: star } }))}>{star <= Math.min(5, Math.round(row.score || 0)) ? "★" : "☆"}</button>
+                          ))}
+                        </span>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
                     </td>
@@ -990,12 +1001,13 @@ export function LeadsView({
                         {(state.labels[row.id] ?? []).map((label) => (
                           <span key={label} title={label} className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }}>{label.slice(0, 1)}</span>
                         ))}
-                        <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => {
-                          const label = window.prompt("Label letter");
-                          if (!label) return;
-                          const letter = label.slice(0, 1).toUpperCase();
-                          update((current) => ({ ...current, labels: { ...current.labels, [row.id]: [...new Set([...(current.labels[row.id] ?? []), letter])] } }));
-                        }}>+</button>
+                        <button type="button" className="text-[11px] text-[#1c93b5]" onClick={() => chrome.openModal(
+                          <ApplyLabels
+                            selected={state.labels[row.id] ?? []}
+                            onClose={chrome.closeModal}
+                            onApply={(labels) => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: labels } })); chrome.closeModal(); }}
+                          />
+                        )}>+</button>
                       </div>
                     </td>
                     <td className="px-2">
@@ -1031,17 +1043,10 @@ export function LeadsView({
                     <td className="px-2 text-[12px]">{row.registered}<br />{row.source}</td>
                     <td className="px-2 text-[12px]">{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td>
                     <td className="px-2 text-[12px]">{row.timeframe}</td>
-                    <td className="px-2 text-[12px]">{row.origin === "site" || row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td>
+                    <td className="px-2 text-[12px]">{row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td>
                     <td className="px-2 text-[12px] leading-5">
-                      {row.origin === "site" ? (
-                        <span>—</span>
-                      ) : (
-                        <>
-                          <span title="Call">Call {row.lastTouch === "—" ? "-" : row.lastTouch}</span><br />
-                          <span title="Email">Email {row.email ? `${(row.logins % 8) + 1}d` : "-"}</span><br />
-                          <span title="Text">Text {row.phoneValid ? `${(row.views % 6) + 1}h` : "-"}</span>
-                        </>
-                      )}
+                      <span title="Last touch">{row.lastTouch === "—" ? "—" : row.lastTouch}</span><br />
+                      <span className="text-[#888]">{row.touchCount || 0} touch{(row.touchCount || 0) === 1 ? "" : "es"}</span>
                     </td>
                     <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>
                       <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
@@ -1953,7 +1958,12 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
   const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [type, setType] = useState("Buyer");
+  const [area, setArea] = useState("Vancouver");
+  const [propertyType, setPropertyType] = useState("Condo");
   const [error, setError] = useState("");
+  const prices = propertyType === "House" ? ["Under $1.2M", "$1.2M–$2M", "$2M–$3.5M", "$3.5M+"] : propertyType === "Townhouse" ? ["Under $800k", "$800k–$1.2M", "$1.2M–$2M", "$2M+"] : ["Under $600k", "$600k–$900k", "$900k–$1.5M", "$1.5M+"];
+  const neighbourhoods = area === "Vancouver" ? ["Downtown", "Kitsilano", "Mount Pleasant", "Dunbar"] : area === "Burnaby" ? ["Metrotown", "Brentwood", "The Heights"] : ["City centre", "Waterfront", "Family neighbourhood"];
   return (
     <ModalFrame title="Add New Lead" onClose={onClose}>
       {error ? <p role="alert" className="mb-3 bg-[#fde7ec] px-2 py-2 text-[13px] text-[#c62828]">{error}</p> : null}
@@ -1961,6 +1971,12 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
       <Field label="Last name"><input className={inputCls} value={last} onChange={(event) => setLast(event.target.value)} /></Field>
       <Field label="Email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
       <Field label="Cell phone"><input className={inputCls} value={phone} onChange={(event) => setPhone(event.target.value)} /></Field>
+      <Field label="Lead type"><select className={inputCls} value={type} onChange={(event) => setType(event.target.value)}><option>Buyer</option><option>Seller</option><option>Both</option></select></Field>
+      <Field label="Area"><select className={inputCls} value={area} onChange={(event) => setArea(event.target.value)}><option>Vancouver</option><option>Burnaby</option><option>Surrey</option><option>Richmond</option></select></Field>
+      <Field label="Neighbourhood"><select className={inputCls}>{neighbourhoods.map((item) => <option key={item}>{item}</option>)}</select></Field>
+      <Field label="Property type"><select className={inputCls} value={propertyType} onChange={(event) => setPropertyType(event.target.value)}><option>Condo</option><option>Townhouse</option><option>House</option></select></Field>
+      <Field label="Price"><select className={inputCls}>{prices.map((item) => <option key={item}>{item}</option>)}</select></Field>
+      <p className="mb-2 text-[12px] text-[#666]">Price choices change with the property type. Neighbourhood choices change with the area. The exact CINC option tree is not in the reference notes, so these are the office lists.</p>
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {

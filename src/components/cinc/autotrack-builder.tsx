@@ -593,7 +593,7 @@ export function AutoTrackWizard({
           <dl className="grid grid-cols-[160px_1fr] gap-y-1">
             <dt className="font-bold">Name</dt><dd>{doc.name}</dd>
             <dt className="font-bold">Owner</dt><dd>{doc.visibility === "private" ? "Private" : "Public"} ({doc.owner || "Casey Archibald"})</dd>
-            <dt className="font-bold">Status</dt><dd>{doc.status === "active" ? "Active" : doc.status === "paused" ? "Paused" : doc.status === "disabled" ? "Disabled" : "Draft"}</dd>
+            <dt className="font-bold">Status</dt><dd>{doc.status === "active" ? "Active" : doc.status === "paused" ? "Paused" : doc.status === "disabled" ? "Disabled" : "Draft"} <button type="button" className="ml-2 text-[#1c93b5]" onClick={() => setDoc({ ...doc, status: doc.status === "paused" ? "active" : "paused" })}>{doc.status === "paused" ? "Resume" : "Pause"}</button></dd>
             <dt className="font-bold">Category</dt><dd>{doc.category === "Select Type" ? "General" : doc.category}</dd>
             <dt className="font-bold">Lead types</dt><dd>{doc.leadTypes.join(", ") || "Everyone"}</dd>
             <dt className="font-bold">Send hours</dt><dd>{doc.hours}{doc.includeWeekend ? ", Include Saturday and Sunday" : ""}{doc.skipHolidays ? ", Skip Holidays" : ""}</dd>

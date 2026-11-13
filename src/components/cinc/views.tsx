@@ -15,7 +15,7 @@ import { BillingPlaceholder, CustomFieldsPanel, DialerSettingsPanel, PageEditor,
 import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, EmptyArt, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
-const AGENT_NUMBER = "4829103344556677";
+const AGENT_NUMBER = "(604) 363-7858";
 const MDID = "MM8D0000AAAA0000BBBB0000CCCC0001";
 
 const toolBtn = "inline-flex h-[30px] items-center gap-1 rounded border border-[#d0d0d0] bg-white px-3 text-[14px] text-[#333] shadow-sm disabled:opacity-40";
@@ -40,7 +40,7 @@ function ordinal(day: number) {
   return `${day}${suffix[(value - 20) % 10] || suffix[value] || suffix[0]}`;
 }
 
-export function LaunchpadView() {
+export function LaunchpadView({ team = false }: { team?: boolean }) {
   const { leads } = useLeads();
   const { state, update } = useCinc();
   const chrome = useChrome();
@@ -51,8 +51,9 @@ export function LaunchpadView() {
     window.addEventListener("cinc-launchpad-home", reset);
     return () => window.removeEventListener("cinc-launchpad-home", reset);
   }, []);
-  const [types, setTypes] = useState<string[]>(["All"]);
-  const [statuses, setStatuses] = useState<string[]>(["Awaiting Response"]);
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("Awaiting Response");
+  const [agentFilter, setAgentFilter] = useState("All agents");
   const [prospect, setProspect] = useState("New Lead - P1");
   const [due, setDue] = useState("Due: Today and Overdue");
   const [flip, setFlip] = useState(false);
@@ -78,14 +79,16 @@ export function LaunchpadView() {
         address: lead.propertyAddress || "Greater Vancouver",
         price: "",
         image: CRM_PROPERTIES[0].image,
+        agent: "Website",
       })),
-  ];
+  ].map((item) => ({ ...item, agent: "agent" in item && item.agent ? item.agent : (item.id.charCodeAt(item.id.length - 1) % 2 === 0 ? "Kayla Gerak" : "Casey Archibald") }));
   const visible = requests.filter((item) => {
     const status = state.requests[item.id] ?? "awaiting";
     const statusLabel = status === "awaiting" ? "Awaiting Response" : status === "acted" ? "Acted On" : "Dismissed";
-    const typeOk = types.includes("All") || types.includes(item.kind);
-    const statusOk = statuses.includes(statusLabel);
-    return typeOk && statusOk;
+    const typeOk = typeFilter === "All" || item.kind === typeFilter;
+    const statusOk = statusLabel === statusFilter;
+    const agentOk = !team || agentFilter === "All agents" || item.agent === agentFilter;
+    return typeOk && statusOk && agentOk;
   });
   const tabs = [
     ["Contact Requested", requests.filter((item) => (state.requests[item.id] ?? "awaiting") === "awaiting").length],
@@ -106,7 +109,7 @@ export function LaunchpadView() {
   });
   return (
     <div className="bg-[#f5f5f5] px-2 pt-6 pb-8">
-      <h1 className="text-[34px] font-light text-[#243238]">Welcome back, {office.user?.name || "Casey Archibald"}.</h1>
+      <h1 className="text-[34px] font-light text-[#243238]">{team ? "Broker Launchpad" : `Welcome back, ${office.user?.name || "Casey Archibald"}.`}</h1>
       <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
@@ -125,19 +128,25 @@ export function LaunchpadView() {
             <>
               <div className="mb-3 flex gap-3 text-[12px]">
                 <Menu
-                  label={<span className="inline-flex h-[34px] w-[170px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">Type: {types[0]} ▾</span>}
-                  items={["All", "AI Ready", "Cash Offer Inquiry", "Etta Message", "HomePulse Inquiry", "Property Inquiry", "Showing Request", "Clear"].map((label) => ({
+                  label={<span className="inline-flex h-[34px] w-[190px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">Type: {typeFilter} ▾</span>}
+                  items={["All", "AI Ready", "Cash Offer Inquiry", "Etta Message", "HomePulse Inquiry", "Property Inquiry", "Showing Request"].map((label) => ({
                     label,
-                    onClick: () => setTypes(label === "Clear" || label === "All" ? ["All"] : types.includes("All") ? [label] : types.includes(label) ? types.filter((item) => item !== label) : [...types, label]),
+                    onClick: () => setTypeFilter(label),
                   }))}
                 />
                 <Menu
-                  label={<span className="inline-flex h-[34px] w-[210px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">{statuses[0]} ▾</span>}
-                  items={["Awaiting Response", "Acted On", "Dismissed", "Clear"].map((label) => ({
+                  label={<span className="inline-flex h-[34px] w-[210px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">{statusFilter} ▾</span>}
+                  items={["Awaiting Response", "Acted On", "Dismissed"].map((label) => ({
                     label,
-                    onClick: () => setStatuses(label === "Clear" ? ["Awaiting Response"] : statuses.includes(label) ? statuses.filter((item) => item !== label) : [...statuses, label]),
+                    onClick: () => setStatusFilter(label),
                   }))}
                 />
+                {team ? (
+                  <Menu
+                    label={<span className="inline-flex h-[34px] w-[180px] items-center justify-between rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm">{agentFilter} ▾</span>}
+                    items={["All agents", "Casey Archibald", "Kayla Gerak", "Website"].map((label) => ({ label, onClick: () => setAgentFilter(label) }))}
+                  />
+                ) : null}
               </div>
               {shownRequests.length ? shownRequests.map((item) => (
                 <article key={item.id} className="mb-4 flex min-h-[290px] gap-0 rounded border border-[#e3e3e3] bg-white shadow-sm">
@@ -170,7 +179,7 @@ export function LaunchpadView() {
                     <div className="mt-3 flex gap-3">
                       <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 rounded border border-[#e5e5e5] object-cover" />
                       <div>
-                        <a className="text-[13px] font-bold text-[#1c93b5]" href="/search">{item.address}</a>
+                        <a className="text-[13px] font-bold text-[#1c93b5]" href={`/search?q=${encodeURIComponent(item.address.split(",")[0] || item.address)}`}>{item.address}</a>
                         <p className="text-[12px]">{item.price}</p>
                       </div>
                     </div>
@@ -1805,18 +1814,28 @@ function PasswordReset() {
   );
 }
 
+function formatAgentPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 function CincNumberField() {
   const [value, setValue] = useState(AGENT_NUMBER);
   const [note, setNote] = useState("");
   useEffect(() => {
     void loadOfficePrefs().then((prefs) => {
-      if (typeof prefs.cincNumber === "string" && prefs.cincNumber) setValue(prefs.cincNumber);
+      if (typeof prefs.cincNumber === "string" && prefs.cincNumber.replace(/\D/g, "").length === 10) setValue(formatAgentPhone(prefs.cincNumber));
     });
   }, []);
   return (
     <>
-      <input className={inputCls} value={value} onChange={(event) => setValue(event.target.value)} />
-      <div className="mt-2 text-right"><Btn kind="blue" onClick={() => { void saveOfficePrefs({ cincNumber: value }).then((error) => setNote(error || "Agent CINC number saved.")); }}>Update</Btn></div>
+      <input className={inputCls} inputMode="tel" aria-label="Agent phone number" value={value} onChange={(event) => setValue(formatAgentPhone(event.target.value))} />
+      <div className="mt-2 text-right"><Btn kind="blue" onClick={() => {
+        if (value.replace(/\D/g, "").length !== 10) { setNote("Enter a 10-digit phone number."); return; }
+        void saveOfficePrefs({ cincNumber: value }).then((error) => setNote(error || "Phone number saved."));
+      }}>Update</Btn></div>
       {note ? <p className="mt-2 text-[12px] text-[#1c93b5]">{note}</p> : null}
     </>
   );
@@ -2616,78 +2635,7 @@ export function GmailView() {
 }
 
 export function BrokerLaunchpad() {
-  const { leads } = useLeads();
-  const { state } = useCinc();
-  const today = new Date();
-  const due = state.reminders.filter((item) => !item.done).length;
-  const header = `${today.toLocaleDateString("en-US", { weekday: "long" })}, ${today.toLocaleDateString("en-US", { month: "long" })} ${today.getDate()} | VIEW: All Agents | Today your team has ${due} reminder${due === 1 ? "" : "s"} due…`;
-  const cities = topCounts(leads.map((lead) => cityOf(`${lead.propertyAddress || ""} ${lead.searchLabel || ""}`)));
-  const sources = topCounts(leads.map((lead) => lead.source || "unknown"));
-  const byWeek = new Map<string, number>();
-  for (const lead of leads) {
-    const when = new Date(lead.createdAt);
-    const label = Number.isNaN(when.getTime()) ? "Unknown" : when.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    byWeek.set(label, (byWeek.get(label) || 0) + 1);
-  }
-  const trends = [...byWeek.entries()].slice(-8);
-  const maxTrend = Math.max(1, ...trends.map(([, count]) => count));
-  return (
-    <div className="p-4">
-      <div className="flex flex-wrap items-center gap-3 border border-[#e5e5e5] bg-white px-3 py-2 text-[13px]">
-        <span className="font-semibold">{header}</span>
-        <button type="button" className="ml-auto bg-[#1c93b5] px-2 py-1 text-white" onClick={() => window.location.reload()}>Refresh</button>
-      </div>
-      <section className="mt-4 border border-[#e5e5e5] bg-white p-4">
-        <h2 className="mb-3 font-bold">Lead Trends</h2>
-        {trends.length ? (
-          <div className="flex h-32 items-end gap-2">
-            {trends.map(([label, count]) => (
-              <div key={label} className="flex flex-1 flex-col items-center justify-end">
-                <div className="w-full bg-[#1c93b5]" style={{ height: `${(count / maxTrend) * 100}%` }} title={`${count}`} />
-                <span className="mt-1 text-[10px] text-[#666]">{label}</span>
-              </div>
-            ))}
-          </div>
-        ) : <p className="text-[13px] text-[#888]">No leads yet.</p>}
-      </section>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <RankList title="Top 10 Lead Cities" rows={cities} />
-        <RankList title="Top 10 Lead Sources" rows={sources} />
-      </div>
-    </div>
-  );
-}
-
-function cityOf(value: string) {
-  const hit = MARKET_AREAS.find((name) => value.toLowerCase().includes(name.toLowerCase()));
-  if (hit) return hit;
-  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
-  const city = parts.find((part) => /vancouver|burnaby|surrey|richmond|coquitlam|delta|langley|new westminster|north van|west van|maple ridge|port moody|port coquitlam/i.test(part));
-  return city || "Unknown";
-}
-
-function topCounts(values: string[]) {
-  const counts = new Map<string, number>();
-  for (const value of values) {
-    const key = value || "Unknown";
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-}
-
-function RankList({ title, rows }: { title: string; rows: [string, number][] }) {
-  return (
-    <section className="border border-[#e5e5e5] bg-white p-4">
-      <h2 className="mb-2 font-bold">{title}</h2>
-      {rows.length ? (
-        <ol className="text-[13px]">
-          {rows.map(([label, count]) => (
-            <li key={label} className="flex justify-between border-b border-[#eee] py-1"><span>{label}</span><span>{count}</span></li>
-          ))}
-        </ol>
-      ) : <p className="text-[13px] text-[#888]">No leads yet.</p>}
-    </section>
-  );
+  return <LaunchpadView team />;
 }
 
 export function ReportsView() {

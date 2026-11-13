@@ -119,7 +119,7 @@ type Ctx = {
   leads: Lead[];
   database: DatabaseNotice | null;
   add: (input: CreateLeadInput) => Lead;
-  capture: (input: CreateLeadInput) => Promise<{ ok: boolean; persisted?: boolean; message?: string }>;
+  capture: (input: CreateLeadInput) => Promise<{ ok: boolean; persisted?: boolean; message?: string; existing?: boolean }>;
   updateStatus: (id: string, status: LeadStatus) => void;
   updateNotes: (id: string, notes: string) => void;
   appendNote: (id: string, line: string) => void;
@@ -440,6 +440,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         ok?: boolean;
         persisted?: boolean;
         message?: string;
+        existing?: boolean;
         lead?: Partial<Lead>;
       } | null;
       if (data?.lead?.id) {
@@ -467,6 +468,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         ok: response.ok && data?.ok !== false,
         persisted: Boolean(data?.persisted),
         message: data?.message,
+        existing: Boolean(data?.existing),
       };
     });
   }, []);

@@ -100,10 +100,14 @@ function AuthDialog({
       setError("Please agree to be contacted. That consent is required.");
       return;
     }
-    signUp(name, email, phone);
-    onClose();
+    if (leads.some((lead) => lead.email.trim().toLowerCase() === email.toLowerCase())) {
+      onMode("login");
+      setError("Welcome back. Sign in with the phone you used as your password. We kept this email on the existing lead.");
+      return;
+    }
     const here = `${window.location.pathname}${window.location.search}`;
-    void capture({
+    const device = window.matchMedia("(max-width: 800px)").matches ? "mobile" : "desktop";
+    const result = await capture({
       name,
       email,
       phone,
@@ -112,7 +116,21 @@ function AuthDialog({
       intent: "buyer",
       consent: true,
       notes: `Free Access signup from ${here}. CASL consent captured at registration.`,
+      attribution: {
+        landingPath: here,
+        device,
+        timeframe: String(data.get("timeframe") || ""),
+        firstTimeBuyer: data.get("firstTime") === "on",
+        preApproved: data.get("preApproved") === "on",
+      },
     });
+    if (result.existing) {
+      onMode("login");
+      setError("Welcome back. Sign in instead of starting a second lead.");
+      return;
+    }
+    signUp(name, email, phone);
+    onClose();
   }
 
   function onLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -198,6 +216,18 @@ function AuthDialog({
                 type="tel"
                 required
               />
+              <label className="mb-2 block text-left text-[12px] text-[#354652]">
+                Timeframe
+                <select name="timeframe" className="mt-1 h-10 w-full border border-[#dbe3e8] px-2 text-sm">
+                  <option value="">Not sure yet</option>
+                  <option>0-3 months</option>
+                  <option>3-6 months</option>
+                  <option>6-12 months</option>
+                  <option>12+ months</option>
+                </select>
+              </label>
+              <label className="mb-2 flex items-center gap-2 text-left text-[12px] text-[#354652]"><input name="firstTime" type="checkbox" /> First-time home buyer</label>
+              <label className="mb-3 flex items-center gap-2 text-left text-[12px] text-[#354652]"><input name="preApproved" type="checkbox" /> Mortgage pre-approved</label>
               {error && <p className="mb-2 text-center text-sm text-red-600" role="alert">{error}</p>}
               <label className="mb-3 flex items-start gap-2 text-left text-[11px] leading-snug text-[#354652]">
                 <input name="consent" type="checkbox" required className="mt-0.5" />
