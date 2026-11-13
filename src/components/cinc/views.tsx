@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { statusLabel } from "@/lib/autotrack";
+import { applyOfficeList, OFFICE_LISTS, type OfficeRow } from "@/lib/office-list";
+import { OfficeListBar, useOfficeList } from "./office-list-bar";
 import { useLeads } from "@/lib/leads";
 import { AutoTrackWizard, loadAutoTracks } from "./autotrack-builder";
 import { useChrome } from "./chrome-context";
@@ -54,6 +56,8 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
   const [typeFilter, setTypeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("Awaiting Response");
   const [agentFilter, setAgentFilter] = useState("All agents");
+  const launchList = useOfficeList("launchpad", "name", ["name", "type", "status", "agent", "when"]);
+  const [pickedRequests, setPickedRequests] = useState<string[]>([]);
   const [prospect, setProspect] = useState("New Lead - P1");
   const [due, setDue] = useState("Due: Today and Overdue");
   const [flip, setFlip] = useState(false);
@@ -98,7 +102,27 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
     ["Trending Leads", 0],
   ] as const;
 
-  const shownRequests = visible.slice(0, 12);
+  const launchRecords: OfficeRow[] = visible.map((item) => ({
+    name: item.name,
+    email: "",
+    type: item.kind,
+    status: (state.requests[item.id] ?? "awaiting") === "awaiting" ? "Awaiting Response" : (state.requests[item.id] === "dismissed" ? "Dismissed" : "Acted On"),
+    agent: String(item.agent || ""),
+    city: item.address,
+    price: 0,
+    when: 0,
+    count: 1,
+    recent: 0,
+    stage: "",
+    channel: "",
+    due: item.at,
+    title: item.message,
+  }));
+  const arrangedRequests = applyOfficeList(launchRecords, OFFICE_LISTS.launchpad, launchList.query);
+  const shownRequests = arrangedRequests.rows.flatMap((record) => {
+    const item = visible.find((entry) => entry.name === record.name && entry.kind === record.type);
+    return item ? [item] : [];
+  });
   const openReminders = state.reminders.filter((item) => {
     if (item.done) return false;
     if (due === "Due Today") return item.due === "Today";
@@ -148,8 +172,24 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                   />
                 ) : null}
               </div>
+              <OfficeListBar
+                query={launchList.query}
+                update={launchList.update}
+                views={launchList.views}
+                saveView={launchList.saveView}
+                filters={[
+                  { id: "type", label: "Type", options: ["Showing Request", "Property Inquiry", "AI Ready"] },
+                  { id: "status", label: "Status", options: ["Awaiting Response", "Acted On", "Dismissed"] },
+                  { id: "agent", label: "Agent", options: ["Casey Archibald", "Kayla Gerak", "Website"] },
+                ]}
+                columns={OFFICE_LISTS.launchpad.columns.map((column) => ({ id: column.id, label: column.label }))}
+                total={arrangedRequests.total}
+                emptyLabel="No requests match this search and these filters."
+              />
+              {pickedRequests.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-white" onClick={() => { update((current) => ({ ...current, requests: { ...current.requests, ...Object.fromEntries(pickedRequests.map((id) => [id, "acted"])) } })); setPickedRequests([]); }}>Mark selected acted on</button> : null}
               {shownRequests.length ? shownRequests.map((item) => (
                 <article key={item.id} className="mb-4 flex min-h-[290px] gap-0 rounded border border-[#e3e3e3] bg-white shadow-sm">
+                  <input className="m-2" type="checkbox" aria-label={`Select ${item.name}`} checked={pickedRequests.includes(item.id)} onChange={(event) => setPickedRequests(event.target.checked ? [...pickedRequests, item.id] : pickedRequests.filter((id) => id !== item.id))} />
                   <div className="grid w-14 shrink-0 place-items-center border-r border-[#eee] text-[#1c93b5]">
                     {item.kind === "Showing Request" ? (
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="5" width="16" height="15" rx="1" /><path d="M4 9h16M8 3v4M16 3v4" /></svg>
@@ -372,11 +412,32 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
   const [sort, setSort] = useState("Reminder Due Date");
   const [agent, setAgent] = useState("All");
   const agents = ["All", "Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"];
+  const dealList = useOfficeList(`deals-${board}`, "client", ["client", "stage", "price", "agent", "created"]);
   const deals = state.deals
     .filter((deal) => deal.board === board && (status === "All" || deal.status === status))
     .filter((deal) => agent === "All" || (deal.agent || "Unassigned") === agent)
     .filter((deal) => created === "Anytime" || Date.now() - deal.createdAt < (created === "Last 7 Days" ? 7 : 30) * 86400000)
     .sort((a, b) => sort === "Price" ? a.price.localeCompare(b.price) : b.createdAt - a.createdAt);
+  const arrangedDeals = applyOfficeList(deals.map((deal) => ({
+    name: deal.client,
+    email: "",
+    type: deal.board,
+    status: deal.status,
+    agent: deal.agent || "Unassigned",
+    city: deal.address,
+    price: Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0,
+    when: deal.createdAt,
+    count: 1,
+    recent: deal.createdAt,
+    stage: deal.stage,
+    channel: "",
+    due: "",
+    title: deal.id,
+  })), OFFICE_LISTS.deals, dealList.query);
+  const visibleDeals = arrangedDeals.rows.flatMap((row) => {
+    const deal = deals.find((item) => item.id === row.title);
+    return deal ? [deal] : [];
+  });
 
   const money = (amount: number) => (amount > 0 ? `$${amount.toLocaleString("en-CA")}` : "$--");
   return (
@@ -399,9 +460,10 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
         <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
         <Menu className="ml-auto" label={<span className={`${toolBtn} min-w-[180px] justify-between`}>↑↓ Sort By: <b>{sort}</b> ▾</span>} items={["Reminder Due Date", "Newest", "Price"].map((label) => ({ label, onClick: () => setSort(label) }))} />
       </div>
+      <OfficeListBar query={dealList.query} update={dealList.update} views={dealList.views} saveView={dealList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Archived"] }, { id: "stage", label: "Stage", options: stages.map((stage) => stage.id) }, { id: "agent", label: "Agent", options: agents.filter((name) => name !== "All") }]} columns={OFFICE_LISTS.deals.columns.map((column) => ({ id: column.id, label: column.label }))} total={arrangedDeals.total} emptyLabel="No deals match this search and these filters." />
       <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-4 rounded border border-[#e5e5e5] bg-white p-4 shadow-sm">
         {stages.map((stage) => {
-          const cards = deals.filter((deal) => deal.stage === stage.id);
+          const cards = visibleDeals.filter((deal) => deal.stage === stage.id);
           return (
             <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e1e1e1] bg-[#f1f1f1] shadow-sm">
               <header className="rounded-t bg-white px-3 py-3">
@@ -430,7 +492,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
             </section>
           );
         })}
-        {!deals.length ? (
+        {!visibleDeals.length ? (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <div className="pointer-events-auto bg-white px-8 py-5 text-center shadow-md">
               <p className="text-[15px] font-bold">No Deals Found Matching Your Filters</p>
@@ -2470,17 +2532,42 @@ export function CalendarView() {
 export function TasksView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const taskList = useOfficeList("tasks", "title", ["title", "due", "status", "agent"]);
+  const [picked, setPicked] = useState<string[]>([]);
+  const arranged = applyOfficeList(state.reminders.map((item) => ({
+    name: item.title,
+    email: "",
+    type: "reminder",
+    status: item.done ? "Done" : "Open",
+    agent: "Office",
+    city: "",
+    price: 0,
+    when: 0,
+    count: 1,
+    recent: item.done ? 0 : 1,
+    stage: "",
+    channel: "",
+    due: item.due,
+    title: item.id,
+  })), OFFICE_LISTS.tasks, taskList.query);
+  const reminders = arranged.rows.flatMap((row) => {
+    const item = state.reminders.find((reminder) => reminder.id === row.title);
+    return item ? [item] : [];
+  });
   return (
     <div className="p-4">
+      <OfficeListBar query={taskList.query} update={taskList.update} views={taskList.views} saveView={taskList.saveView} filters={[{ id: "status", label: "Status", options: ["Open", "Done"] }]} columns={OFFICE_LISTS.tasks.columns.map((column) => ({ id: column.id, label: column.label }))} total={arranged.total} emptyLabel="No reminders match." />
+      {picked.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => picked.includes(reminder.id) ? { ...reminder, done: true } : reminder) })); setPicked([]); chrome.toast("Selected reminders completed."); }}>Complete selected</button> : null}
       <div className="bg-white p-4">
-        {state.reminders.map((item) => (
+        {reminders.map((item) => (
           <label key={item.id} className="flex items-center gap-2 border-b border-[#eee] py-2 text-[13px]">
+            <input type="checkbox" aria-label={`Select ${item.title}`} checked={picked.includes(item.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, item.id] : picked.filter((id) => id !== item.id))} />
             <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
             <a href={item.leadId ? href.lead(item.leadId) : href.tasks} className="text-[#1c93b5]">{item.title}</a>
             <span className="ml-auto text-[12px] text-[#888]">{item.due}</span>
           </label>
         ))}
-        {!state.reminders.length ? <p className="text-[13px] text-[#888]">No tasks.</p> : null}
+        {!reminders.length ? <p className="text-[13px] text-[#888]">No reminders match this search and these filters.</p> : null}
       </div>
     </div>
   );
@@ -2641,20 +2728,41 @@ export function BrokerLaunchpad() {
 export function ReportsView() {
   const { leads } = useLeads();
   const { state } = useCinc();
+  const reportList = useOfficeList("reports", "label", ["label", "count", "agent"]);
   const stats = [
     ["Website leads", leads.length],
     ["Calls logged", state.calls.length],
     ["Deals", state.deals.length],
     ["Templates", state.templates.length],
   ];
+  const arranged = applyOfficeList(stats.map(([label, value]) => ({
+    name: String(label),
+    email: "",
+    type: "report",
+    status: "Ready",
+    agent: "Office",
+    city: "",
+    price: 0,
+    when: 0,
+    count: Number(value),
+    recent: Number(value),
+    stage: "",
+    channel: "",
+    due: "",
+    title: String(label),
+  })), OFFICE_LISTS.reports, reportList.query);
   return (
-    <div className="grid gap-3 p-4 sm:grid-cols-2">
-      {stats.map(([label, value]) => (
-        <article key={label} className="bg-white p-4">
-          <p className="text-[12px] uppercase text-[#888]">{label}</p>
-          <p className="text-[28px] text-[#1c93b5]">{value}</p>
+    <div className="p-4">
+      <OfficeListBar query={reportList.query} update={reportList.update} views={reportList.views} saveView={reportList.saveView} filters={[]} columns={OFFICE_LISTS.reports.columns.map((column) => ({ id: column.id, label: column.label }))} total={arranged.total} emptyLabel="No report rows match." />
+    <div className="grid gap-3 sm:grid-cols-2">
+      {arranged.rows.map((row) => (
+        <article key={row.title} className="bg-white p-4">
+          <p className="text-[12px] uppercase text-[#888]">{row.title}</p>
+          <p className="text-[28px] text-[#1c93b5]">{row.count}</p>
         </article>
       ))}
     </div>
+    </div>
   );
 }
+

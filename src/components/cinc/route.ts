@@ -115,7 +115,7 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
     return { view: "landing", category: "all" };
   }
 
-  const parts = hash.replace(/^#/, "").split("/").filter(Boolean);
+  const parts = hash.replace(/^#/, "").split("?")[0].split("/").filter(Boolean);
   const [a, b, c, d] = parts;
 
   if (!a || a === "launchpad") {
