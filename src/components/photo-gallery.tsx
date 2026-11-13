@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, PlayCircle, X } from "lucide-react";
 import { LeadDialog } from "@/components/lead-dialog";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { cn } from "@/lib/utils";
 
 const DetailMap = dynamic(
@@ -42,11 +43,16 @@ export function PhotoGallery({
   const [seen, setSeen] = useState<Set<number>>(() => new Set([0]));
   const [gate, setGate] = useState(false);
   const unlockedRef = useRef(false);
+  const { user } = useDemoAuth();
 
   const unlockGallery = useCallback(() => {
     unlockedRef.current = true;
     setGate(false);
   }, []);
+
+  useEffect(() => {
+    if (user) unlockGallery();
+  }, [unlockGallery, user]);
 
   const openAt = (i: number) => {
     setIndex(i);

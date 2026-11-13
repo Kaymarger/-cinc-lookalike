@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOfficeSession } from "@/components/cinc/office-session";
 import { useDemoAuth } from "@/lib/demo-auth";
 
@@ -71,6 +71,101 @@ function SettingsForm({
   );
 }
 
+const FREQUENCIES = ["Instant", "Daily (Best for default search)", "Weekly", "Never"] as const;
+
+function AlertSettings({ email }: { email: string }) {
+  const [subscribed, setSubscribed] = useState(true);
+  const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>("Daily (Best for default search)");
+  const [searches, setSearches] = useState<{ id: string; name: string; frequency: string }[]>([]);
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    const raw = localStorage.getItem(`gvhs-alerts:${email.toLowerCase()}`);
+    if (raw) {
+      try {
+        const saved = JSON.parse(raw) as { subscribed?: boolean; frequency?: string };
+        if (typeof saved.subscribed === "boolean") setSubscribed(saved.subscribed);
+        if (saved.frequency && FREQUENCIES.includes(saved.frequency as (typeof FREQUENCIES)[number])) {
+          setFrequency(saved.frequency as (typeof FREQUENCIES)[number]);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    void fetch(`/api/account/searches?email=${encodeURIComponent(email)}`)
+      .then(async (response) => (await response.json()) as { searches?: { id: string; name: string; frequency: string }[] })
+      .then((data) => setSearches(data.searches ?? []))
+      .catch(() => undefined);
+  }, [email]);
+
+  function persist(nextSubscribed: boolean, nextFrequency: string) {
+    localStorage.setItem(`gvhs-alerts:${email.toLowerCase()}`, JSON.stringify({ subscribed: nextSubscribed, frequency: nextFrequency }));
+    setNote("Saved.");
+  }
+
+  return (
+    <section className="mt-6 border border-[#dbe3e8] bg-white p-5">
+      <h2 className="text-lg font-semibold text-[#1f2930]">Email and property alerts</h2>
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={subscribed}
+          onChange={(event) => {
+            setSubscribed(event.target.checked);
+            persist(event.target.checked, frequency);
+            void fetch("/api/unsubscribe", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, subscribe: event.target.checked }),
+            }).catch(() => undefined);
+          }}
+        />
+        Send me property alert emails
+      </label>
+      <label className="mt-3 block text-sm">
+        Default frequency
+        <select
+          className="mt-1 h-11 w-full border border-[#dbe3e8] px-3"
+          value={frequency}
+          onChange={(event) => {
+            const next = event.target.value as (typeof FREQUENCIES)[number];
+            setFrequency(next);
+            persist(subscribed, next);
+          }}
+        >
+          {FREQUENCIES.map((item) => <option key={item}>{item}</option>)}
+        </select>
+      </label>
+      {searches.length ? (
+        <ul className="mt-4 space-y-3">
+          {searches.map((search) => (
+            <li key={search.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span>{search.name}</span>
+              <select
+                aria-label={`Frequency for ${search.name}`}
+                className="h-10 border border-[#dbe3e8] px-2"
+                value={search.frequency}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSearches((current) => current.map((item) => item.id === search.id ? { ...item, frequency: next } : item));
+                  void fetch("/api/account/searches", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, id: search.id, frequency: next }),
+                  });
+                }}
+              >
+                {FREQUENCIES.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {note ? <p className="mt-2 text-sm text-[#2e9e5b]">{note}</p> : null}
+    </section>
+  );
+}
+
 export default function AccountSettingsPage() {
   const { ready, user, updateProfile, signOut } = useDemoAuth();
   const office = useOfficeSession();
@@ -108,6 +203,7 @@ export default function AccountSettingsPage() {
       <h1 className="font-[family-name:var(--font-display)] text-3xl text-[#1f2930]">
         Settings
       </h1>
+      {user ? <AlertSettings email={user.email} /> : null}
       <SettingsForm
         key={`${agent?.id || "guest"}-${initialEmail}`}
         initialName={initialName}

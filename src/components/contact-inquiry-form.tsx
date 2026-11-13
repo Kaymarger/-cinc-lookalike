@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { SITE } from "@/lib/site";
 
@@ -16,6 +17,7 @@ export function ContactInquiryForm({
   includeAddress?: boolean;
 }) {
   const { capture } = useLeads();
+  const { user } = useDemoAuth();
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
   const [name, setName] = useState("");
@@ -25,9 +27,9 @@ export function ContactInquiryForm({
     e.preventDefault();
     setError("");
     const data = new FormData(e.currentTarget);
-    const fullName = String(data.get("FullName") || "").trim();
-    const email = String(data.get("Email") || "").trim();
-    const phone = String(data.get("Phone") || "").trim();
+    const fullName = String(data.get("FullName") || user?.name || "").trim();
+    const email = String(data.get("Email") || user?.email || "").trim();
+    const phone = String(data.get("Phone") || user?.phone || "").trim();
     const address = String(data.get("Address") || "").trim();
     const message = String(data.get("Message") || "").trim();
     if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.replace(/\D/g, "").length < 7) {
@@ -97,29 +99,15 @@ export function ContactInquiryForm({
         </p>
       </div>
       <form onSubmit={onSubmit} noValidate className="space-y-3 p-5">
-        <input
-          name="FullName"
-          required
-          placeholder="Full Name"
-          aria-label="Full Name"
-          className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-        />
-        <input
-          name="Email"
-          type="email"
-          required
-          placeholder="Email"
-          aria-label="Email"
-          className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-        />
-        <input
-          name="Phone"
-          type="tel"
-          required
-          placeholder="Phone"
-          aria-label="Phone"
-          className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
-        />
+        {user ? (
+          <p className="text-sm text-[#444]">Sending as {user.name}. We already have your email and phone.</p>
+        ) : (
+          <>
+            <input name="FullName" required placeholder="Full Name" aria-label="Full Name" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
+            <input name="Email" type="email" required placeholder="Email" aria-label="Email" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
+            <input name="Phone" type="tel" required placeholder="Phone" aria-label="Phone" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
+          </>
+        )}
         {includeAddress && (
           <input
             name="Address"

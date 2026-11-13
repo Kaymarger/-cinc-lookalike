@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 import Link from "next/link";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export function LeadDialog({
 }) {
   const panelId = useId().replace(/:/g, "");
   const { capture } = useLeads();
+  const { user } = useDemoAuth();
   const [sent, setSent] = useState(false);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -42,35 +44,42 @@ export function LeadDialog({
           ? "showing_request"
           : "registration");
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    const data = new FormData(e.currentTarget);
-    if (data.get("consent") !== "on") {
-      setError("Please agree to be contacted.");
-      return;
-    }
-    const fullName = String(data.get("name") || "").trim();
-    setPending(true);
-    const result = await capture({
+  function send(fullName: string, email: string, phone: string, repeatConsent: boolean) {
+    setName(fullName);
+    setSent(true);
+    setPending(false);
+    onSent?.();
+    void capture({
       name: fullName,
-      email: String(data.get("email") || ""),
-      phone: String(data.get("phone") || ""),
-      smsOptIn: true,
+      email,
+      phone,
+      smsOptIn: !user,
       source: resolvedSource,
       propertyAddress,
       propertyId,
       consent: true,
       intent: "inquiry",
+      notes: repeatConsent ? "Follow-up uses the consent captured at registration." : undefined,
     });
-    setPending(false);
-    if (!result.ok) {
-      setError(result.message || "Please check the form and try again.");
+  }
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    const data = new FormData(e.currentTarget);
+    if (!user && data.get("consent") !== "on") {
+      setError("Please agree to be contacted.");
       return;
     }
-    setName(fullName);
-    setSent(true);
-    onSent?.();
+    const fullName = String(data.get("name") || user?.name || "").trim();
+    const email = String(data.get("email") || user?.email || "").trim();
+    const phone = String(data.get("phone") || user?.phone || "").trim();
+    send(fullName, email, phone, Boolean(user));
+  }
+
+  function sendAsUser() {
+    if (!user) return;
+    send(user.name, user.email, user.phone || "", true);
   }
 
   function resetAndClose(el: HTMLElement | null) {
@@ -83,7 +92,8 @@ export function LeadDialog({
     <div className={cn("w-full", className?.includes("!w-auto") && "w-auto")}>
       <button
         type="button"
-        popoverTarget={panelId}
+        popoverTarget={user ? undefined : panelId}
+        onClick={user ? sendAsUser : undefined}
         className={cn(
           "inline-flex h-11 w-full items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors",
           variant === "outline"
@@ -92,7 +102,7 @@ export function LeadDialog({
           className
         )}
       >
-        {triggerLabel}
+        {sent && user ? "Request sent" : triggerLabel}
       </button>
 
       <div

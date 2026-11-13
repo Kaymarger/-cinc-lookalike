@@ -1,4 +1,4 @@
-import { deleteSearchForEmail, listSearchesForEmail } from "@/lib/lead-searches-db";
+import { deleteSearchForEmail, listSearchesForEmail, updateSearchFrequencyForEmail } from "@/lib/lead-searches-db";
 import { leadsDatabaseConfigured } from "@/lib/leads-db";
 
 export const runtime = "nodejs";
@@ -58,6 +58,20 @@ export async function GET(request: Request) {
     console.error("[account searches]", error instanceof Error ? error.name : "error");
     return Response.json({ ok: false, searches: [], message: "Saved searches are temporarily unavailable." }, { status: 503 });
   }
+}
+
+export async function PATCH(request: Request) {
+  if (rateLimited(clientIp(request))) {
+    return Response.json({ ok: false, message: "Too many requests." }, { status: 429 });
+  }
+  const body = (await request.json().catch(() => null)) as { email?: unknown; id?: unknown; frequency?: unknown } | null;
+  const email = emailOf(typeof body?.email === "string" ? body.email : "");
+  const id = String(body?.id ?? "").slice(0, 80);
+  const frequency = String(body?.frequency ?? "").slice(0, 80);
+  if (!email || !id || !frequency) return Response.json({ ok: false, message: "Missing search." }, { status: 400 });
+  if (!leadsDatabaseConfigured()) return Response.json({ ok: true, stored: "device" });
+  const updated = await updateSearchFrequencyForEmail(email, id, frequency);
+  return Response.json({ ok: updated, stored: updated ? "database" : "device" });
 }
 
 export async function DELETE(request: Request) {

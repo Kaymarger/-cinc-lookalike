@@ -4,8 +4,7 @@ import { alertHits, listAlertSearches, markAlertChecked } from "@/lib/lead-searc
 import { leadsDatabaseConfigured } from "@/lib/leads-db";
 import { propertyHref } from "@/lib/listing-url";
 import { sendLeadEmail, type AlertChannel } from "@/lib/notify-lead";
-import { properties } from "@/lib/properties";
-import { alertIsDue, newListingWindowDays, newMatchesForSearch } from "@/lib/saved-search-alerts";
+import { alertIsDue, newListingWindowDays } from "@/lib/saved-search-alerts";
 import { formatPrice } from "@/lib/search";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
@@ -54,7 +53,7 @@ function message(
   ].join("\n");
 }
 
-export async function runSavedSearchAlerts(now = new Date()): Promise<AlertRunReport> {
+export async function runSavedSearchAlerts(now = new Date(), options?: { dry?: boolean }): Promise<AlertRunReport> {
   const report: AlertRunReport = {
     ok: true,
     database: leadsDatabaseConfigured(),
@@ -77,21 +76,27 @@ export async function runSavedSearchAlerts(now = new Date()): Promise<AlertRunRe
     if (!alertIsDue(search.frequency, search.lastAlertAt, now)) continue;
     report.due += 1;
     const already = await alertHits(search.id);
-    const matches = ddfConfigured()
-      ? await ddfListingsForAlert({
-          city: search.city,
-          minPrice: search.minPrice,
-          maxPrice: search.maxPrice,
-          beds: search.beds,
-          baths: search.baths,
-          propertyType: search.propertyType,
-          windowDays: newListingWindowDays(search.frequency, search.lastAlertAt, now),
-          exclude: [...already],
-        })
-      : newMatchesForSearch(search, properties, already, now, search.lastAlertAt);
+    if (!ddfConfigured()) {
+      report.skipped += 1;
+      continue;
+    }
+    const matches = await ddfListingsForAlert({
+      city: search.city,
+      minPrice: search.minPrice,
+      maxPrice: search.maxPrice,
+      beds: search.beds,
+      baths: search.baths,
+      propertyType: search.propertyType,
+      windowDays: newListingWindowDays(search.frequency, search.lastAlertAt, now),
+      exclude: [...already],
+    });
     if (!matches.length) {
       report.empty += 1;
       await markAlertChecked(search.id, [], now);
+      continue;
+    }
+    if (options?.dry) {
+      report.skipped += 1;
       continue;
     }
     const email = await sendLeadEmail(

@@ -2,6 +2,7 @@
 
 import { Phone } from "lucide-react";
 import { useCompare } from "@/lib/compare";
+import { SITE } from "@/lib/site";
 
 export function MobileAssistBar() {
   const { ready, homes } = useCompare();
@@ -19,11 +20,11 @@ export function MobileAssistBar() {
           </p>
         </div>
         <a
-          href="tel:6045550100"
+          href={`tel:${SITE.phoneTel}`}
           className="inline-flex h-10 shrink-0 items-center gap-2 rounded-sm bg-[var(--cedar)] px-3 text-sm font-medium text-white hover:brightness-95"
         >
           <Phone className="size-4" />
-          604-555-0100
+          {SITE.phoneDisplay}
         </a>
       </div>
     </div>

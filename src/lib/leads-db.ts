@@ -584,6 +584,33 @@ export async function deleteCapturedLead(id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+export async function appendPropertyNote(email: string, line: string): Promise<number> {
+  const sql = await ready();
+  if (!sql) return 0;
+  const rows = await sql<{ id: string }[]>`
+    UPDATE captured_leads
+    SET notes = CASE WHEN btrim(notes) = '' THEN ${line} ELSE notes || ${"\n" + line} END,
+        updated_at = now()
+    WHERE lower(email) = ${email.toLowerCase()}
+    RETURNING id
+  `;
+  return rows.length;
+}
+
+export async function setLeadEmailSubscription(email: string, subscribed: boolean): Promise<number> {
+  const sql = await ready();
+  if (!sql) return 0;
+  if (!subscribed) return unsubscribeLeadEmail(email);
+  const rows = await sql<{ id: string }[]>`
+    UPDATE captured_leads
+    SET notes = regexp_replace(notes, 'Unsubscribed from email and text\\.?', '', 'gi'),
+        updated_at = now()
+    WHERE lower(email) = ${email.toLowerCase()}
+    RETURNING id
+  `;
+  return rows.length;
+}
+
 export async function unsubscribeLeadEmail(email: string): Promise<number> {
   const sql = await ready();
   if (!sql) return 0;

@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
 import { officeDb } from "@/lib/leads-db";
 import { sendOfficeSms } from "@/lib/office-mail";
+import { propertyHref } from "./listing-url";
+import { getFeaturedProperties } from "./search";
 import { registrationWelcome } from "./welcome-email";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
@@ -163,8 +165,20 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
         SITE.agent,
         SITE.phoneDisplay,
       ].join("\n")
-    : registrationWelcome(lead).text;
-  const html = savedSearch ? undefined : registrationWelcome(lead).html;
+    : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
+        address: property.address,
+        city: property.city,
+        price: property.price,
+        href: propertyHref(property),
+        image: property.images[0],
+      }))).text;
+  const html = savedSearch ? undefined : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
+    address: property.address,
+    city: property.city,
+    price: property.price,
+    href: propertyHref(property),
+    image: property.images[0],
+  }))).html;
   const email = await sendLeadEmail(lead.email, subject, welcome, html);
   const sms = lead.smsOptIn
     ? await sendLeadSms(lead.phone, `${SITE.company}: you're signed up for home alerts. Reply STOP to opt out.`)

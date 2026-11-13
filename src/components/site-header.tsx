@@ -107,11 +107,11 @@ export function SiteHeader() {
 
         <Link href="/" className="shrink-0" onClick={close}>
           <Image
-            src="/brand/site-logo.png"
-            alt="Greater Vancouver Area Home Search"
-            width={200}
-            height={46}
-            className="h-[52px] w-auto max-w-[160px] sm:h-[60px]"
+            src="/brand/archibald-logo.png"
+            alt="Archibald Real Estate Group"
+            width={800}
+            height={186}
+            className="h-auto w-[148px] max-w-[46vw] object-contain sm:w-[210px]"
             priority
           />
         </Link>

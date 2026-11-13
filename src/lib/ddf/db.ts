@@ -1,3 +1,4 @@
+import { parseShape, pointInPolygon, shapeBounds } from "@/lib/geo";
 import { officeDb } from "@/lib/leads-db";
 import type { DdfFloorPlan, DdfListing, DdfOpenHouse, DdfPhoto } from "@/lib/ddf/normalize";
 import { upcomingWeekendDates } from "@/lib/weekend-open-house";
@@ -356,8 +357,11 @@ const searchCache = new Map<string, { at: number; value: { properties: Property[
 export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_PAGE_SIZE): Promise<{ properties: Property[]; total: number }> {
   const sql = await officeDb();
   if (!sql) return { properties: [], total: 0 };
+  const drawn = parseShape(filters.shape);
+  const box = drawn ? shapeBounds(drawn) : null;
   const page = Math.max(1, filters.page || 1);
-  const offset = (page - 1) * limit;
+  const pageLimit = drawn ? 200 : limit;
+  const offset = drawn ? 0 : (page - 1) * limit;
   const cacheKey = JSON.stringify({ filters, limit, offset });
   const cached = searchCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 20_000) return cached.value;
@@ -401,6 +405,15 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
         )
       )
       AND (
+        ${!box}
+        OR (
+          latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND latitude BETWEEN ${box?.minLat ?? 0} AND ${box?.maxLat ?? 0}
+          AND longitude BETWEEN ${box?.minLng ?? 0} AND ${box?.maxLng ?? 0}
+        )
+      )
+      AND (
         ${!circleOn}
         OR (
           latitude IS NOT NULL
@@ -431,11 +444,14 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
         OR (${typePattern.includes("duplex")} AND public_remarks ~* 'duplex')
       )
     ORDER BY ${orderBy(sql, filters.sort)}
-    LIMIT ${limit}
+    LIMIT ${pageLimit}
     OFFSET ${offset}
   `;
-  const total = Number(rows[0]?.total_count || 0);
-  const value = { properties: rows.map(propertyFromRow), total };
+  let properties = rows.map(propertyFromRow);
+  if (drawn) properties = properties.filter((property) => pointInPolygon({ lat: property.lat, lng: property.lng }, drawn));
+  const total = drawn ? properties.length : Number(rows[0]?.total_count || 0);
+  if (drawn) properties = properties.slice(0, limit);
+  const value = { properties, total };
   if (total > 0) searchCache.set(cacheKey, { at: Date.now(), value });
   return value;
 }

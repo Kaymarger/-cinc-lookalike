@@ -21,7 +21,8 @@ export async function GET(request: Request) {
     return Response.json({ ok: gate.status === 200, skipped: gate.status === 200, message: gate.message }, { status: gate.status });
   }
   try {
-    const report = await runSavedSearchAlerts();
+    const dry = new URL(request.url).searchParams.get("dry") === "1" || process.env.ALERTS_DRY_RUN === "1";
+    const report = await runSavedSearchAlerts(new Date(), { dry });
     return Response.json(report);
   } catch (error) {
     console.error("[alerts] saved search run failed", error instanceof Error ? error.name : "error");

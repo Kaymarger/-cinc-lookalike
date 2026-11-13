@@ -1,5 +1,5 @@
 import { properties } from "./properties";
-import { insideCircle } from "./geo";
+import { insideCircle, parseShape, pointInPolygon } from "./geo";
 import type { Property, SearchFilters } from "./types";
 
 export function formatPrice(price: number): string {
@@ -111,6 +111,7 @@ export function parseFilters(
     circleLat: num("circleLat"),
     circleLng: num("circleLng"),
     circleKm: num("circleKm"),
+    shape: parseShape(get("shape")) ? get("shape") : undefined,
     weekend: get("weekend") === "1" || get("weekend") === "true" ? true : undefined,
     newListings:
       newListings === "1" || newListings === "true" ? true : undefined,
@@ -142,6 +143,11 @@ export function searchProperties(filters: SearchFilters): Property[] {
         .toLowerCase();
       return hay.includes(q);
     });
+  }
+
+  const drawn = parseShape(filters.shape);
+  if (drawn) {
+    results = results.filter((property) => pointInPolygon({ lat: property.lat, lng: property.lng }, drawn));
   }
 
   if (filters.circleLat != null && filters.circleLng != null && filters.circleKm != null) {

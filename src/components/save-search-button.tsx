@@ -75,11 +75,30 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (!user) {
+            setOpen(true);
+            return;
+          }
+          add({ label, filters, email: user.email });
+          setSent(true);
+          void capture({
+            name: user.name,
+            email: user.email,
+            phone: user.phone || "",
+            smsOptIn: false,
+            source: "search_alert",
+            intent: "buyer",
+            consent: true,
+            searchLabel: label,
+            notes: `Saved search: ${label}. Uses registration consent.`,
+            savedSearch: filters,
+          });
+        }}
         className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:text-[#3498d8]"
       >
         <Bell className="size-4" />
-        Save Search
+        {sent && user ? "Saved" : "Save Search"}
       </button>
 
       {open && (

@@ -55,11 +55,11 @@ export function SiteFooter() {
         <div>
           <Link href="/" className="inline-block">
             <Image
-              src="/brand/site-logo.png"
-              alt="Greater Vancouver Area Home Search"
-              width={200}
-              height={46}
-              className="h-11 w-auto"
+              src="/brand/archibald-logo.png"
+              alt="Archibald Real Estate Group"
+              width={800}
+              height={186}
+              className="h-auto w-[180px] object-contain"
             />
           </Link>
           <p className="mt-4 text-sm leading-6">

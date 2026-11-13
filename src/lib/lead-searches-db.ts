@@ -137,6 +137,18 @@ export async function updateSearch(
   return rows[0] ? fromRow(rows[0]) : null;
 }
 
+export async function updateSearchFrequencyForEmail(email: string, searchId: string, frequency: string): Promise<boolean> {
+  const sql = await officeDb();
+  if (!sql) return false;
+  const rows = await sql<{ id: string }[]>`
+    UPDATE lead_saved_searches
+    SET frequency = ${frequency}, updated_at = now()
+    WHERE id = ${searchId} AND lower(lead_email) = ${email.toLowerCase()}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
 export async function deleteSearch(leadId: string, searchId: string): Promise<boolean> {
   const sql = await officeDb();
   if (!sql) throw new Error("database_unconfigured");

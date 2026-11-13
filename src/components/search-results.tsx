@@ -6,6 +6,7 @@ import Link from "next/link";
 import { List, Map as MapIcon } from "lucide-react";
 import { PropertyCard } from "@/components/property-card";
 import type { Property, SearchFilters } from "@/lib/types";
+import { parseShape } from "@/lib/geo";
 import { filtersToQuery } from "@/lib/search";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/search";
@@ -81,7 +82,7 @@ export function SearchResults({
             No homes match these filters
           </h2>
           <p className="mt-3 text-[var(--ink-muted)]">
-            Try widening the price range, removing a city filter, or draw a circle on the map.
+            Try widening the price range, removing a city filter, or draw a shape on the map.
           </p>
         </div>
         {showMap ? (
@@ -91,6 +92,10 @@ export function SearchResults({
               selectedId={null}
               onSelect={() => undefined}
               circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
+              shape={parseShape(filters?.shape)}
+              onShape={filters ? (next) => {
+                router.push(`/search${filtersToQuery({ ...filters, shape: next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined })}`);
+              } : undefined}
               onCircle={filters ? (next) => {
                 router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
               } : undefined}
@@ -229,6 +234,10 @@ export function SearchResults({
               properties={properties}
               selectedId={selectedId}
               circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
+              shape={parseShape(filters?.shape)}
+              onShape={filters ? (next) => {
+                router.push(`/search${filtersToQuery({ ...filters, shape: next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined })}`);
+              } : undefined}
               onCircle={filters ? (next) => {
                 router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
               } : undefined}

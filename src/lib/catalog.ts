@@ -3,6 +3,7 @@ import { pullAreaIntoSearch } from "@/lib/ddf/areas";
 import { ddfConfigured } from "@/lib/ddf/credentials";
 import { featuredDdfListingsByMls, getDdfListing, searchDdfListings, upsertDdfListings } from "@/lib/ddf/db";
 import { activeFeaturedMlsIds } from "@/lib/featured-source";
+import { getPropertyById } from "@/lib/search";
 import type { Property, SearchFilters } from "@/lib/types";
 
 const detailReads = new Map<string, Promise<void>>();
@@ -58,7 +59,7 @@ export async function catalogFeatured(limit = 12): Promise<Property[]> {
 }
 
 export async function catalogListing(id: string): Promise<Property | null> {
-  if (!ddfConfigured()) return null;
+  if (!ddfConfigured()) return getPropertyById(id) ?? null;
     let listing = await getDdfListing(id);
     if (listing && !listing.detailsSynced) {
       const listingId = listing.id;

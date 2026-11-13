@@ -65,6 +65,7 @@ function chipsFrom(filters: SearchFilters): Chip[] {
   if (filters.openHouse) chips.push({ key: "openHouse", label: "Open houses" });
   if (filters.weekend) chips.push({ key: "weekend", label: "This weekend" });
   if (filters.circleKm) chips.push({ key: "circleKm", label: `Circle ${filters.circleKm} km` });
+  if (filters.shape) chips.push({ key: "shape", label: "Drawn shape" });
   if (filters.newListings) chips.push({ key: "newListings", label: "New" });
   if (filters.virtualTour)
     chips.push({ key: "virtualTour", label: "Virtual tours" });
@@ -718,6 +719,20 @@ export function SearchFiltersBar({
               </div>
             )}
 
+            <label className="flex min-w-[140px] flex-col gap-1 text-[10px] font-semibold tracking-wide text-[#7b97aa] uppercase">
+              City
+              <select
+                aria-label="City"
+                value={filters.city ?? ""}
+                onChange={(event) => pushFilters({ ...filters, city: event.target.value || undefined, page: undefined })}
+                className="h-9 rounded border border-[#d7e0e8] bg-white px-2 text-xs font-medium text-[#1f2930] normal-case"
+              >
+                <option value="">Any city</option>
+                {CITIES.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </label>
             <FilterMenu
               label="Price"
               open={openMenu === "price"}

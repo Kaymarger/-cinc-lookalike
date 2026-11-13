@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { PlaceSuggest } from "@/components/place-suggest";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
 
 export function HomeEstimateHero({
@@ -18,6 +19,7 @@ export function HomeEstimateHero({
   ctaLabel?: string;
 }) {
   const { capture } = useLeads();
+  const { user } = useDemoAuth();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -28,11 +30,11 @@ export function HomeEstimateHero({
     e.preventDefault();
     setError("");
     const data = new FormData(e.currentTarget);
-    if (data.get("consent") !== "on") {
+    if (!user && data.get("consent") !== "on") {
       setError("Please agree to be contacted.");
       return;
     }
-    const fullName = String(data.get("FullName") || "").trim();
+    const fullName = String(data.get("FullName") || user?.name || "").trim();
     const unit = String(data.get("Unit") || "").trim();
     const propertyAddress = unit ? `${unit} - ${address}` : address;
     if (!address.trim()) {
@@ -42,8 +44,8 @@ export function HomeEstimateHero({
     setPending(true);
     const result = await capture({
       name: fullName,
-      email: String(data.get("Email") || ""),
-      phone: String(data.get("Phone") || ""),
+      email: String(data.get("Email") || user?.email || ""),
+      phone: String(data.get("Phone") || user?.phone || ""),
       smsOptIn: true,
       source: "home_valuation",
       propertyAddress,
@@ -130,36 +132,22 @@ export function HomeEstimateHero({
                     />
                   </label>
                 </div>
-                <input
-                  name="FullName"
-                  required
-                  placeholder="Full name"
-                  aria-label="Full name"
-                  className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                />
-                <input
-                  name="Email"
-                  type="email"
-                  required
-                  placeholder="Email"
-                  aria-label="Email"
-                  className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                />
-                <input
-                  name="Phone"
-                  type="tel"
-                  required
-                  placeholder="Phone"
-                  aria-label="Phone"
-                  className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]"
-                />
-                <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
-                  <input name="consent" type="checkbox" required className="mt-1" />
-                  <span>
-                    {LEAD_CONSENT_TEXT}{" "}
-                    <Link href="/privacy" className="underline">Privacy</Link>
-                  </span>
-                </label>
+                {user ? (
+                  <p className="text-sm text-[#444]">Using {user.name}&apos;s saved contact details. No need to opt in again.</p>
+                ) : (
+                  <>
+                    <input name="FullName" required placeholder="Full name" aria-label="Full name" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
+                    <input name="Email" type="email" required placeholder="Email" aria-label="Email" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
+                    <input name="Phone" type="tel" required placeholder="Phone" aria-label="Phone" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
+                    <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
+                      <input name="consent" type="checkbox" required className="mt-1" />
+                      <span>
+                        {LEAD_CONSENT_TEXT}{" "}
+                        <Link href="/privacy" className="underline">Privacy</Link>
+                      </span>
+                    </label>
+                  </>
+                )}
                 {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                 <button
                   type="submit"

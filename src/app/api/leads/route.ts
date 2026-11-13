@@ -243,8 +243,11 @@ export async function POST(request: Request) {
   const lead = { ...parsed.lead, assignedTo: assignee.name };
   const alerts = testLead
     ? { email: "skipped" as const, sms: "skipped" as const }
-    : await notifyAssignedAgent(lead);
-  if (!testLead) await sendWelcomeAndAlert(lead);
+    : { email: "queued" as const, sms: "queued" as const };
+  if (!testLead) {
+    void notifyAssignedAgent(lead).catch(() => undefined);
+    void sendWelcomeAndAlert(lead).catch(() => undefined);
+  }
 
   if (!leadsDatabaseConfigured()) {
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);

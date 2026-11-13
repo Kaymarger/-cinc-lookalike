@@ -1,6 +1,8 @@
 /** Exact option text from the Oct 28 2026 CINC back-office capture. */
 
 export const ENGAGEMENTS = [
+  "Instant",
+  "Weekly",
   "T/Th (Best for personalized search)",
   "Daily (Best for default search)",
   "M/W/F",

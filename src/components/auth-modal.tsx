@@ -95,7 +95,10 @@ function AuthDialog({
       setError("Please agree to be contacted. That consent is required.");
       return;
     }
-    const result = await capture({
+    signUp(name, email, phone);
+    onClose();
+    const here = `${window.location.pathname}${window.location.search}`;
+    void capture({
       name,
       email,
       phone,
@@ -103,14 +106,8 @@ function AuthDialog({
       source: "registration",
       intent: "buyer",
       consent: true,
-      notes: "Free Access signup from the public site.",
+      notes: `Free Access signup from ${here}. CASL consent captured at registration.`,
     });
-    if (!result.ok) {
-      setError(result.message || "Please check the form and try again.");
-      return;
-    }
-    signUp(name, email, phone);
-    setConfirmed(name);
   }
 
   function onLogin(e: React.FormEvent<HTMLFormElement>) {

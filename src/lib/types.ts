@@ -79,6 +79,8 @@ export interface SearchFilters {
   circleLat?: number;
   circleLng?: number;
   circleKm?: number;
+  /** Freehand map shape: `lat,lng;lat,lng;...`. */
+  shape?: string;
   newListings?: boolean;
   virtualTour?: boolean;
   sort?:

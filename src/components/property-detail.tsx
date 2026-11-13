@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -5,8 +7,8 @@ import {
   BedDouble,
   Maximize,
 } from "lucide-react";
-import { BuyerQuestions } from "@/components/buyer-questions";
 import { CompareToggle } from "@/components/compare-toggle";
+import { PropertyNotes } from "@/components/property-notes";
 import { LeadDialog } from "@/components/lead-dialog";
 import { MortgageCalculator } from "@/components/mortgage-calculator";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -18,15 +20,8 @@ import { TrackView } from "@/components/track-view";
 import { ViewGate } from "@/components/view-gate";
 import { DdfDisclaimer, RealtorBadge } from "@/components/ddf-attribution";
 import { listingKeyFacts, formatPrice, formatSqft, fullAddress, getSimilarProperties } from "@/lib/search";
+import { SITE } from "@/lib/site";
 import type { Property } from "@/lib/types";
-
-const BUYER_QUESTIONS = [
-  "How much out-of-pocket expenses do I need to purchase a home?",
-  "Does this home have any offers on it?",
-  "How much down-payment would I need to buy?",
-  "Do repairs come out of my pocket or the seller?",
-  "Is now a good time to buy a home?",
-];
 
 function SnapshotRow({ label, value }: { label: string; value: string }) {
   return (
@@ -192,7 +187,7 @@ export function PropertyDetail({ property }: { property: Property }) {
       <ViewGate propertyId={property.id} />
 
       {/* Compact sticky summary — desktop/tablet */}
-      <div className="details-toolbar sticky top-16 z-40 hidden border-b border-[#e8eef3] bg-white/95 shadow-sm backdrop-blur md:block sm:top-[72px]">
+      <div className="details-toolbar sticky top-[75px] z-30 hidden border-b border-[#e8eef3] bg-white/95 shadow-sm backdrop-blur md:block">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[#333]">
             <span className="font-[family-name:var(--font-display)] text-xl font-medium text-[var(--cedar)] sm:text-2xl">
@@ -350,7 +345,7 @@ export function PropertyDetail({ property }: { property: Property }) {
             </section>
             ) : null}
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div id="request-showing" className="mt-8 flex flex-wrap gap-3">
               <LeadDialog
                 triggerLabel="Request a showing"
                 propertyAddress={property.address}
@@ -399,14 +394,32 @@ export function PropertyDetail({ property }: { property: Property }) {
                   </p>
                 </div>
               </div>
-              <BuyerQuestions questions={BUYER_QUESTIONS} />
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <a className="inline-flex h-10 items-center justify-center border border-[#04427d] text-[#04427d]" href={`tel:${SITE.phoneTel}`}>Call</a>
+                <a className="inline-flex h-10 items-center justify-center border border-[#04427d] text-[#04427d]" href={`sms:${SITE.phoneTel}`}>Text</a>
+                <a className="inline-flex h-10 items-center justify-center border border-[#04427d] text-[#04427d]" href="/contact#inquiry">Email</a>
+                <a className="inline-flex h-10 items-center justify-center bg-[#04427d] text-white" href="#request-showing">Schedule</a>
+              </div>
             </div>
           </aside>
         </div>
 
+        <PropertyNotes propertyId={property.id} address={property.address} />
         <div className="mt-12">
           <MortgageCalculator price={property.price} />
         </div>
+        <section className="mt-10 flex flex-col gap-4 border border-[#e5e5e5] bg-white p-5 sm:flex-row sm:items-center">
+          <Image src="/brand/casey.jpg" alt="Casey Archibald" width={96} height={96} className="size-24 object-cover" />
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-semibold text-[#222]">{SITE.agent}</p>
+            <p className="text-sm text-[#555]">{SITE.company}</p>
+            <p className="mt-1 text-sm"><a className="text-[#04427d]" href={`tel:${SITE.phoneTel}`}>{SITE.phoneDisplay}</a></p>
+            <p className="text-sm"><a className="text-[#04427d]" href="/contact#inquiry">Email Casey</a></p>
+          </div>
+          <div className="w-full sm:w-44">
+            <LeadDialog triggerLabel="Contact" propertyAddress={property.address} propertyId={property.id} source="ask_question" />
+          </div>
+        </section>
 
         {similar.length > 0 && (
           <section className="mt-16 border-t border-[#eee] pt-12">

@@ -5,6 +5,8 @@ import {
   Circle,
   MapContainer,
   Marker,
+  Polygon,
+  Polyline,
   Popup,
   TileLayer,
   useMap,
@@ -100,12 +102,16 @@ export function SearchMap({
   onSelect,
   circle,
   onCircle,
+  shape,
+  onShape,
 }: {
   properties: Property[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   circle?: { lat: number; lng: number; km: number } | null;
   onCircle?: (circle: { lat: number; lng: number; km: number } | null) => void;
+  shape?: { lat: number; lng: number }[] | null;
+  onShape?: (shape: { lat: number; lng: number }[] | null) => void;
 }) {
   const center = useMemo<[number, number]>(() => {
     if (circle) return [circle.lat, circle.lng];
@@ -131,7 +137,8 @@ export function SearchMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds properties={properties} selectedId={selectedId} circle={drawing ? null : circle} />
-      <CircleDraw drawing={drawing} circle={circle ?? null} onCircle={(next) => { setDrawing(false); onCircle?.(next); }} />
+      <CircleDraw drawing={false} circle={drawing ? null : circle ?? null} onCircle={(next) => { setDrawing(false); onCircle?.(next); }} />
+      <ShapeDraw drawing={drawing} shape={shape ?? null} onShape={(next) => { setDrawing(false); onShape?.(next); if (next) onCircle?.(null); }} />
       {properties
         .filter(
           (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)
@@ -166,17 +173,17 @@ export function SearchMap({
         </Marker>
       ))}
     </MapContainer>
-      {onCircle ? (
+      {onShape || onCircle ? (
         <div className="absolute top-3 right-3 z-[500] flex max-w-[240px] flex-col items-end gap-2">
           <button type="button" className="h-9 rounded bg-[#04427d] px-3 text-xs font-semibold text-white shadow" onClick={() => setDrawing((value) => !value)}>
-            {drawing ? "Cancel circle" : "Draw circle"}
+            {drawing ? "Cancel" : "Draw tool"}
           </button>
-          {circle ? (
-            <button type="button" className="h-9 rounded bg-white px-3 text-xs font-semibold text-[#04427d] shadow" onClick={() => onCircle(null)}>
-              Clear circle
+          {shape?.length || circle ? (
+            <button type="button" className="h-9 rounded bg-white px-3 text-xs font-semibold text-[#04427d] shadow" onClick={() => { onShape?.(null); onCircle?.(null); }}>
+              Clear
             </button>
           ) : null}
-          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Press on the map and drag outward to draw. Drag the centre or the edge handle to edit.</p> : null}
+          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Press and drag to draw any shape. Drag a corner to edit it, or clear it.</p> : null}
         </div>
       ) : null}
     </div>
@@ -348,4 +355,112 @@ function CircleEditor({
     };
   }, [lat, lng, km, map, onCircleRef]);
   return null;
+}
+
+type LatLng = { lat: number; lng: number };
+
+function ShapeDraw({
+  drawing,
+  shape,
+  onShape,
+}: {
+  drawing: boolean;
+  shape: LatLng[] | null;
+  onShape?: (shape: LatLng[] | null) => void;
+}) {
+  const map = useMap();
+  const [draft, setDraft] = useState<LatLng[]>([]);
+  const onShapeRef = useRef(onShape);
+  useEffect(() => {
+    onShapeRef.current = onShape;
+  }, [onShape]);
+
+  useEffect(() => {
+    if (!drawing) return;
+    const container = map.getContainer();
+    map.dragging.disable();
+    const previousTouchAction = container.style.touchAction;
+    container.style.cursor = "crosshair";
+    container.style.touchAction = "none";
+    let points: LatLng[] = [];
+    const pointFromClient = (clientX: number, clientY: number) => {
+      const origin = container.getBoundingClientRect();
+      const latlng = map.containerPointToLatLng(L.point(clientX - origin.left, clientY - origin.top));
+      return { lat: latlng.lat, lng: latlng.lng };
+    };
+    const down = (event: PointerEvent) => {
+      if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-circle-handle], button, a, input")) return;
+      event.preventDefault();
+      points = [pointFromClient(event.clientX, event.clientY)];
+      setDraft(points);
+      container.setPointerCapture(event.pointerId);
+    };
+    const move = (event: PointerEvent) => {
+      if (!points.length) return;
+      event.preventDefault();
+      const next = pointFromClient(event.clientX, event.clientY);
+      const last = points[points.length - 1];
+      const moved = map.distance([last.lat, last.lng], [next.lat, next.lng]);
+      if (moved < 12 || points.length >= 80) return;
+      points = [...points, next];
+      setDraft(points);
+    };
+    const up = () => {
+      const finished = points;
+      points = [];
+      setDraft([]);
+      if (finished.length >= 3) onShapeRef.current?.(finished);
+    };
+    container.addEventListener("pointerdown", down);
+    container.addEventListener("pointermove", move);
+    container.addEventListener("pointerup", up);
+    container.addEventListener("pointercancel", up);
+    return () => {
+      container.removeEventListener("pointerdown", down);
+      container.removeEventListener("pointermove", move);
+      container.removeEventListener("pointerup", up);
+      container.removeEventListener("pointercancel", up);
+      map.dragging.enable();
+      container.style.cursor = "";
+      container.style.touchAction = previousTouchAction;
+    };
+  }, [drawing, map]);
+
+  if (draft.length > 1) {
+    return <Polyline positions={draft.map((point) => [point.lat, point.lng])} pathOptions={{ color: "#04427d", weight: 2 }} />;
+  }
+  if (!shape || shape.length < 3 || drawing) return null;
+  return <ShapeEditor shape={shape} onShapeRef={onShapeRef} />;
+}
+
+function ShapeEditor({
+  shape,
+  onShapeRef,
+}: {
+  shape: LatLng[];
+  onShapeRef: MutableRefObject<((shape: LatLng[] | null) => void) | undefined>;
+}) {
+  const positions = shape.map((point) => [point.lat, point.lng] as [number, number]);
+  return (
+    <>
+      <Polygon positions={positions} pathOptions={{ color: "#04427d", weight: 2, fillColor: "#04427d", fillOpacity: 0.12 }} />
+      {shape.map((point, index) => (
+        <Marker
+          key={`${point.lat}-${point.lng}-${index}`}
+          position={[point.lat, point.lng]}
+          draggable
+          icon={handleIcon("Move corner")}
+          eventHandlers={{
+            dragend: (event) => {
+              const next = event.target.getLatLng();
+              const points = shape.map((item, itemIndex) => itemIndex === index ? { lat: next.lat, lng: next.lng } : item);
+              onShapeRef.current?.(points);
+            },
+          }}
+        />
+      ))}
+    </>
+  );
 }

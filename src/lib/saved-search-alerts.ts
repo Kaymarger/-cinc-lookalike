@@ -50,6 +50,7 @@ export function zonedDay(date: Date, timeZone = ZONE): ZonedDay {
 /** True when this search should be checked on this run. */
 export function alertIsDue(frequency: string, lastAlertAt: string | null, now: Date): boolean {
   if (frequency === "Never") return false;
+  if (frequency === "Instant") return true;
   const today = zonedDay(now);
   if (lastAlertAt) {
     const last = zonedDay(new Date(lastAlertAt));
@@ -75,6 +76,9 @@ export function alertIsDue(frequency: string, lastAlertAt: string | null, now: D
     case "Friday":
     case "Saturday":
       return day === frequency.slice(0, 3);
+    case "Weekly":
+      if (!lastAlertAt) return true;
+      return now.getTime() - new Date(lastAlertAt).getTime() >= 7 * 86_400_000;
     case "Bi-Weekly":
       if (!lastAlertAt) return true;
       return now.getTime() - new Date(lastAlertAt).getTime() >= 14 * 86_400_000;

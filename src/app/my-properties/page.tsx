@@ -4,14 +4,31 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
+import { useEffect, useState } from "react";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useSavedHomes } from "@/lib/saved-homes";
 import { getPropertyById } from "@/lib/search";
+import type { Property } from "@/lib/types";
 
 export default function MyPropertiesPage() {
   const { ready, ids, clear } = useSavedHomes();
   const { user } = useDemoAuth();
-  const homes = ready ? ids.map((id) => getPropertyById(id)).filter(Boolean) : [];
+  const [homes, setHomes] = useState<Property[]>([]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const local = ids.map((id) => getPropertyById(id)).filter((item): item is Property => Boolean(item));
+    const missing = ids.filter((id) => !local.some((item) => item.id === id));
+    setHomes(local);
+    if (!missing.length) return;
+    void fetch(`/api/listings?ids=${encodeURIComponent(missing.join(","))}`)
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { properties?: Property[] } | null;
+        const remote = data?.properties ?? [];
+        setHomes([...local, ...remote]);
+      })
+      .catch(() => undefined);
+  }, [ids, ready]);
 
   return (
     <div className="bg-[#f7fafc]">
