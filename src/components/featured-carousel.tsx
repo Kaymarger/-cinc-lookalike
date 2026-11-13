@@ -1,3 +1,5 @@
+"use client";
+
 import { PropertyCard } from "@/components/property-card";
 import type { Property } from "@/lib/types";
 
