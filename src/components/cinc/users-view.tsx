@@ -7,6 +7,8 @@ import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { href } from "./route";
 import { Btn, Field, inputCls } from "./ui";
+import { applyOfficeList, OFFICE_LISTS, sortColumnProps } from "@/lib/office-list";
+import { OfficeListBar, useOfficeList } from "./office-list-bar";
 
 const ROLES: OfficeRole[] = ["admin", "broker", "agent", "isa", "lender"];
 
@@ -46,6 +48,8 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
   const [linkBox, setLinkBox] = useState<LinkBox | null>(null);
   const [pondOnly, setPondOnly] = useState(false);
   const [showDisabled, setShowDisabled] = useState(false);
+  const [pickedAgents, setPickedAgents] = useState<string[]>([]);
+  const agentList = useOfficeList("agents", "name", ["name", "email", "role", "status"]);
 
   async function load() {
     const response = await fetch("/api/office/users", { cache: "no-store" });
@@ -230,9 +234,37 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
           </div>
         </div>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2">
-            {(users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length ? users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")) : office.user ? [office.user] : []).map((user) => (
+      {(() => {
+        const source = users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa"));
+        const base = source.length ? source : office.user ? [office.user] : [];
+        const arranged = applyOfficeList(base.map((user) => ({
+          name: user.name,
+          email: user.email,
+          type: user.role,
+          status: user.active ? "Active" : "Disabled",
+          agent: user.name,
+          city: "",
+          price: 0,
+          when: 0,
+          count: 1,
+          recent: 0,
+          stage: "",
+          channel: "",
+          due: "",
+          title: user.id,
+        })), OFFICE_LISTS.agents, agentList.query);
+        const roster = arranged.rows.flatMap((row) => {
+          const user = base.find((item) => item.id === row.title);
+          return user ? [user] : [];
+        });
+        return (
+          <>
+            <OfficeListBar query={agentList.query} update={agentList.update} views={agentList.views} saveView={agentList.saveView} filters={[{ id: "role", label: "Role", options: ["admin", "broker", "agent", "isa"] }, { id: "status", label: "Status", options: ["Active", "Disabled"] }]} columns={OFFICE_LISTS.agents.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.agents)} toggleSort={agentList.toggleSort} onSelectPage={() => setPickedAgents(roster.map((user) => user.id))} total={arranged.total} emptyLabel="No agents match this search and these filters." />
+            {pickedAgents.length && office.canManageUsers ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { void Promise.all(pickedAgents.filter((id) => id !== office.user?.id).map((id) => fetch(`/api/office/users/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }))).then(() => { setPickedAgents([]); setMessage("Selected agents disabled."); void load(); }); }}>Disable selected</button> : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+            {roster.map((user) => (
               <article key={user.id} className="relative flex justify-between rounded-md border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white p-5 text-[14px] shadow-sm">
+                <input type="checkbox" className="absolute top-2 right-2" aria-label={`Select ${user.name}`} checked={pickedAgents.includes(user.id)} onChange={(event) => setPickedAgents(event.target.checked ? [...pickedAgents, user.id] : pickedAgents.filter((id) => id !== user.id))} />
                 <div className="flex gap-4">
                   <div className="relative h-24 w-24 shrink-0">
                     <div className="grid h-24 w-24 place-items-center rounded-full bg-[#329bb9] text-[22px] font-semibold text-white">{user.name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div>
@@ -254,7 +286,10 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                 </div>
               </article>
             ))}
-      </div>
+            </div>
+          </>
+        );
+      })()}
       {pond ? (
         <form className="mb-4 max-w-xl border border-[#1c93b5] bg-white p-4" onSubmit={(event) => event.preventDefault()}>
           <h2 className="mb-3 text-[16px] font-semibold">Add Pond</h2>

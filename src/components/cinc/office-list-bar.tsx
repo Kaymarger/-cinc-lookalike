@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { hashPath, hashSearch, parseListQuery, serializeListQuery, type ListQuery, type SavedView } from "@/lib/office-list";
+import { hashPath, hashSearch, moveColumn, parseListQuery, serializeListQuery, type ListQuery, type SavedView, type SortMode } from "@/lib/office-list";
 
 export function useOfficeList(listId: string, sort: string, columns: string[]) {
   const fallback = (): ListQuery => ({ q: "", sort, dir: "asc", mode: "value", filters: {}, page: 1, pageSize: 25, columns, view: "" });
@@ -58,6 +58,9 @@ export function OfficeListBar({
   columns,
   total,
   emptyLabel,
+  sortColumns,
+  toggleSort,
+  onSelectPage,
 }: {
   query: ListQuery;
   update: (patch: Partial<ListQuery>) => void;
@@ -67,6 +70,9 @@ export function OfficeListBar({
   columns: { id: string; label: string }[];
   total: number;
   emptyLabel: string;
+  sortColumns?: { id: string; label: string; count?: boolean; recent?: boolean }[];
+  toggleSort?: (id: string, mode?: SortMode) => void;
+  onSelectPage?: () => void;
 }) {
   const pages = Math.max(1, Math.ceil(total / query.pageSize));
   return (
@@ -110,6 +116,29 @@ export function OfficeListBar({
           {columns.map((column) => <option key={column.id} value={column.id}>{query.columns.includes(column.id) || !query.columns.length ? "Hide" : "Show"} {column.label}</option>)}
         </select>
       </label>
+      <label className="flex items-center gap-1">
+        Order
+        <select
+          aria-label="Reorder a column"
+          className="h-8 border border-[#ccc] bg-white px-1"
+          value=""
+          onChange={(event) => {
+            const [id, direction] = event.target.value.split(":");
+            if (!id || (direction !== "left" && direction !== "right")) return;
+            const current = query.columns.length ? query.columns : columns.map((column) => column.id);
+            update({ columns: moveColumn(current, id, direction === "left" ? -1 : 1) });
+          }}
+        >
+          <option value="">Move column</option>
+          {(query.columns.length ? query.columns : columns.map((column) => column.id)).map((id) => {
+            const label = columns.find((column) => column.id === id)?.label || id;
+            return [
+              <option key={`${id}-left`} value={`${id}:left`}>{label} left</option>,
+              <option key={`${id}-right`} value={`${id}:right`}>{label} right</option>,
+            ];
+          })}
+        </select>
+      </label>
       <select aria-label="Saved view" className="h-8 border border-[#ccc] bg-white px-1" value={query.view} onChange={(event) => {
         const saved = views.find((item) => item.name === event.target.value);
         if (saved) update(saved.query);
@@ -129,7 +158,22 @@ export function OfficeListBar({
       <button type="button" className="px-1 disabled:opacity-30" disabled={query.page <= 1} onClick={() => update({ page: query.page - 1 })}>‹</button>
       <span>{query.page} / {pages}</span>
       <button type="button" className="px-1 disabled:opacity-30" disabled={query.page >= pages} onClick={() => update({ page: query.page + 1 })}>›</button>
+      {onSelectPage ? <button type="button" className="h-8 border border-[#ccc] bg-white px-2" onClick={onSelectPage}>Select page</button> : null}
       {total === 0 ? <span className="basis-full text-[#888]">{emptyLabel}</span> : null}
+      {sortColumns && toggleSort ? (
+        <div className="flex basis-full flex-wrap gap-2 border-t border-[#eee] pt-2">
+          {sortColumns.filter((column) => !query.columns.length || query.columns.includes(column.id)).map((column) => {
+            const mark = (mode: SortMode) => query.sort === column.id && query.mode === mode ? (query.dir === "asc" ? " ↑" : " ↓") : "";
+            return (
+              <span key={column.id} className="inline-flex items-center gap-1">
+                <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => toggleSort(column.id, "value")}>{column.label}{mark("value")}</button>
+                {column.count ? <button type="button" aria-label={`Sort ${column.label} by count`} className="text-[#666]" onClick={() => toggleSort(column.id, "count")}>count{mark("count")}</button> : null}
+                {column.recent ? <button type="button" aria-label={`Sort ${column.label} by recency`} className="text-[#666]" onClick={() => toggleSort(column.id, "recent")}>recent{mark("recent")}</button> : null}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

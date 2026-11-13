@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { statusLabel } from "@/lib/autotrack";
-import { applyOfficeList, OFFICE_LISTS, type OfficeRow } from "@/lib/office-list";
+import { applyOfficeList, OFFICE_LISTS, sortColumnProps, type OfficeRow } from "@/lib/office-list";
 import { OfficeListBar, useOfficeList } from "./office-list-bar";
 import { useLeads } from "@/lib/leads";
 import { AutoTrackWizard, loadAutoTracks } from "./autotrack-builder";
@@ -117,10 +117,11 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
     channel: "",
     due: item.at,
     title: item.message,
+    key: item.id,
   }));
   const arrangedRequests = applyOfficeList(launchRecords, OFFICE_LISTS.launchpad, launchList.query);
   const shownRequests = arrangedRequests.rows.flatMap((record) => {
-    const item = visible.find((entry) => entry.name === record.name && entry.kind === record.type);
+    const item = visible.find((entry) => entry.id === record.key);
     return item ? [item] : [];
   });
   const openReminders = state.reminders.filter((item) => {
@@ -183,6 +184,9 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                   { id: "agent", label: "Agent", options: ["Casey Archibald", "Kayla Gerak", "Website"] },
                 ]}
                 columns={OFFICE_LISTS.launchpad.columns.map((column) => ({ id: column.id, label: column.label }))}
+                sortColumns={sortColumnProps(OFFICE_LISTS.launchpad)}
+                toggleSort={launchList.toggleSort}
+                onSelectPage={() => setPickedRequests(shownRequests.map((item) => item.id))}
                 total={arrangedRequests.total}
                 emptyLabel="No requests match this search and these filters."
               />
@@ -413,6 +417,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
   const [agent, setAgent] = useState("All");
   const agents = ["All", "Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"];
   const dealList = useOfficeList(`deals-${board}`, "client", ["client", "stage", "price", "agent", "created"]);
+  const [pickedDeals, setPickedDeals] = useState<string[]>([]);
   const deals = state.deals
     .filter((deal) => deal.board === board && (status === "All" || deal.status === status))
     .filter((deal) => agent === "All" || (deal.agent || "Unassigned") === agent)
@@ -432,10 +437,11 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
     stage: deal.stage,
     channel: "",
     due: "",
-    title: deal.id,
+    title: deal.client,
+    key: deal.id,
   })), OFFICE_LISTS.deals, dealList.query);
   const visibleDeals = arrangedDeals.rows.flatMap((row) => {
-    const deal = deals.find((item) => item.id === row.title);
+    const deal = deals.find((item) => item.id === row.key);
     return deal ? [deal] : [];
   });
 
@@ -460,7 +466,8 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
         <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
         <Menu className="ml-auto" label={<span className={`${toolBtn} min-w-[180px] justify-between`}>↑↓ Sort By: <b>{sort}</b> ▾</span>} items={["Reminder Due Date", "Newest", "Price"].map((label) => ({ label, onClick: () => setSort(label) }))} />
       </div>
-      <OfficeListBar query={dealList.query} update={dealList.update} views={dealList.views} saveView={dealList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Archived"] }, { id: "stage", label: "Stage", options: stages.map((stage) => stage.id) }, { id: "agent", label: "Agent", options: agents.filter((name) => name !== "All") }]} columns={OFFICE_LISTS.deals.columns.map((column) => ({ id: column.id, label: column.label }))} total={arrangedDeals.total} emptyLabel="No deals match this search and these filters." />
+      <OfficeListBar query={dealList.query} update={dealList.update} views={dealList.views} saveView={dealList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Archived"] }, { id: "stage", label: "Stage", options: stages.map((stage) => stage.id) }, { id: "agent", label: "Agent", options: agents.filter((name) => name !== "All") }]} columns={OFFICE_LISTS.deals.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.deals)} toggleSort={dealList.toggleSort} onSelectPage={() => setPickedDeals(visibleDeals.map((deal) => deal.id))} total={arrangedDeals.total} emptyLabel="No deals match this search and these filters." />
+      {pickedDeals.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, deals: current.deals.filter((deal) => !pickedDeals.includes(deal.id)) })); setPickedDeals([]); chrome.toast("Selected deals deleted."); }}>Delete selected</button> : null}
       <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-4 rounded border border-[#e5e5e5] bg-white p-4 shadow-sm">
         {stages.map((stage) => {
           const cards = visibleDeals.filter((deal) => deal.stage === stage.id);
@@ -475,6 +482,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
               <div className="flex-1 p-2">
                 {cards.map((deal) => (
                   <article key={deal.id} className="mb-2 bg-white p-2 shadow-sm">
+                    <label className="mb-1 flex items-center gap-1 text-[11px]"><input type="checkbox" aria-label={`Select ${deal.client || "deal"}`} checked={pickedDeals.includes(deal.id)} onChange={(event) => setPickedDeals(event.target.checked ? [...pickedDeals, deal.id] : pickedDeals.filter((id) => id !== deal.id))} />Select</label>
                     <p className="text-[12px]">{deal.address || "--"}</p>
                     <p className="text-[11px] text-[#888]">{deal.client || "--"}</p>
                     <p className="text-[11px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
@@ -554,6 +562,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
+  const mailList = useOfficeList(`inbox-${folder}`, "from", ["from", "subject", "channel", "when"]);
   useEffect(() => {
     setBooting(true);
     const timer = window.setTimeout(() => setBooting(false), 350);
@@ -571,10 +580,30 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
     if (commType === "Conversations Only" && notification) return false;
     return `${mail.subject} ${mail.body} ${mail.to} ${mail.from ?? ""}`.toLowerCase().includes(query.toLowerCase());
   });
-  const pageSize = 25;
-  const pages = Math.max(1, Math.ceil(messages.length / pageSize));
+  const pageSize = mailList.query.pageSize;
+  const arrangedMail = applyOfficeList(messages.map((mail) => ({
+    name: mail.from || mail.to || "",
+    email: mail.to,
+    type: mail.kind,
+    status: mail.unread ? "Unread" : "Read",
+    agent: "",
+    city: "",
+    price: 0,
+    when: 0,
+    count: 1,
+    recent: 0,
+    stage: "",
+    channel: mail.kind,
+    due: mail.at,
+    title: mail.subject,
+    key: mail.id,
+  })), OFFICE_LISTS.communications, mailList.query);
+  const pages = arrangedMail.pages;
   const safePage = Math.min(page, pages - 1);
-  const slice = messages.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const slice = arrangedMail.rows.flatMap((row) => {
+    const mail = messages.find((item) => item.id === row.key);
+    return mail ? [mail] : [];
+  });
   const opened = messages.find((mail) => mail.id === openId);
 
   function send(kind: "email" | "text", value: { to: string; subject?: string; body: string }, target: "sent" | "drafts") {
@@ -765,6 +794,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             <button type="button" disabled={composeOff} className="h-[30px] rounded border border-[#329bb9] bg-white px-3 text-[14px] text-[#329bb9] shadow-sm disabled:opacity-40" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</button>
           </>
         ) : null}
+        <OfficeListBar query={mailList.query} update={mailList.update} views={mailList.views} saveView={mailList.saveView} filters={[{ id: "channel", label: "Channel", options: ["email", "text"] }, { id: "status", label: "Read", options: ["Read", "Unread"] }]} columns={OFFICE_LISTS.communications.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.communications)} toggleSort={mailList.toggleSort} onSelectPage={() => setPicked(slice.map((mail) => mail.id))} total={arrangedMail.total} emptyLabel="No messages match this search and these filters." />
         <span className="ml-auto text-[14px] font-semibold">{countLabel}</span>
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
@@ -850,6 +880,8 @@ export function AutoTracksView() {
   const [openTrack, setOpenTrack] = useState<string | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [stats, setStats] = useState<Record<string, { openRate: number | null; clickRate: number | null; leads: number; touches: number }>>({});
+  const [pickedTracks, setPickedTracks] = useState<string[]>([]);
+  const trackList = useOfficeList("automations", "name", ["name", "category", "status", "steps"]);
   useEffect(() => {
     void loadAutoTracks().then((data) => {
       if (!data) return;
@@ -875,7 +907,28 @@ export function AutoTracksView() {
     steps: [{ id: "cinc-immediate-1", day: 1, action: "email" as const, subject: "Welcome", body: "", format: "html" as const, to: "", from: "", template: "", schedule: "immediate" as const, scheduleTime: "", meridiem: "AM" as const, delayMinutes: 0, afterPrevious: false, calendarOn: "", attachments: [], videoUrl: "", videoTitle: "", reminderType: "", blocking: false }],
   };
   const catalog = tracks.some((track) => track.name === "Immediate!") ? tracks : [immediate, ...tracks];
-  const shown = catalog.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
+  const narrowed = catalog.filter((track) => track.category === cat && (!trackQuery || track.name.toLowerCase().includes(trackQuery)));
+  const arrangedTracks = applyOfficeList(narrowed.map((track) => ({
+    name: track.name,
+    email: "",
+    type: track.category,
+    status: track.status,
+    agent: track.owner || "",
+    city: "",
+    price: 0,
+    when: 0,
+    count: track.steps?.length || 0,
+    recent: 0,
+    stage: "",
+    channel: "",
+    due: "",
+    title: track.name,
+    key: track.id,
+  })), OFFICE_LISTS.automations, trackList.query);
+  const shown = arrangedTracks.rows.flatMap((row) => {
+    const track = narrowed.find((item) => item.id === row.key);
+    return track ? [track] : [];
+  });
   const active = tracks.filter((track) => track.status === "active").length;
   const paused = tracks.filter((track) => track.status === "paused").length;
   return (
@@ -900,6 +953,8 @@ export function AutoTracksView() {
           <button key={label} type="button" className={`rounded border px-3 py-1 text-[12px] ${cat === label ? "border-[#1c93b5] bg-[#f3fbfd] font-semibold text-[#1c93b5]" : "border-[#ddd] bg-white text-[#555]"}`} onClick={() => setCat(label)}>{label}</button>
         ))}
       </div>
+      <OfficeListBar query={trackList.query} update={trackList.update} views={trackList.views} saveView={trackList.saveView} filters={[{ id: "category", label: "Category", options: ["General", "Buyer", "Listing", "Nurture", "Past Client", "My AutoTracks"] }, { id: "status", label: "Status", options: ["active", "paused", "draft"] }]} columns={OFFICE_LISTS.automations.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.automations)} toggleSort={trackList.toggleSort} onSelectPage={() => setPickedTracks(shown.map((track) => track.id))} total={arrangedTracks.total} emptyLabel="No AutoTracks match this search and these filters." />
+      {pickedTracks.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, tracks: current.tracks.map((track) => pickedTracks.includes(track.id) ? { ...track, status: "paused" as const } : track) })); setPickedTracks([]); chrome.toast("Selected AutoTracks paused."); }}>Pause selected</button> : null}
       <div className="border border-[#e5e5e5] bg-white shadow-sm">
         {shown.map((track) => {
           const stat = stats[track.id];
@@ -916,6 +971,7 @@ export function AutoTracksView() {
           return (
             <article key={track.id} className="border-t border-[#eee]">
               <div className="flex items-center gap-4 bg-[#f3f3f3] px-4 py-3">
+                <input type="checkbox" aria-label={`Select ${track.name}`} checked={pickedTracks.includes(track.id)} onChange={(event) => setPickedTracks(event.target.checked ? [...pickedTracks, track.id] : pickedTracks.filter((id) => id !== track.id))} />
                 <div className="min-w-0 flex-1">
                   <button type="button" className="text-[15px] font-semibold text-[#243238]" onClick={() => setOpenTrack(openTrack === track.id ? null : track.id)}>
                     <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />
@@ -966,7 +1022,7 @@ export function AutoTracksView() {
             </article>
           );
         })}
-        {!shown.length ? <p className="px-4 py-8 text-center text-[13px] text-[#888]">No AutoTracks in this group.</p> : null}
+        {!shown.length ? <p className="px-4 py-8 text-center text-[13px] text-[#888]">No AutoTracks match this search and these filters.</p> : null}
       </div>
     </div>
   );
@@ -1096,6 +1152,8 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const [bedsFilter, setBedsFilter] = useState("Any");
   const [typeFilter, setTypeFilter] = useState("Any");
   const [priceFilter, setPriceFilter] = useState("Any");
+  const listingList = useOfficeList("listings", "address", ["address", "price", "city", "status", "agent"]);
+  const [pickedListings, setPickedListings] = useState<string[]>([]);
   const nav = sub === "list" || sub === "add" ? <PropertyNav sub={sub} /> : null;
   if (sub === "text") return <TextResponder />;
   if (sub === "add") return <div>{nav}<AddPocket /></div>;
@@ -1156,6 +1214,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   ).filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query))
     .filter((item) => statusFilter === "Any" || item.status === statusFilter)
     .filter((item) => bedsFilter === "Any" || item.beds >= Number(bedsFilter))
+    .filter((item) => typeFilter === "Any" || item.feature.toLowerCase().includes(typeFilter.toLowerCase()))
     .filter((item) => {
       if (priceFilter === "Any") return true;
       const price = Number(String(item.price).replace(/[^0-9.]/g, ""));
@@ -1163,6 +1222,27 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
       if (priceFilter === "$1M – $2M") return price >= 1_000_000 && price <= 2_000_000;
       return price > 2_000_000;
     });
+  const arrangedListings = applyOfficeList(listings.map((item) => ({
+    name: item.address,
+    email: item.mls,
+    type: item.feature,
+    status: item.status,
+    agent: Number(String(item.mls).slice(-1)) % 2 === 0 ? "Kayla Gerak" : "Casey Archibald",
+    city: item.address.split(",").pop()?.trim() || "",
+    price: Number(String(item.price).replace(/[^0-9.]/g, "")) || 0,
+    when: 0,
+    count: item.beds,
+    recent: 0,
+    stage: "",
+    channel: "",
+    due: "",
+    title: item.address,
+    key: item.id,
+  })), OFFICE_LISTS.listings, listingList.query);
+  const visibleListings = arrangedListings.rows.flatMap((row) => {
+    const item = listings.find((entry) => entry.id === row.key);
+    return item ? [item] : [];
+  });
   return (
     <div>
       {nav}
@@ -1179,7 +1259,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "pocket" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("pocket")}>Show Pocket Listings</button>
         <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Any</option><option>Active</option><option>Pending</option><option>Sold</option></select>
         <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={bedsFilter} onChange={(event) => setBedsFilter(event.target.value)}><option>Any</option><option value="1">1+ beds</option><option value="2">2+ beds</option><option value="3">3+ beds</option><option value="4">4+ beds</option></select>
-        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option>Any</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
+        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option>Any</option><option>General Listing</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
         <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)}><option>Any</option><option>Under $1M</option><option>$1M – $2M</option><option>Over $2M</option></select>
         <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["All MLS Listings", "My Office/Agents Listings", "Listed in the past 24 hours", "Featured Listings", "Casey Archibald", "Kayla Gerak"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
         <Menu label={<span className={toolBtn}>Mass Actions ▾</span>} items={[
@@ -1198,8 +1278,10 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="New listings this week" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue={`Please review ${listings.length} listings.`} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
         {mode === "pocket" ? <a href={href.addProperty} className="h-[22px] bg-[#1c93b5] px-3 text-[12px] leading-[22px] text-white">Add Pocket Listing</a> : null}
       </div>
+      <OfficeListBar query={listingList.query} update={listingList.update} views={listingList.views} saveView={listingList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Pending", "Sold"] }, { id: "city", label: "City", options: [...new Set(listings.map((item) => item.address.split(",").pop()?.trim() || "").filter(Boolean))] }, { id: "agent", label: "Agent", options: ["Kayla Gerak", "Casey Archibald"] }]} columns={OFFICE_LISTS.listings.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.listings)} toggleSort={listingList.toggleSort} onSelectPage={() => setPickedListings(visibleListings.map((item) => item.id))} total={arrangedListings.total} emptyLabel="No listings match this search and these filters." />
+      {pickedListings.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { chrome.toast(`Advertising request saved for ${pickedListings.length} listings.`); setPickedListings([]); }}>Advertise selected</button> : null}
       <div className="space-y-3">
-        {listings.map((item) => (
+        {visibleListings.map((item) => (
           <article key={item.id} className="border border-[#e5e5e5] bg-white">
             <div className="relative grid grid-cols-4 bg-[#d7eef3] py-1 pr-8 text-center text-[12px] font-bold whitespace-nowrap text-[#1c93b5]">
               <span>MLS Listing</span><span>Details</span><span>Feature</span><span>Actions</span>
@@ -1208,6 +1290,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
               </button>
             </div>
             <div className="grid grid-cols-4 gap-2 p-3 text-[12px]">
+              <label className="col-span-4 flex items-center gap-1"><input type="checkbox" aria-label={`Select ${item.address}`} checked={pickedListings.includes(item.id)} onChange={(event) => setPickedListings(event.target.checked ? [...pickedListings, item.id] : pickedListings.filter((id) => id !== item.id))} />Select</label>
               <div className="flex gap-2">
                 <img src={item.image} alt="" className="h-[38px] w-[50px] border border-[#ddd] object-cover" />
                 <div>
@@ -1240,7 +1323,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
             </div>
           </article>
         ))}
-        {!listings.length ? <p className="bg-white p-6 text-center text-[13px] text-[#888]">{mode === "pocket" ? "No pocket listings yet." : "No listings match."}</p> : null}
+        {!visibleListings.length ? <p className="bg-white p-6 text-center text-[13px] text-[#888]">{mode === "pocket" ? "No pocket listings match this search and these filters." : "No listings match this search and these filters."}</p> : null}
       </div>
         </div>
       </div>
@@ -2378,6 +2461,8 @@ export function CalendarView() {
   const todayDay = Number(vancouver.find((part) => part.type === "day")?.value);
   const [cursor, setCursor] = useState(new Date(todayYear, todayMonth - 1, 1));
   const [mode, setMode] = useState<"month" | "week" | "day" | "agenda">("agenda");
+  const agendaList = useOfficeList("calendar", "when", ["title", "when", "agent"]);
+  const [pickedAppts, setPickedAppts] = useState<string[]>([]);
   const office = useOfficeSession();
   const { leads } = useLeads();
   const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || ""));
@@ -2402,6 +2487,27 @@ export function CalendarView() {
   const owner = office.user ? `${office.user.name}, You` : "Casey Archibald, You";
   const selectedDate = new Date(`${selected}T12:00:00`);
   const agendaLabel = selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const arrangedAgenda = applyOfficeList(appointments.map((item) => ({
+    name: item.title,
+    email: "",
+    type: item.eventType || "event",
+    status: "Scheduled",
+    agent: item.agent || owner,
+    city: item.location || "",
+    price: 0,
+    when: Date.parse(item.when) || 0,
+    count: 1,
+    recent: Date.parse(item.when) || 0,
+    stage: "",
+    channel: "",
+    due: item.when,
+    title: item.title,
+    key: item.id,
+  })), OFFICE_LISTS.calendar, agendaList.query);
+  const agendaItems = arrangedAgenda.rows.flatMap((row) => {
+    const item = appointments.find((entry) => entry.id === row.key);
+    return item ? [item] : [];
+  });
   return (
     <div className="grid gap-[11px] bg-[#f5f5f5] p-3 lg:grid-cols-[321px_1fr]">
       <aside className="border border-[#e5e5e5] bg-white text-[13px]">
@@ -2467,7 +2573,11 @@ export function CalendarView() {
           <div className="flex h-24 items-center justify-center rounded bg-[#eee] text-[16px] font-semibold text-[#666]">+ Event</div>
         </div>
         {mode === "agenda" ? (
-          <ul>{appointments.length ? appointments.map((item) => <li key={item.id} className="border-b border-[#eee] py-2">{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="py-4 text-[#888]">No events.</li>}</ul>
+          <div className="mt-3">
+            <OfficeListBar query={agendaList.query} update={agendaList.update} views={agendaList.views} saveView={agendaList.saveView} filters={[{ id: "agent", label: "Agent", options: [owner, "Casey Archibald", "Kayla Gerak"] }]} columns={OFFICE_LISTS.calendar.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.calendar)} toggleSort={agendaList.toggleSort} onSelectPage={() => setPickedAppts(agendaItems.map((item) => item.id))} total={arrangedAgenda.total} emptyLabel="No events match this search and these filters." />
+            {pickedAppts.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, appointments: current.appointments.filter((item) => !pickedAppts.includes(item.id)) })); setPickedAppts([]); chrome.toast("Selected events deleted."); }}>Delete selected</button> : null}
+            <ul className="bg-white">{agendaItems.length ? agendaItems.map((item) => <li key={item.id} className="flex items-center gap-2 border-b border-[#eee] px-3 py-2"><input type="checkbox" aria-label={`Select ${item.title}`} checked={pickedAppts.includes(item.id)} onChange={(event) => setPickedAppts(event.target.checked ? [...pickedAppts, item.id] : pickedAppts.filter((id) => id !== item.id))} />{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="px-3 py-4 text-[#888]">No events match this search and these filters.</li>}</ul>
+          </div>
         ) : mode === "week" ? (
           <div className="grid grid-cols-7 gap-1">
             {Array.from({ length: 7 }, (_, index) => {
@@ -2548,15 +2658,16 @@ export function TasksView() {
     stage: "",
     channel: "",
     due: item.due,
-    title: item.id,
+    title: item.title,
+    key: item.id,
   })), OFFICE_LISTS.tasks, taskList.query);
   const reminders = arranged.rows.flatMap((row) => {
-    const item = state.reminders.find((reminder) => reminder.id === row.title);
+    const item = state.reminders.find((reminder) => reminder.id === row.key);
     return item ? [item] : [];
   });
   return (
     <div className="p-4">
-      <OfficeListBar query={taskList.query} update={taskList.update} views={taskList.views} saveView={taskList.saveView} filters={[{ id: "status", label: "Status", options: ["Open", "Done"] }]} columns={OFFICE_LISTS.tasks.columns.map((column) => ({ id: column.id, label: column.label }))} total={arranged.total} emptyLabel="No reminders match." />
+      <OfficeListBar query={taskList.query} update={taskList.update} views={taskList.views} saveView={taskList.saveView} filters={[{ id: "status", label: "Status", options: ["Open", "Done"] }]} columns={OFFICE_LISTS.tasks.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.tasks)} toggleSort={taskList.toggleSort} onSelectPage={() => setPicked(reminders.map((item) => item.id))} total={arranged.total} emptyLabel="No reminders match." />
       {picked.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => picked.includes(reminder.id) ? { ...reminder, done: true } : reminder) })); setPicked([]); chrome.toast("Selected reminders completed."); }}>Complete selected</button> : null}
       <div className="bg-white p-4">
         {reminders.map((item) => (
@@ -2728,7 +2839,9 @@ export function BrokerLaunchpad() {
 export function ReportsView() {
   const { leads } = useLeads();
   const { state } = useCinc();
+  const chrome = useChrome();
   const reportList = useOfficeList("reports", "label", ["label", "count", "agent"]);
+  const [pickedReports, setPickedReports] = useState<string[]>([]);
   const stats = [
     ["Website leads", leads.length],
     ["Calls logged", state.calls.length],
@@ -2753,10 +2866,12 @@ export function ReportsView() {
   })), OFFICE_LISTS.reports, reportList.query);
   return (
     <div className="p-4">
-      <OfficeListBar query={reportList.query} update={reportList.update} views={reportList.views} saveView={reportList.saveView} filters={[]} columns={OFFICE_LISTS.reports.columns.map((column) => ({ id: column.id, label: column.label }))} total={arranged.total} emptyLabel="No report rows match." />
+      <OfficeListBar query={reportList.query} update={reportList.update} views={reportList.views} saveView={reportList.saveView} filters={[]} columns={OFFICE_LISTS.reports.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.reports)} toggleSort={reportList.toggleSort} onSelectPage={() => setPickedReports(arranged.rows.map((row) => row.title))} total={arranged.total} emptyLabel="No report rows match." />
+      {pickedReports.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { void navigator.clipboard?.writeText(pickedReports.join("\n")); chrome.toast(`Copied ${pickedReports.length} report${pickedReports.length === 1 ? "" : "s"}.`); setPickedReports([]); }}>Copy selected</button> : null}
     <div className="grid gap-3 sm:grid-cols-2">
       {arranged.rows.map((row) => (
         <article key={row.title} className="bg-white p-4">
+          <label className="mb-1 flex items-center gap-1 text-[12px]"><input type="checkbox" aria-label={`Select ${row.title}`} checked={pickedReports.includes(row.title)} onChange={(event) => setPickedReports(event.target.checked ? [...pickedReports, row.title] : pickedReports.filter((id) => id !== row.title))} />Select</label>
           <p className="text-[12px] uppercase text-[#888]">{row.title}</p>
           <p className="text-[28px] text-[#1c93b5]">{row.count}</p>
         </article>

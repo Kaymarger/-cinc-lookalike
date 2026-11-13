@@ -70,14 +70,28 @@ export function applyOfficeList<T>(rows: T[], spec: ListSpec<T>, query: ListQuer
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(Math.max(1, query.page || 1), pages);
   const start = (page - 1) * pageSize;
-  const visible = new Set(query.columns.length ? query.columns : spec.columns.map((item) => item.id));
+  const order = query.columns.length ? query.columns : spec.columns.map((item) => item.id);
+  const columns = order.flatMap((id) => {
+    const column = spec.columns.find((item) => item.id === id);
+    return column ? [column] : [];
+  });
   return {
     rows: next.slice(start, start + pageSize),
     total,
     pages,
     empty: total === 0,
-    columns: spec.columns.filter((item) => visible.has(item.id)),
+    columns,
   };
+}
+
+export function moveColumn(columns: string[], id: string, direction: -1 | 1): string[] {
+  const index = columns.indexOf(id);
+  const next = index + direction;
+  if (index < 0 || next < 0 || next >= columns.length) return columns;
+  const copy = [...columns];
+  const [item] = copy.splice(index, 1);
+  copy.splice(next, 0, item);
+  return copy;
 }
 
 export function serializeListQuery(query: ListQuery): string {
@@ -144,6 +158,7 @@ export type OfficeRow = {
   channel: string;
   due: string;
   title: string;
+  key?: string;
 };
 
 const text = (row: OfficeRow) => `${row.name} ${row.email} ${row.title} ${row.city} ${row.agent}`;
@@ -303,6 +318,10 @@ export const OFFICE_LISTS: Record<string, ListSpec<OfficeRow>> = {
     ],
   },
 };
+
+export function sortColumnProps(spec: ListSpec<OfficeRow>) {
+  return spec.columns.map((column) => ({ id: column.id, label: column.label, count: Boolean(column.count), recent: Boolean(column.recent) }));
+}
 
 export function checklistFor(spec: ListSpec<OfficeRow>): string[] {
   const lines = [`${spec.id}`];

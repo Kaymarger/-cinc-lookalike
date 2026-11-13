@@ -14,10 +14,25 @@ import { LeadSearches } from "./lead-searches";
 import { LabelManager, useLabelCatalog } from "./label-manager";
 import { useOfficeSession } from "./office-session";
 import { useChrome } from "./chrome-context";
+import { hashPath, hashSearch } from "@/lib/office-list";
 import { go, href, type LeadTab } from "./route";
 import { nowLabel, uid, useCinc, type Assign } from "./store";
 import { loadOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
+
+const LEAD_COLUMNS = ["Name/Info", "Labels", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"];
+
+type LeadViewSnapshot = { name: string; stage: string; agent: string; type: string; checks: string[]; q: string };
+
+function readLeadViews(): LeadViewSnapshot[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem("gvhs-lead-views") || "[]") as LeadViewSnapshot[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 const PIPELINES = [
   "New Lead",
@@ -423,6 +438,9 @@ export function LeadsView({
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState("Registered");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
+  const [sortMode, setSortMode] = useState<"value" | "count" | "recent">("value");
+  const [leadColumns, setLeadColumns] = useState(LEAD_COLUMNS);
+  const [listHydrated, setListHydrated] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -451,6 +469,80 @@ export function LeadsView({
     setLastTab(tab);
   }, [leadId, tab]);
   const openTab = leadId ? tab : lastTab;
+  useEffect(() => {
+    const params = new URLSearchParams(hashSearch(window.location.hash));
+    const sort = params.get("sort");
+    if (sort) setSortKey(sort);
+    if (params.get("dir") === "asc") setSortDir(1);
+    if (params.get("dir") === "desc") setSortDir(-1);
+    const mode = params.get("mode");
+    if (mode === "count" || mode === "recent") setSortMode(mode);
+    const pageNum = Number(params.get("page"));
+    if (pageNum > 0) setPage(pageNum - 1);
+    const size = Number(params.get("size"));
+    if ([5, 10, 25, 50, 100].includes(size)) setPageSize(size);
+    const stage = params.get("f.pipeline");
+    if (stage) setDrawerStage(stage);
+    const agent = params.get("f.agent");
+    if (agent) { setChecks((current) => current.includes("Assigned Agent") ? current : [...current, "Assigned Agent"]); setDrawerAgent(agent); }
+    const type = params.get("f.type");
+    if (type) { setChecks((current) => current.includes("Lead Type") ? current : [...current, "Lead Type"]); setDrawerType(type); }
+    const cols = params.get("cols");
+    if (cols) setLeadColumns(cols.split(",").filter((id) => LEAD_COLUMNS.includes(id)));
+    const q = params.get("q");
+    if (q) chrome.setLeadSearch(q);
+    setListHydrated(true);
+  }, [chrome.setLeadSearch]);
+  useEffect(() => {
+    if (!listHydrated) return;
+    const path = hashPath(window.location.hash || "#leads");
+    if (!path.startsWith("leads")) return;
+    const params = new URLSearchParams();
+    if (chrome.leadSearch) params.set("q", chrome.leadSearch);
+    params.set("sort", sortKey);
+    params.set("dir", sortDir === 1 ? "asc" : "desc");
+    if (sortMode !== "value") params.set("mode", sortMode);
+    if (page > 0) params.set("page", String(page + 1));
+    if (pageSize !== 25) params.set("size", String(pageSize));
+    if (drawerStage !== "Any") params.set("f.pipeline", drawerStage);
+    if (checks.includes("Assigned Agent") && drawerAgent !== "Any") params.set("f.agent", drawerAgent);
+    if (checks.includes("Lead Type") && drawerType !== "Any") params.set("f.type", drawerType);
+    if (leadColumns.join(",") !== LEAD_COLUMNS.join(",")) params.set("cols", leadColumns.join(","));
+    const next = `#${path}?${params.toString()}`;
+    if (window.location.hash !== next) window.location.hash = next;
+  }, [listHydrated, chrome.leadSearch, sortKey, sortDir, sortMode, page, pageSize, drawerStage, drawerAgent, drawerType, checks, leadColumns]);
+
+  function applySavedFilter(label: string) {
+    setCustomFilter(label);
+    setPage(0);
+    const saved = readLeadViews().find((view) => view.name === label);
+    if (!saved) return;
+    setDrawerStage(saved.stage);
+    setDrawerAgent(saved.agent);
+    setDrawerType(saved.type);
+    setChecks(saved.checks);
+    chrome.setLeadSearch(saved.q);
+  }
+
+  function saveLeadView(name: string) {
+    const next = [...readLeadViews().filter((view) => view.name !== name), { name, stage: drawerStage, agent: drawerAgent, type: drawerType, checks, q: chrome.leadSearch }];
+    localStorage.setItem("gvhs-lead-views", JSON.stringify(next));
+    update((current) => ({ ...current, customFilters: current.customFilters.includes(name) ? current.customFilters : [...current.customFilters, name] }));
+    setCustomFilter(name);
+    chrome.toast("Filter saved.");
+  }
+
+  function moveLeadColumn(id: string, direction: -1 | 1) {
+    setLeadColumns((current) => {
+      const index = current.indexOf(id);
+      const next = index + direction;
+      if (index < 0 || next < 0 || next >= current.length) return current;
+      const copy = [...current];
+      const [item] = copy.splice(index, 1);
+      copy.splice(next, 0, item);
+      return copy;
+    });
+  }
 
   const assignChoices = useMemo(() => {
     const people = office.roster;
@@ -545,11 +637,14 @@ export function LeadsView({
       case "Timeframe":
         return cmp(a.timeframe, b.timeframe);
       case "Last Login":
-        return sortDir === 1 ? cmp(a.logins, b.logins) : cmp(b.registeredAt, a.registeredAt);
+        if (sortMode === "count") return cmp(a.logins, b.logins);
+        return cmp(a.registeredAt, b.registeredAt);
       case "Last Touch":
-        return sortDir === 1 ? cmp(a.touchCount || 0, b.touchCount || 0) : cmp(a.lastTouch, b.lastTouch);
+        if (sortMode === "count") return cmp(a.touchCount || 0, b.touchCount || 0);
+        return cmp(a.lastTouch, b.lastTouch);
       case "Next Reminder":
-        return sortDir === 1 ? cmp(a.reminderCount || 0, b.reminderCount || 0) : cmp(a.nextReminder === "n/a" ? "zzz" : a.nextReminder, b.nextReminder === "n/a" ? "zzz" : b.nextReminder);
+        if (sortMode === "count") return cmp(a.reminderCount || 0, b.reminderCount || 0);
+        return cmp(a.nextReminder === "n/a" ? "zzz" : a.nextReminder, b.nextReminder === "n/a" ? "zzz" : b.nextReminder);
       case "Activity":
         return cmp(a.views + a.saved + a.fav + a.inq, b.views + b.saved + b.fav + b.inq);
       case "Assigned To":
@@ -900,17 +995,34 @@ export function LeadsView({
               onFooter={() => { setCustomFilter("None"); setCustomQuery(""); setPage(0); }}
               items={[...CUSTOM_FILTERS, ...state.customFilters].filter((option) => option.toLowerCase().includes(customQuery.toLowerCase())).map((label) => ({
                 label,
-                onClick: () => setCustomFilter(label),
+                onClick: () => applySavedFilter(label),
               }))}
             />
             <button type="button" title="Save filter" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#888]" onClick={() => {
               const name = window.prompt("Name this filter");
               if (!name) return;
-              update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
-              chrome.toast("Filter saved.");
+              saveLeadView(name);
             }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8l3 3v9H3V2zm2 1v4h6V3H5zm1 7h4v3H6v-3z" /></svg>
             </button>
+            <select aria-label="Show or hide a lead column" className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value="" onChange={(event) => {
+              const id = event.target.value;
+              if (!id) return;
+              setLeadColumns((current) => current.includes(id) ? (current.length === 1 ? current : current.filter((item) => item !== id)) : [...current, id]);
+            }}>
+              <option value="">Columns</option>
+              {LEAD_COLUMNS.map((id) => <option key={id} value={id}>{leadColumns.includes(id) ? "Hide" : "Show"} {id}</option>)}
+            </select>
+            <select aria-label="Reorder a lead column" className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value="" onChange={(event) => {
+              const [id, direction] = event.target.value.split(":");
+              if (id) moveLeadColumn(id, direction === "left" ? -1 : 1);
+            }}>
+              <option value="">Move column</option>
+              {leadColumns.flatMap((id) => [
+                <option key={`${id}-left`} value={`${id}:left`}>{id} left</option>,
+                <option key={`${id}-right`} value={`${id}:right`}>{id} right</option>,
+              ])}
+            </select>
             <button type="button" title="Column config" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => setDrawer(true)}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.2" fill="white" /><circle cx="10" cy="8" r="1.2" fill="white" /><circle cx="7" cy="12" r="1.2" fill="white" /></svg>
             </button>
@@ -955,21 +1067,28 @@ export function LeadsView({
         <div className="min-w-0 flex-1 overflow-auto">
             <table className="w-full min-w-[1280px] border-collapse bg-white text-left text-[14px]">
               <thead className="sticky top-0 z-10 bg-white text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
-                <tr className="h-[41px]">
-                  {["", "Name/Info", "", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"].map((col, index) => (
-                    <th key={`${col}-${index}`} className={`border-r border-b border-[#e5e5e5] px-2 whitespace-nowrap ${col === "Name/Info" ? "min-w-[260px]" : ""}`}>
-                      {col ? <button type="button" className="uppercase" onClick={() => { if (sortKey === col) setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortDir(1); } }}>{col}{sortKey === col ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button> : null}
+                <tr className="grid min-h-[48px]" style={{ gridTemplateColumns: `36px repeat(${leadColumns.length}, minmax(72px, 1fr))` }}>
+                  <th className="border-r border-b border-[#e5e5e5]" />
+                  {leadColumns.map((col) => (
+                    <th key={col} className={`border-r border-b border-[#e5e5e5] px-1 text-left text-[10px] leading-tight ${col === "Name/Info" ? "min-w-[180px]" : ""}`}>
+                      {col === "Labels" ? <span>Labels</span> : <button type="button" className="uppercase" onClick={() => { if (sortKey === col && sortMode === "value") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("value"); setSortDir(1); } }}>{col}{sortKey === col && sortMode === "value" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>}
+                      {col === "Last Login" || col === "Last Touch" || col === "Next Reminder" ? (
+                        <button type="button" aria-label={`Sort ${col} by count`} className="block normal-case text-[#1c93b5]" onClick={() => { if (sortKey === col && sortMode === "count") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("count"); setSortDir(1); } }}>count{sortKey === col && sortMode === "count" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
+                      ) : null}
+                      {col === "Registered" || col === "Last Login" || col === "Last Touch" || col === "Next Reminder" ? (
+                        <button type="button" aria-label={`Sort ${col} by recency`} className="block normal-case text-[#1c93b5]" onClick={() => { if (sortKey === col && sortMode === "recent") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("recent"); setSortDir(1); } }}>recent{sortKey === col && sortMode === "recent" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
+                      ) : null}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {slice.map((row, index) => (
-                  <tr key={row.id} className={`group h-[105px] border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#eee] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`}>
-                    <td className="px-2">
+                  <tr key={row.id} className={`group grid h-[105px] border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#eee] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`} style={{ gridTemplateColumns: `36px repeat(${leadColumns.length}, minmax(90px, 1fr))` }}>
+                    <td className="px-2" style={{ order: 0 }}>
                       <input className={checkCls} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
                     </td>
-                    <td className="px-2">
+                    {leadColumns.includes("Name/Info") ? <td className="px-2" style={{ order: leadColumns.indexOf("Name/Info") + 1 }}>
                       <div className="flex items-center gap-1">
                         <a href={href.lead(row.id, "activity")} className="text-[13px] font-bold text-[#1c93b5]">{row.name}</a>
                         <span title={row.verified ? "Verified" : "Locked"} className={row.verified ? "text-[#2f6fed]" : "text-[#888]"}><ValidityIcon ok={row.verified} /></span>
@@ -995,8 +1114,8 @@ export function LeadsView({
                         </span>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
-                    </td>
-                    <td className="px-1">
+                    </td> : null}
+                    {leadColumns.includes("Labels") ? <td className="px-1" style={{ order: leadColumns.indexOf("Labels") + 1 }}>
                       <div className="flex flex-col items-center gap-1">
                         {(state.labels[row.id] ?? []).map((label) => (
                           <span key={label} title={label} className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: LABEL_COLORS[label] ?? "#888" }}>{label.slice(0, 1)}</span>
@@ -1009,8 +1128,8 @@ export function LeadsView({
                           />
                         )}>+</button>
                       </div>
-                    </td>
-                    <td className="px-2">
+                    </td> : null}
+                    {leadColumns.includes("Pipeline") ? <td className="px-2" style={{ order: leadColumns.indexOf("Pipeline") + 1 }}>
                       <Menu
                         label={<span title={row.pipeline} className={`inline-flex max-w-[140px] items-center gap-1 truncate rounded border border-[#bbb] bg-white px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
                         items={PIPELINES.map((stage) => ({ label: stage, onClick: () => setPipeline(row.id, stage) }))}
@@ -1039,25 +1158,25 @@ export function LeadsView({
                           ]}
                         />
                       </div>
-                    </td>
-                    <td className="px-2 text-[12px]">{row.registered}<br />{row.source}</td>
-                    <td className="px-2 text-[12px]">{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td>
-                    <td className="px-2 text-[12px]">{row.timeframe}</td>
-                    <td className="px-2 text-[12px]">{row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td>
-                    <td className="px-2 text-[12px] leading-5">
+                    </td> : null}
+                    {leadColumns.includes("Registered") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Registered") + 1 }}>{row.registered}<br />{row.source}</td> : null}
+                    {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td> : null}
+                    {leadColumns.includes("Timeframe") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Timeframe") + 1 }}>{row.timeframe}</td> : null}
+                    {leadColumns.includes("Last Login") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Last Login") + 1 }}>{row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td> : null}
+                    {leadColumns.includes("Last Touch") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Last Touch") + 1 }}>
                       <span title="Last touch">{row.lastTouch === "—" ? "—" : row.lastTouch}</span><br />
                       <span className="text-[#888]">{row.touchCount || 0} touch{(row.touchCount || 0) === 1 ? "" : "es"}</span>
-                    </td>
-                    <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`}>
+                    </td> : null}
+                    {leadColumns.includes("Next Reminder") ? <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`} style={{ order: leadColumns.indexOf("Next Reminder") + 1 }}>
                       <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
-                    </td>
-                    <td className="px-2 text-[11px] leading-5">
+                    </td> : null}
+                    {leadColumns.includes("Activity") ? <td className="px-2 text-[11px] leading-5" style={{ order: leadColumns.indexOf("Activity") + 1 }}>
                       <span className="text-[#2e9e5b]">{row.views} Views</span><br />
                       <span className="text-[#e39b2b]">{row.saved} Saved</span><br />
                       <span className="text-[#d9363e]">{row.fav} Fav</span><br />
                       <span className="text-[#1c93b5]">{row.inq} Inq</span>
-                    </td>
-                    <td className="px-2 text-[13px] leading-6">
+                    </td> : null}
+                    {leadColumns.includes("Assigned To") ? <td className="px-2 text-[13px] leading-6" style={{ order: leadColumns.indexOf("Assigned To") + 1 }}>
                       {(["agent", "partner", "listing"] as const).map((slot) => (
                         <div key={slot} className="block">
                         <Menu
@@ -1069,7 +1188,7 @@ export function LeadsView({
                         />
                         </div>
                       ))}
-                    </td>
+                    </td> : null}
                   </tr>
                 ))}
               </tbody>
@@ -1105,8 +1224,7 @@ export function LeadsView({
           onSave={() => {
             const name = window.prompt("Name this filter");
             if (!name) return;
-            update((current) => ({ ...current, customFilters: [...current.customFilters, name] }));
-            chrome.toast("Filter saved.");
+            saveLeadView(name);
           }}
           stage={drawerStage}
           setStage={setDrawerStage}

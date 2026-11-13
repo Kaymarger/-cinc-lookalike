@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OFFICE_LISTS, applyOfficeList, defaultListQuery, parseListQuery, serializeListQuery, checklistFor, type ListQuery } from "./office-list.ts";
+import { OFFICE_LISTS, applyOfficeList, defaultListQuery, moveColumn, parseListQuery, serializeListQuery, checklistFor, type ListQuery } from "./office-list.ts";
 
 type Row = {
   name: string;
@@ -101,4 +101,17 @@ for (const spec of Object.values(OFFICE_LISTS)) {
     assert.deepEqual(again.columns, [spec.columns[0].id]);
     assert.ok(checklistFor(spec).length > spec.columns.length);
   });
+
+  test(`${spec.id} column order follows the query`, () => {
+    const ids = [...spec.columns].reverse().map((column) => column.id);
+    const result = applyOfficeList(sample, spec, { ...defaultListQuery(spec.columns[0].id, ids) });
+    assert.deepEqual(result.columns.map((column) => column.id), ids);
+  });
 }
+
+test("moveColumn swaps a column left or right and ignores the ends", () => {
+  assert.deepEqual(moveColumn(["a", "b", "c"], "b", -1), ["b", "a", "c"]);
+  assert.deepEqual(moveColumn(["a", "b", "c"], "b", 1), ["a", "c", "b"]);
+  assert.deepEqual(moveColumn(["a", "b"], "a", -1), ["a", "b"]);
+  assert.deepEqual(moveColumn(["a"], "missing", 1), ["a"]);
+});
