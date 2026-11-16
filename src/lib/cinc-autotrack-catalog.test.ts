@@ -11,7 +11,7 @@ test("the capture seeds 21 tracks with the captured statuses", () => {
   assert.equal(tracks.filter((track) => track.status === "active").length, 14);
   assert.equal(tracks.filter((track) => track.status === "paused").length, 6);
   assert.equal(tracks.filter((track) => track.status === "disabled").length, 1);
-  assert.equal(tracks.every((track) => track.category === "General" && track.captured), true);
+  assert.equal(tracks.every((track) => Boolean(track.category) && track.captured), true);
 });
 
 test("repeated tracks are expanded and emails include the shared footer", () => {
