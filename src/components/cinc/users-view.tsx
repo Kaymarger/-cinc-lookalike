@@ -204,9 +204,9 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       <>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-light text-[#329bb9]">{(users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length || (office.user ? 1 : 0))} Total Agents</h1>
-          <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
-          <button type="button" className="h-[30px] rounded border border-[#ccc] bg-white px-3 text-[14px] shadow-sm" onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
+          <h1 className="text-[16px] text-[#243238]">{(users.filter((user) => (showDisabled || user.active) && (!pondOnly || user.role === "isa")).length || (office.user ? 1 : 0))} Total Agents</h1>
+          <button type="button" className={`h-8 rounded px-3 text-[13px] ${pondOnly ? "bg-[#329bb9] text-white" : "bg-[#e7f3f8] text-[#329bb9]"}`} onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
+          <button type="button" className={`h-8 rounded px-3 text-[13px] ${showDisabled ? "bg-[#329bb9] text-white" : "bg-[#e7f3f8] text-[#329bb9]"}`} onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
         </div>
         <div className="flex gap-2">
           <button type="button" className="h-[30px] rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => { setCreating(false); setEditing(null); setPond(true); setPondName(""); setPondEmail(""); }}>Add Pond</button>
@@ -263,7 +263,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             {pickedAgents.length && office.canManageUsers ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { void Promise.all(pickedAgents.filter((id) => id !== office.user?.id).map((id) => fetch(`/api/office/users/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }))).then(() => { setPickedAgents([]); setMessage("Selected agents disabled."); void load(); }); }}>Disable selected</button> : null}
             <div className="grid gap-4 sm:grid-cols-2">
             {roster.map((user) => (
-              <article key={user.id} className="relative flex justify-between rounded-md border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white p-5 text-[14px] shadow-sm">
+              <article key={user.id} className="relative flex items-center justify-between rounded border border-[#e5e5e5] bg-white p-4 text-[14px]">
                 <input type="checkbox" className="absolute top-2 right-2" aria-label={`Select ${user.name}`} checked={pickedAgents.includes(user.id)} onChange={(event) => setPickedAgents(event.target.checked ? [...pickedAgents, user.id] : pickedAgents.filter((id) => id !== user.id))} />
                 <div className="flex gap-4">
                   <div className="relative h-24 w-24 shrink-0">
@@ -278,11 +278,11 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                   </div>
                 </div>
                 <div className="flex w-[150px] shrink-0 flex-col items-stretch gap-2">
-                  {office.canManageUsers ? <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => setPermUser(permUser?.id === user.id ? null : user)}>Edit Permissions</button> : null}
+                  <button type="button" className="border border-[#ccc] bg-white px-2 py-1" onClick={() => office.canManageUsers ? setPermUser(permUser?.id === user.id ? null : user) : setMessage("Only an admin or broker can edit permissions.")}>Edit Permissions</button>
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
-                  {office.canBecome && user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void become(user, "leads")}>Become User</button> : null}
+                  {user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => office.canBecome ? void become(user, "leads") : setMessage("Your role cannot become this user.")}>Become User</button> : null}
                   {user.role === "isa" && office.canManageUsers ? <button type="button" className="border border-[#1c93b5] px-2 py-1 text-[#1c93b5]" onClick={() => startEdit(user)}>Edit pond</button> : null}
-                  {office.canManageUsers && user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
+                  {user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { if (!office.canManageUsers) { setMessage("Only an admin or broker can disable users."); return; } void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
                 </div>
               </article>
             ))}

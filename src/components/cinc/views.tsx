@@ -46,7 +46,6 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
   const { leads } = useLeads();
   const { state, update } = useCinc();
   const chrome = useChrome();
-  const office = useOfficeSession();
   const [tab, setTab] = useState("Contact Requested");
   useEffect(() => {
     const reset = () => setTab("Contact Requested");
@@ -133,16 +132,15 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
     return true;
   });
   return (
-    <div className="bg-[#f5f5f5] px-2 pt-6 pb-8">
-      <h1 className="text-[34px] font-light text-[#243238]">{team ? "Broker Launchpad" : `Welcome back, ${office.user?.name || "Casey Archibald"}.`}</h1>
-      <p className="mt-1 text-[13px] text-[#555]">
+    <div className="bg-[#f7f7f7] px-3 pt-3 pb-8">
+      <p className="text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
       </p>
-      <section className="mt-6 rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white shadow-sm">
-        <div className="flex flex-wrap items-end gap-1 border-b border-[#e5e5e5] px-4">
+      <section className="mt-3 border border-[#e5e5e5] bg-white">
+        <div className="flex flex-wrap items-end gap-1 border-b border-[#e5e5e5] px-3">
           {tabs.map(([label, count]) => (
-            <button key={label} type="button" className={`h-[64px] px-4 text-[16px] ${tab === label ? "border-b-[3px] border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`} onClick={() => setTab(label)}>
+            <button key={label} type="button" className={`h-11 px-3 text-[14px] ${tab === label ? "border-b-[3px] border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`} onClick={() => setTab(label)}>
               {label}
               {label === "Contact Requested" && count ? <span className="ml-1 rounded-full bg-[#d9363e] px-1.5 py-0.5 text-[10px] font-bold text-white">{count > 99 ? "99+" : count}</span> : null}
             </button>
@@ -192,19 +190,19 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
               />
               {pickedRequests.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-white" onClick={() => { update((current) => ({ ...current, requests: { ...current.requests, ...Object.fromEntries(pickedRequests.map((id) => [id, "acted"])) } })); setPickedRequests([]); }}>Mark selected acted on</button> : null}
               {shownRequests.length ? shownRequests.map((item) => (
-                <article key={item.id} className="mb-4 flex min-h-[290px] gap-0 rounded border border-[#e3e3e3] bg-white shadow-sm">
+                <article key={item.id} className="mb-3 flex border border-[#e3e3e3] bg-white">
                   <input className="m-2" type="checkbox" aria-label={`Select ${item.name}`} checked={pickedRequests.includes(item.id)} onChange={(event) => setPickedRequests(event.target.checked ? [...pickedRequests, item.id] : pickedRequests.filter((id) => id !== item.id))} />
-                  <div className="grid w-14 shrink-0 place-items-center border-r border-[#eee] text-[#1c93b5]">
+                  <div className="grid w-12 shrink-0 place-items-start pt-3 text-[#1c93b5]">
                     {item.kind === "Showing Request" ? (
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="5" width="16" height="15" rx="1" /><path d="M4 9h16M8 3v4M16 3v4" /></svg>
                     ) : (
                       <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-[#1c93b5] text-[16px]">?</span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 p-3">
+                  <div className="min-w-0 flex-1 px-2 py-3">
                     <div className="flex items-start gap-2">
                       <div>
-                        <a className="text-[18px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
+                        <a className="text-[15px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
                         <span className="ml-1 inline-block h-4 w-4 align-middle text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>}</span>
                         <p className="text-[13px] text-[#999]">{item.at}</p>
                       </div>
@@ -218,10 +216,10 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                         />
                       </span>
                     </div>
-                    <p className="mt-2 border-t border-[#eee] pt-2 text-[16px] font-bold">{item.kind}</p>
-                    <p className="mt-2 rounded bg-[#f3f3f3] px-3 py-2 text-[14px] text-[#666]">{item.message}</p>
-                    <div className="mt-3 flex gap-3">
-                      <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 rounded border border-[#e5e5e5] object-cover" />
+                    <p className="mt-3 text-[14px] font-bold text-[#243238]">{item.kind}</p>
+                    <p className="mt-2 bg-[#ececec] px-3 py-2 text-[13px] text-[#666]">{item.message}</p>
+                    <div className="mt-3 flex items-start gap-3">
+                      <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 object-cover" />
                       <div>
                         <a className="text-[13px] font-bold text-[#1c93b5]" href={`/search?q=${encodeURIComponent(item.address.split(",")[0] || item.address)}`}>{item.address}</a>
                         <p className="text-[12px]">{item.price}</p>
@@ -450,17 +448,19 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
     <div className="flex h-full min-h-0 flex-col bg-[#f5f5f5]">
       <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-end justify-between border-b border-[#e5e5e5] bg-white px-4 pt-2">
-        <div className="flex gap-8 text-[16px] font-semibold">
-          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Purchases</a>
-          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Listings</a>
+        <div className="flex gap-6 text-[15px]">
+          <a href={href.dealsPurchases} className={board === "purchases" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 font-semibold text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Purchases</a>
+          <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 font-semibold text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Listings</a>
         </div>
-        <button type="button" className="mb-2 inline-flex h-[34px] items-center rounded border border-[#c8c8c8] bg-white px-4 text-[15px] shadow-sm" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+        <div className="mb-2 flex gap-2">
+          <button type="button" className="inline-flex h-8 items-center rounded border border-[#c8c8c8] bg-white px-3 text-[13px]" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className="inline-flex h-8 items-center gap-1 rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
+            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
+            Add Deal
+          </button>
+        </div>
       </div>
-      <div className="mb-3 flex w-full items-center gap-3 text-[15px]">
-        <button type="button" className="inline-flex h-10 items-center gap-2 rounded bg-[#329bb9] px-4 text-[16px] text-white shadow-sm" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
-          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
-          Add Deal
-        </button>
+      <div className="mb-3 flex w-full items-center gap-3 px-4 text-[13px]">
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
         <Menu className="w-[150px]" label={<span className={`${toolBtn} w-[150px] justify-between`}>Created: <b>{created}</b> ▾</span>} items={["Anytime", "Last 7 Days", "Last 30 Days"].map((label) => ({ label, onClick: () => setCreated(label) }))} />
         <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
@@ -468,26 +468,25 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
       </div>
       <OfficeListBar query={dealList.query} update={dealList.update} views={dealList.views} saveView={dealList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Archived"] }, { id: "stage", label: "Stage", options: stages.map((stage) => stage.id) }, { id: "agent", label: "Agent", options: agents.filter((name) => name !== "All") }]} columns={OFFICE_LISTS.deals.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.deals)} toggleSort={dealList.toggleSort} onSelectPage={() => setPickedDeals(visibleDeals.map((deal) => deal.id))} total={arrangedDeals.total} emptyLabel="No deals match this search and these filters." />
       {pickedDeals.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, deals: current.deals.filter((deal) => !pickedDeals.includes(deal.id)) })); setPickedDeals([]); chrome.toast("Selected deals deleted."); }}>Delete selected</button> : null}
-      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-4 rounded border border-[#e5e5e5] bg-white p-4 shadow-sm">
+      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-3 px-4 pb-4">
         {stages.map((stage) => {
           const cards = visibleDeals.filter((deal) => deal.stage === stage.id);
           return (
-            <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e1e1e1] bg-[#f1f1f1] shadow-sm">
-              <header className="rounded-t bg-white px-3 py-3">
-                <div className="text-[18px] font-bold tracking-wide text-black uppercase">
+            <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e6e6e6] bg-white">
+              <header className="px-3 py-3">
+                <div className="text-[13px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
-                <p className="text-[15px] text-[#555]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
+                <p className="text-[12px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
               </header>
-              <div className="flex-1 p-2">
+              <div className="flex-1 space-y-2 px-2 pb-2">
                 {cards.map((deal) => (
-                  <article key={deal.id} className="mb-2 bg-white p-2 shadow-sm">
+                  <article key={deal.id} className="border border-[#eee] bg-white p-2">
                     <label className="mb-1 flex items-center gap-1 text-[11px]"><input type="checkbox" aria-label={`Select ${deal.client || "deal"}`} checked={pickedDeals.includes(deal.id)} onChange={(event) => setPickedDeals(event.target.checked ? [...pickedDeals, deal.id] : pickedDeals.filter((id) => id !== deal.id))} />Select</label>
                     <p className="text-[12px]">{deal.address || "--"}</p>
                     <p className="text-[11px] text-[#888]">{deal.client || "--"}</p>
                     <p className="text-[11px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
-                    <p className="text-[11px] text-[#888]">--</p>
-                    <p className="text-[11px] text-[#666]">No current upcoming tasks assigned</p>
+                    <p className="mt-2 flex items-center gap-1 text-[11px] text-[#888]"><span className="grid h-4 w-4 place-items-center rounded-full border border-[#9bb] text-[10px] text-[#329bb9]">i</span> No current upcoming tasks assigned</p>
                     <div className="mt-1 flex gap-2">
                       <select className="h-6 border border-[#ccc] text-[11px]" value={deal.stage} onChange={(event) => update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, stage: event.target.value as DealStage } : item) }))}>
                         {stages.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -500,7 +499,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
             </section>
           );
         })}
-        {!visibleDeals.length ? (
+        {state.deals.some((deal) => deal.board === board) && !visibleDeals.length ? (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <div className="pointer-events-auto bg-white px-8 py-5 text-center shadow-md">
               <p className="text-[15px] font-bold">No Deals Found Matching Your Filters</p>
@@ -788,18 +787,19 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
             ) : null}
           </div>
         ) : null}
+        <span className="ml-auto" />
         {showCompose ? (
           <>
-            <button type="button" disabled={composeOff} className="h-[30px] rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm disabled:opacity-40" onClick={() => composer.email("", (sent, value) => send("email", value, sent ? "sent" : "drafts"))}>New Email</button>
-            <button type="button" disabled={composeOff} className="h-[30px] rounded border border-[#329bb9] bg-white px-3 text-[14px] text-[#329bb9] shadow-sm disabled:opacity-40" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</button>
+            <button type="button" disabled={composeOff} className="h-8 rounded bg-[#329bb9] px-3 text-[13px] text-white disabled:opacity-40" onClick={() => composer.email("", (sent, value) => send("email", value, sent ? "sent" : "drafts"))}>New Email</button>
+            <button type="button" disabled={composeOff} className="h-8 rounded border border-[#ccc] bg-white px-3 text-[13px] text-[#333] disabled:opacity-40" onClick={() => composer.text("", (value) => send("text", value, "sent"))}>New Text</button>
           </>
         ) : null}
-        <OfficeListBar query={mailList.query} update={mailList.update} views={mailList.views} saveView={mailList.saveView} filters={[{ id: "channel", label: "Channel", options: ["email", "text"] }, { id: "status", label: "Read", options: ["Read", "Unread"] }]} columns={OFFICE_LISTS.communications.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.communications)} toggleSort={mailList.toggleSort} onSelectPage={() => setPicked(slice.map((mail) => mail.id))} total={arrangedMail.total} emptyLabel="No messages match this search and these filters." />
-        <span className="ml-auto text-[14px] font-semibold">{countLabel}</span>
+        <span className="text-[13px] text-[#555]">{countLabel}</span>
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-[#f5f5f5] p-3">
+      <OfficeListBar query={mailList.query} update={mailList.update} views={mailList.views} saveView={mailList.saveView} filters={[{ id: "channel", label: "Channel", options: ["email", "text"] }, { id: "status", label: "Read", options: ["Read", "Unread"] }]} columns={OFFICE_LISTS.communications.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.communications)} toggleSort={mailList.toggleSort} onSelectPage={() => setPicked(slice.map((mail) => mail.id))} total={arrangedMail.total} emptyLabel="No messages match this search and these filters." />
+      <div className="min-h-0 flex-1 overflow-auto bg-white">
         {opened ? (
           <article className="bg-white p-4 shadow-sm">
             <button type="button" className="mb-2 text-[12px] text-[#1c93b5]" onClick={() => setOpenId(null)}>Back</button>
@@ -813,8 +813,8 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
           </article>
         ) : (
           <div className="bg-white shadow-sm">
-            {slice.length ? slice.map((mail, index) => (
-              <div key={mail.id} className={`flex h-[45px] w-full items-center gap-2 border-b border-[#eee] px-2 text-left text-[14px] ${mail.unread ? "bg-[#f3fbfd] font-semibold" : index % 2 ? "bg-[#f7f7f7]" : "bg-white"}`}>
+            {slice.length ? slice.map((mail) => (
+              <div key={mail.id} className={`flex h-[45px] w-full items-center gap-3 border-b border-[#eee] px-3 text-left text-[13px] ${mail.unread ? "bg-[#f7f7f7] font-semibold" : "bg-white"}`}>
                 <input className={checkCls} type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => { setOpenId(mail.id); update((current) => ({ ...current, mail: current.mail.map((item) => item.id === mail.id ? { ...item, unread: false } : item) })); }}>
                 {folder === "drafts" ? (
@@ -829,8 +829,8 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                   </>
                 ) : (
                   <>
-                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-white ${mail.kind === "text" ? "bg-[#2e9e5b]" : "bg-[#329bb9]"}`} aria-hidden><svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4">{mail.kind === "text" ? <path d="M3 4h10v7H3zM3 5l5 3 5-3" /> : <path d="M2 4h12v8H2zM2 5l6 4 6-4" />}</svg></span>
-                    <span className="w-16 truncate font-bold">{mail.from || "System"}</span>
+                    <span className={`grid h-4 w-4 shrink-0 place-items-center text-white ${mail.kind === "text" ? "bg-[#2e9e5b]" : "bg-[#3aa0c8]"}`} aria-hidden />
+                    <span className="w-24 shrink-0 truncate">{mail.from || "System"}</span>
                     <span className="min-w-0 flex-1 truncate">{mail.body}</span>
                   </>
                 )}

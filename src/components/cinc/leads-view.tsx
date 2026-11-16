@@ -1047,20 +1047,18 @@ export function LeadsView({
             </span>
             <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
             <button type="button" className="px-1 text-[#1c93b5] disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
+            <button type="button" className="ml-2 inline-flex h-8 items-center gap-1 rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+              const digits = input.phone.replace(/\D/g, "");
+              const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
+              add({ ...input, source: "general", notes: "Added by an agent" });
+              chrome.closeModal();
+              chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
+            }} />)}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
+              Add New Lead
+            </button>
           </>
         )}
-      </div>
-      <div className="mt-2 flex items-center justify-end rounded border border-[#e5e5e5] bg-white px-3 py-2 shadow-sm">
-        <button type="button" className="inline-flex h-[30px] items-center gap-1 rounded bg-[#329bb9] px-3 text-[14px] text-white shadow-sm" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
-          const digits = input.phone.replace(/\D/g, "");
-          const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
-          add({ ...input, source: "general", notes: "Added by an agent" });
-          chrome.closeModal();
-          chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
-        }} />)}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
-          Add New Lead
-        </button>
       </div>
 
       <div className="relative mt-2 flex min-h-0 flex-1">
@@ -1131,7 +1129,7 @@ export function LeadsView({
                     </td> : null}
                     {leadColumns.includes("Pipeline") ? <td className="px-2" style={{ order: leadColumns.indexOf("Pipeline") + 1 }}>
                       <Menu
-                        label={<span title={row.pipeline} className={`inline-flex max-w-[140px] items-center gap-1 truncate rounded border border-[#bbb] bg-white px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline}</span>}
+                        label={<span title={row.pipeline} className={`inline-flex max-w-[140px] items-center gap-1 truncate rounded border bg-white px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${pipeColor(row.pipeline)}`}>{row.pipeline === "Attempted Contact" || row.pipeline === "Contacted" ? "✔ " : ""}{row.pipeline === "Attempted Contact" ? "Attempted" : row.pipeline}</span>}
                         items={PIPELINES.map((stage) => ({ label: stage, onClick: () => setPipeline(row.id, stage) }))}
                       />
                       <div className="mt-1">
@@ -1484,7 +1482,7 @@ function LeadDetail({
           </div>
         </aside>
       ) : null}
-      <section className="min-w-0 flex-1 overflow-auto p-3">
+      <section className="min-w-0 flex-1 overflow-auto bg-[#f4fbfd] p-3">
         {expanded ? (
           <div className="mb-2 flex items-center gap-4 border border-[#eee] bg-white px-2 py-1 text-[18px] text-[#888]">
             <button type="button" aria-label="Close" className="px-1 text-[#666]" onClick={() => go(href.leadsReturn)}>✕</button>
@@ -1494,9 +1492,9 @@ function LeadDetail({
           </div>
         ) : null}
         <NoteComposer onSave={(body, pinned) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
-        <div className="mb-4 flex gap-2">
+        <div className="mb-3 flex gap-5 border-b border-[#e5e5e5] bg-white px-3">
           {tabs.map((item) => (
-            <a key={item.id} href={href.lead(row.id, item.id)} className={`flex-1 rounded border bg-white py-3 text-center text-[14px] shadow-sm ${tab === item.id ? "border-[#329bb9] text-[#329bb9]" : "border-[#e5e5e5] text-[#666]"}`}>
+            <a key={item.id} href={href.lead(row.id, item.id)} className={`py-2 text-[13px] ${tab === item.id ? "border-b-2 border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`}>
               {item.label}
             </a>
           ))}

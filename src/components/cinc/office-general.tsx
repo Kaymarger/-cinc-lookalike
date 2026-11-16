@@ -49,46 +49,53 @@ export function OfficeGeneralSettings() {
   const amounts = form.reassignUnit === "minute(s)" ? REASSIGN_MINUTES : form.reassignUnit === "day(s)" ? REASSIGN_DAYS : REASSIGN_HOURS;
   return (
         <div className="space-y-4 pt-2">
-      <Box title="Seller">
-        <Field label="Auto-Apply Label">
+      <Box title="Seller" onUpdate={() => void save()}>
+        <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
+          <span>Auto-Apply Label</span>
           <select className={inputCls} value={form.sellerLabel} onChange={(event) => set("sellerLabel", event.target.value)}>{AUTO_LABELS.map((item) => <option key={item}>{item}</option>)}</select>
-        </Field>
-        <Field label="Auto-Saved Searches">
+        </label>
+        <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
+          <span>Auto-Saved Searches</span>
           <select className={inputCls} value={form.sellerSearches} onChange={(event) => set("sellerSearches", event.target.value as OfficeSettings["sellerSearches"])}><option>Enabled</option><option>Disabled</option></select>
-        </Field>
-        <Save onClick={() => void save()} />
+        </label>
       </Box>
-      <Box title="CRM Connect">
-        <Field label="Auto-Apply Label">
+      <Box title="CRM Connect" onUpdate={() => void save()}>
+        <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
+          <span>Auto-Apply Label</span>
           <select className={inputCls} value={form.crmLabel} onChange={(event) => set("crmLabel", event.target.value)}>{AUTO_LABELS.map((item) => <option key={item}>{item}</option>)}</select>
-        </Field>
-        <Field label="Welcome Email">
+        </label>
+        <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
+          <span>Welcome Email</span>
           <select className={inputCls} value={form.crmWelcome} onChange={(event) => set("crmWelcome", event.target.value as OfficeSettings["crmWelcome"])}><option>Enabled</option><option>Disabled</option></select>
-        </Field>
-        <Save onClick={() => void save()} />
+        </label>
       </Box>
       <Box title="Website" onUpdate={() => void save()}>
         <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
-          <span className="text-right">Home Banner Text</span>
+          <span>Home Banner Text</span>
           <input className={inputCls} value={form.homeBanner} onChange={(event) => set("homeBanner", event.target.value)} />
         </label>
         <div className="mb-3 grid grid-cols-[180px_1fr] gap-3">
-          <span className="pt-2 text-right">Cover image</span>
+          <span className="pt-2">Home Cover Image</span>
           <div>
-            <div className="mb-2 flex h-[140px] items-center justify-center rounded border border-[#ddd] bg-[#f3f3f3] text-[#888]">Cover preview · 1200×600</div>
+            <img src="/brand/hero.jpg" alt="" className="mb-2 h-[110px] w-[220px] object-cover" />
             <div className="flex gap-2">
-              <button type="button" className="h-[30px] rounded border border-[#329bb9] px-3 text-[#329bb9]" onClick={() => chrome.toast("Cover image is stored with the site files once a file is chosen.")}>Edit Image</button>
-              <button type="button" className="h-[30px] rounded border border-[#ccc] px-3" onClick={() => chrome.toast("Cover image removed.")}>Remove Image</button>
+              <button type="button" className="h-7 rounded bg-[#329bb9] px-2 text-[12px] text-white" onClick={() => chrome.toast("Cover image is stored with the site files once a file is chosen.")}>Edit Image</button>
+              <button type="button" className="h-7 rounded bg-[#329bb9] px-2 text-[12px] text-white" onClick={() => chrome.toast("Cover image removed.")}>Remove Image</button>
             </div>
+            <p className="mt-2 text-[12px] text-[#329bb9]">Suggested image dimensions for the home cover photo are 1200x600 pixels</p>
+            <label className="mt-2 flex items-center gap-2 text-[13px]"><input type="checkbox" checked={form.softenCover} onChange={(event) => set("softenCover", event.target.checked)} /> Apply softening effect to home cover image</label>
           </div>
-          <span className="pt-2 text-right">Video</span>
-          <button type="button" className="flex h-36 items-center justify-center rounded border border-dashed border-[#bbb] bg-[#fafafa] text-[#666]" onClick={() => chrome.toast("Home cover video can be linked from the site host. Nothing was uploaded.")}>Wide video region</button>
-          <span className="pt-1 text-right">Visibility</span>
+          <span className="pt-2">Home Cover Video</span>
+          <div>
+            <div className="mb-2 h-16 w-[220px] bg-[#d9d9d9]" />
+            <button type="button" className="h-7 rounded bg-[#329bb9] px-2 text-[12px] text-white" onClick={() => chrome.toast("Home cover video can be linked from the site host. Nothing was uploaded.")}>Edit Video</button>
+            <p className="mt-2 text-[12px] text-[#329bb9]">Click here for our recommended best practices for using the video theme</p>
+          </div>
+          <span />
           <div className="flex flex-col gap-2">
             {TABS.map(([label, key]) => (
               <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={Boolean(form[key])} onChange={(event) => set(key, event.target.checked as never)} /> {label}</label>
             ))}
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.softenCover} onChange={(event) => set("softenCover", event.target.checked)} /> Apply softening effect to home cover image</label>
           </div>
         </div>
         <Field label="HomeValueTagLine"><input className={inputCls} value={form.homeValueTagLine} onChange={(event) => set("homeValueTagLine", event.target.value)} /></Field>
@@ -145,10 +152,10 @@ export function OfficeGeneralSettings() {
 
 function Box({ title, onUpdate, children }: { title: string; onUpdate?: () => void; children: ReactNode }) {
   return (
-    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white text-[14px] shadow-sm">
-      <header className="flex items-center justify-between border-b border-[#eee] px-4 py-3">
-        <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
-        {onUpdate ? <Btn kind="blue" onClick={onUpdate}>Update</Btn> : null}
+    <section className="border border-[#e5e5e5] bg-white text-[14px]">
+      <header className="flex items-center justify-between px-4 py-3">
+        <h2 className="text-[16px] text-[#243238]">{title}</h2>
+        {onUpdate ? <button type="button" className="h-7 rounded bg-[#329bb9] px-3 text-[12px] text-white" onClick={onUpdate}>Update</button> : null}
       </header>
       <div className="p-4">{children}</div>
     </section>
