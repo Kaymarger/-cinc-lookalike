@@ -27,6 +27,10 @@ test("keeps UTM fields and drops empty ones", () => {
   });
   assert.equal(attribution.utmSource, "google");
   assert.equal(attribution.utmTerm, undefined);
+  const flags = sanitizeAttribution({ firstTimeBuyer: false, preApproved: true, device: "mobile" });
+  assert.equal(flags.firstTimeBuyer, false);
+  assert.equal(flags.preApproved, true);
+  assert.equal(flags.device, "mobile");
   assert.match(attributionSummary(attribution), /google \/ cpc \/ spring-buyers/);
   assert.match(attributionSummary(attribution), /gclid: abc123/);
 });

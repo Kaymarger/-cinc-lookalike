@@ -52,10 +52,11 @@ export async function activeFeaturedMlsIds(): Promise<string[] | null> {
   const pages: string[] = [];
   try {
     let quietPages = 0;
-    for (let page = 1; page <= 12; page += 1) {
+    const deadline = Date.now() + 7000;
+    for (let page = 1; page <= 4 && Date.now() < deadline; page += 1) {
       const response = await fetch(FEATURED_PAGE(page), {
         headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0" },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(Math.max(800, Math.min(3500, deadline - Date.now()))),
         cache: "no-store",
       });
       if (!response.ok) {

@@ -68,7 +68,10 @@ export async function runSavedSearchAlerts(now = new Date(), options?: { dry?: b
   if (!report.database) return report;
 
   const searches = await listAlertSearches();
+  const started = Date.now();
+  const budgetMs = 30_000;
   for (const search of searches) {
+    if (Date.now() - started > budgetMs) break;
     if (isTestLeadEmail(search.contactEmail) || !search.contactEmail || search.unsubscribed || search.frequency === "Never") {
       report.ignored += 1;
       continue;

@@ -107,7 +107,9 @@ function AuthDialog({
     }
     const here = `${window.location.pathname}${window.location.search}`;
     const device = window.matchMedia("(max-width: 800px)").matches ? "mobile" : "desktop";
-    const result = await capture({
+    signUp(name, email, phone);
+    setConfirmed(name);
+    void capture({
       name,
       email,
       phone,
@@ -123,14 +125,19 @@ function AuthDialog({
         firstTimeBuyer: data.get("firstTime") === "on",
         preApproved: data.get("preApproved") === "on",
       },
-    });
-    if (result.existing) {
+    }).then((result) => {
+      if (!result.existing) return;
+      setConfirmed("");
       onMode("login");
       setError("Welcome back. Sign in instead of starting a second lead.");
-      return;
-    }
-    signUp(name, email, phone);
+    });
+  }
+
+  function browseBack() {
+    const path = `${window.location.pathname}${window.location.search}`;
+    const stay = path.startsWith("/homedetails") || path.startsWith("/search") || path.startsWith("/featured") || path.startsWith("/open-houses");
     onClose();
+    if (!stay) router.push("/search");
   }
 
   function onLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -180,10 +187,7 @@ function AuthDialog({
               <button
                 type="button"
                 className="h-10 bg-[#1976d2] text-sm font-bold tracking-wide text-white uppercase hover:bg-[#145ca4]"
-                onClick={() => {
-                  onClose();
-                  router.push("/search");
-                }}
+                onClick={browseBack}
               >
                 Browse homes
               </button>

@@ -28,7 +28,8 @@ function md5(value: string): string {
 
 async function digestFetch(url: string, username: string, password: string, init: RequestInit = {}) {
   const method = (init.method || "GET").toUpperCase();
-  const first = await fetch(url, { ...init, method, redirect: "manual" });
+  const signal = init.signal ?? AbortSignal.timeout(8000);
+  const first = await fetch(url, { ...init, method, redirect: "manual", signal });
   if (first.status !== 401) return first;
   const www = first.headers.get("www-authenticate") || "";
   const pick = (name: string) => new RegExp(`${name}="([^"]*)"`, "i").exec(www)?.[1] || "";
@@ -63,6 +64,7 @@ async function digestFetch(url: string, username: string, password: string, init
     ...init,
     method,
     redirect: "manual",
+    signal,
     headers: { ...(init.headers || {}), Authorization: header },
   });
 }
@@ -78,7 +80,7 @@ async function oauthSession(username: string, password: string): Promise<Session
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(8000),
   });
   const raw = await response.text();
   if (!response.ok) throw new Error(safeDdfError(response.status, raw));
@@ -95,7 +97,7 @@ async function oauthSession(username: string, password: string): Promise<Session
 async function retsSession(username: string, password: string): Promise<Session> {
   const response = await digestFetch(RETS_LOGIN, username, password, {
     method: "POST",
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(8000),
   });
   const raw = await response.text();
   if (!response.ok) throw new Error(safeDdfError(response.status, raw));
@@ -154,7 +156,7 @@ function listingsFromJson(payload: { value?: unknown }): DdfListing[] {
 async function oauthGet(url: string, token: string) {
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(8000),
   });
   const raw = await response.text();
   if (response.status === 401) resetDdfSession();

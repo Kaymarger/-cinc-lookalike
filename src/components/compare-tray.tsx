@@ -39,7 +39,7 @@ export function CompareTray() {
             <div key={home.id} className="flex min-w-[220px] flex-1 items-center gap-2 rounded border border-[#d7e0e8] bg-[#f7fafc] p-2">
               <div className="relative size-12 shrink-0 overflow-hidden bg-[#7b97aa]">
                 {home.image ? (
-                  <Image src={home.image} alt="" fill className="object-cover" sizes="48px" unoptimized={home.image.startsWith("http") && !home.image.includes("ddfcdn.realtor.ca")} />
+                  <Image src={home.image} alt="" fill className="object-cover" sizes="48px" unoptimized={home.image.startsWith("http")} />
                 ) : (
                   <span className="grid h-full place-items-center px-1 text-center text-[9px] text-white">No photo</span>
                 )}

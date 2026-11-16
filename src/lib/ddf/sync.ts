@@ -30,8 +30,8 @@ export async function syncDdfBatch(options?: { budgetMs?: number; maxPages?: num
 
 async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<SyncReport> {
   const started = Date.now();
-  const budget = options?.budgetMs ?? 45_000;
-  const maxPages = options?.maxPages ?? 8;
+  const budget = options?.budgetMs ?? 30_000;
+  const maxPages = options?.maxPages ?? 4;
   const state = await readSyncState();
   let upserted = 0;
   let deleted = 0;
@@ -46,7 +46,7 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
   let generation = state.masterGeneration || 1;
   let pages = 0;
   try {
-    while (Date.now() - started < budget && pages < maxPages) {
+    while (Date.now() - started < budget - 12_000 && pages < maxPages) {
       const page = await fetchDdfPropertyPage(detailUrl);
       mode = page.mode;
       fieldNames = page.fieldNames || fieldNames;
@@ -68,7 +68,7 @@ async function run(options?: { budgetMs?: number; maxPages?: number }): Promise<
         break;
       }
     }
-    while (Date.now() - started < budget && pages < maxPages) {
+    while (Date.now() - started < budget - 12_000 && pages < maxPages) {
       const page = await fetchDdfMasterPage(masterUrl);
       masterKeys += page.keys.length;
       await rememberMasterKeys(generation, page.keys);

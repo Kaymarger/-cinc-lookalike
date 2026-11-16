@@ -98,7 +98,7 @@ export function sanitizeAttribution(value: unknown): LeadAttribution {
     preApproved: raw.preApproved === true ? true : raw.preApproved === false ? false : undefined,
   };
   return Object.fromEntries(
-    Object.entries(attribution).filter(([, entry]) => entry)
+    Object.entries(attribution).filter(([, entry]) => entry !== undefined && entry !== "")
   ) as LeadAttribution;
 }
 

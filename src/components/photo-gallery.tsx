@@ -211,6 +211,7 @@ export function PhotoGallery({
             priority
             className="object-cover transition-transform duration-500 hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, 66vw"
+            unoptimized={images[0].startsWith("http")}
           />
           {virtualTour && (
             <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 text-sm text-white">
@@ -236,6 +237,7 @@ export function PhotoGallery({
               fill
               className="object-cover transition-transform duration-500 hover:scale-[1.02]"
               sizes="33vw"
+              unoptimized={src.startsWith("http")}
             />
           </button>
         ))}
@@ -290,6 +292,7 @@ export function PhotoGallery({
                 className="object-contain"
                 sizes="100vw"
                 priority
+                unoptimized={images[index].startsWith("http")}
               />
             </div>
 
@@ -324,7 +327,7 @@ export function PhotoGallery({
                     : "border-transparent opacity-70 hover:opacity-100"
                 )}
               >
-                <Image src={src} alt="" fill className="object-cover" sizes="96px" />
+                <Image src={src} alt="" fill className="object-cover" sizes="96px" unoptimized={src.startsWith("http")} />
               </button>
             ))}
           </div>

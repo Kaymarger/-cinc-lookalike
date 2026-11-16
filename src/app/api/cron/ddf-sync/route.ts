@@ -28,6 +28,6 @@ export async function GET(request: Request) {
       message: "DDF_USERNAME and DDF_PASSWORD are not set. The sync did not run.",
     });
   }
-  const report = await syncDdfBatch({ budgetMs: 45_000, maxPages: 6 });
+  const report = await syncDdfBatch({ budgetMs: 30_000, maxPages: 4 });
   return Response.json(report);
 }

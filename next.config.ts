@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "*.trycloudflare.com",
   ],
   images: {
+    minimumCacheTTL: 60 * 60 * 24 * 31,
     remotePatterns: [
       {
         protocol: "https",

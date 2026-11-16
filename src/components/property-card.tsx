@@ -58,7 +58,7 @@ export function PropertyCard({
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="property-image object-cover"
               priority={priority}
-              unoptimized={property.images[0].startsWith("http") && !property.images[0].includes("ddfcdn.realtor.ca") && !property.images[0].includes("images.unsplash.com")}
+              unoptimized={property.images[0].startsWith("http")}
             />
           ) : (
             <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>
