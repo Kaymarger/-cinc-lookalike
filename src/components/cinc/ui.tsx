@@ -91,7 +91,7 @@ export function ModalFrame({
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/35 px-4 py-10" onMouseDown={onClose}>
       <div
-        className={`max-h-[86vh] w-full overflow-auto border border-[#e5e5e5] bg-white ${wide ? "max-w-[760px]" : "max-w-[480px]"}`}
+        className={`max-h-[86vh] w-full overflow-auto rounded-md border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white shadow-lg ${wide ? "max-w-[760px]" : "max-w-[480px]"}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">

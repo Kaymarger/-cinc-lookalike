@@ -526,11 +526,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
     try {
       const result = await publish(prior ? { ...lead, id: prior.id } : lead, input);
-      if (!result.ok || !result.persisted) {
+      if (!result.ok) {
         if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
         return { ok: false, persisted: false, message: result.message || "We could not save your request just now. Please call (604) 363-7858." };
       }
-      return { ok: true, persisted: true };
+      return { ok: true, persisted: Boolean(result.persisted) };
     } catch {
       if (!prior) setLeads((prev) => prev.filter((item) => item.id !== lead.id));
       return {

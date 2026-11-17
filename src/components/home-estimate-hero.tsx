@@ -55,7 +55,7 @@ export function HomeEstimateHero({
       consent: true,
     });
     setPending(false);
-    if (!result.ok || !result.persisted) {
+    if (!result.ok) {
       setError(result.message || "Please check the form and try again.");
       return;
     }

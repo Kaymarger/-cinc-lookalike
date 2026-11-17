@@ -171,26 +171,9 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                   />
                 ) : null}
               </div>
-              <OfficeListBar
-                query={launchList.query}
-                update={launchList.update}
-                views={launchList.views}
-                saveView={launchList.saveView}
-                filters={[
-                  { id: "type", label: "Type", options: ["Showing Request", "Property Inquiry", "AI Ready"] },
-                  { id: "status", label: "Status", options: ["Awaiting Response", "Acted On", "Dismissed"] },
-                  { id: "agent", label: "Agent", options: ["Casey Archibald", "Kayla Gerak", "Website"] },
-                ]}
-                columns={OFFICE_LISTS.launchpad.columns.map((column) => ({ id: column.id, label: column.label }))}
-                sortColumns={sortColumnProps(OFFICE_LISTS.launchpad)}
-                toggleSort={launchList.toggleSort}
-                onSelectPage={() => setPickedRequests(shownRequests.map((item) => item.id))}
-                total={arrangedRequests.total}
-                emptyLabel="No requests match this search and these filters."
-              />
               {pickedRequests.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-white" onClick={() => { update((current) => ({ ...current, requests: { ...current.requests, ...Object.fromEntries(pickedRequests.map((id) => [id, "acted"])) } })); setPickedRequests([]); }}>Mark selected acted on</button> : null}
               {shownRequests.length ? shownRequests.map((item) => (
-                <article key={item.id} className="mb-3 flex border border-[#e3e3e3] bg-white">
+                <article key={item.id} className="mb-3 flex min-h-[290px] rounded border border-[#e3e3e3] bg-white shadow-sm">
                   <input className="m-2" type="checkbox" aria-label={`Select ${item.name}`} checked={pickedRequests.includes(item.id)} onChange={(event) => setPickedRequests(event.target.checked ? [...pickedRequests, item.id] : pickedRequests.filter((id) => id !== item.id))} />
                   <div className="grid w-12 shrink-0 place-items-start pt-3 text-[#1c93b5]">
                     {item.kind === "Showing Request" ? (
@@ -202,7 +185,7 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                   <div className="min-w-0 flex-1 px-2 py-3">
                     <div className="flex items-start gap-2">
                       <div>
-                        <a className="text-[15px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
+                        <a className="text-[18px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
                         <span className="ml-1 inline-block h-4 w-4 align-middle text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>}</span>
                         <p className="text-[13px] text-[#999]">{item.at}</p>
                       </div>
@@ -216,8 +199,10 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                         />
                       </span>
                     </div>
-                    <p className="mt-3 text-[14px] font-bold text-[#243238]">{item.kind}</p>
-                    <p className="mt-2 bg-[#ececec] px-3 py-2 text-[13px] text-[#666]">{item.message}</p>
+                    <div className="mt-3 border-t border-[#e5e5e5] pt-3">
+                    <p className="text-[16px] font-bold text-[#243238]">{item.kind}</p>
+                    <p className="mt-2 bg-[#ececec] px-3 py-2 text-[15px] text-[#555]">{item.message}</p>
+                    </div>
                     <div className="mt-3 flex items-start gap-3">
                       <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 object-cover" />
                       <div>
@@ -453,28 +438,27 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
           <a href={href.dealsListings} className={board === "listings" ? "border-b-[3px] border-[#329bb9] px-1 pb-3 font-semibold text-[#329bb9]" : "px-1 pb-3 text-[#666]"}>Listings</a>
         </div>
         <div className="mb-2 flex gap-2">
-          <button type="button" className="inline-flex h-8 items-center rounded border border-[#c8c8c8] bg-white px-3 text-[13px]" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
-          <button type="button" className="inline-flex h-8 items-center gap-1 rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
-            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
+          <button type="button" className="inline-flex h-10 items-center rounded border border-[#c8c8c8] bg-white px-4 text-[15px] shadow-sm" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="Listings to advertise" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[14px]" defaultValue="Share the current deal listings with matching leads." /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
+          <button type="button" className="inline-flex h-10 items-center gap-2 rounded bg-[#329bb9] px-4 text-[16px] text-white shadow-sm" onClick={() => chrome.openModal(<DealModal board={board} onClose={chrome.closeModal} />)}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
             Add Deal
           </button>
         </div>
       </div>
-      <div className="mb-3 flex w-full items-center gap-3 px-4 text-[13px]">
+      <div className="mb-3 flex w-full items-center gap-3 px-4 text-[15px]">
         <Menu className="w-[130px]" label={<span className={`${toolBtn} w-[130px] justify-between`}>Status: <b>{status}</b> ▾</span>} items={["Active", "Archived", "All"].map((label) => ({ label, onClick: () => setStatus(label) }))} />
         <Menu className="w-[150px]" label={<span className={`${toolBtn} w-[150px] justify-between`}>Created: <b>{created}</b> ▾</span>} items={["Anytime", "Last 7 Days", "Last 30 Days"].map((label) => ({ label, onClick: () => setCreated(label) }))} />
         <Menu className="w-[180px]" label={<span className={`${toolBtn} w-[180px] justify-between`}>Assigned Agent: <b>{agent}</b> ▾</span>} items={agents.map((label) => ({ label, onClick: () => setAgent(label) }))} />
         <Menu className="ml-auto" label={<span className={`${toolBtn} min-w-[180px] justify-between`}>↑↓ Sort By: <b>{sort}</b> ▾</span>} items={["Reminder Due Date", "Newest", "Price"].map((label) => ({ label, onClick: () => setSort(label) }))} />
       </div>
-      <OfficeListBar query={dealList.query} update={dealList.update} views={dealList.views} saveView={dealList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Archived"] }, { id: "stage", label: "Stage", options: stages.map((stage) => stage.id) }, { id: "agent", label: "Agent", options: agents.filter((name) => name !== "All") }]} columns={OFFICE_LISTS.deals.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.deals)} toggleSort={dealList.toggleSort} onSelectPage={() => setPickedDeals(visibleDeals.map((deal) => deal.id))} total={arrangedDeals.total} emptyLabel="No deals match this search and these filters." />
-      {pickedDeals.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, deals: current.deals.filter((deal) => !pickedDeals.includes(deal.id)) })); setPickedDeals([]); chrome.toast("Selected deals deleted."); }}>Delete selected</button> : null}
-      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-3 px-4 pb-4">
+      {pickedDeals.length ? <button type="button" className="mb-2 ml-4 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, deals: current.deals.filter((deal) => !pickedDeals.includes(deal.id)) })); setPickedDeals([]); chrome.toast("Selected deals deleted."); }}>Delete selected</button> : null}
+      <div className="relative grid min-h-0 flex-1 grid-cols-4 gap-4 px-4 pb-4">
         {stages.map((stage) => {
           const cards = visibleDeals.filter((deal) => deal.stage === stage.id);
           return (
-            <section key={stage.id} className="flex min-h-[420px] flex-col rounded border border-[#e6e6e6] bg-white">
+            <section key={stage.id} className="flex min-h-[460px] flex-col rounded-md border border-[#e1e1e1] border-t-4 border-t-[#cfcfcf] bg-white shadow-sm">
               <header className="px-3 py-3">
-                <div className="text-[13px] font-bold tracking-wide text-black uppercase">
+                <div className="text-[16px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
                 <p className="text-[12px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
@@ -798,7 +782,6 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
         <button type="button" className="px-1 disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
       </div>
-      <OfficeListBar query={mailList.query} update={mailList.update} views={mailList.views} saveView={mailList.saveView} filters={[{ id: "channel", label: "Channel", options: ["email", "text"] }, { id: "status", label: "Read", options: ["Read", "Unread"] }]} columns={OFFICE_LISTS.communications.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.communications)} toggleSort={mailList.toggleSort} onSelectPage={() => setPicked(slice.map((mail) => mail.id))} total={arrangedMail.total} emptyLabel="No messages match this search and these filters." />
       <div className="min-h-0 flex-1 overflow-auto bg-white">
         {opened ? (
           <article className="bg-white p-4 shadow-sm">
@@ -813,8 +796,8 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
           </article>
         ) : (
           <div className="bg-white shadow-sm">
-            {slice.length ? slice.map((mail) => (
-              <div key={mail.id} className={`flex h-[45px] w-full items-center gap-3 border-b border-[#eee] px-3 text-left text-[13px] ${mail.unread ? "bg-[#f7f7f7] font-semibold" : "bg-white"}`}>
+            {slice.length ? slice.map((mail, index) => (
+              <div key={mail.id} className={`flex h-[45px] w-full items-center gap-3 border-b border-[#eee] px-3 text-left text-[13px] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${mail.unread ? "font-semibold" : ""}`}>
                 <input className={checkCls} type="checkbox" checked={picked.includes(mail.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, mail.id] : picked.filter((id) => id !== mail.id))} />
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => { setOpenId(mail.id); update((current) => ({ ...current, mail: current.mail.map((item) => item.id === mail.id ? { ...item, unread: false } : item) })); }}>
                 {folder === "drafts" ? (
@@ -1632,9 +1615,9 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
       </div>
       <div className="space-y-2">
         {rows.map((page) => (
-          <article key={page.id} className="grid grid-cols-[1fr_70px_110px_90px_140px] items-center bg-[#e8e8e8] px-3 py-2 shadow-sm">
+          <article key={page.id} className="grid min-h-[120px] grid-cols-[1fr_70px_110px_90px_140px] items-center rounded bg-[#e4e4e4] px-4 py-5 shadow-sm">
             <div>
-              <p className="text-[13px] font-bold">{page.name}</p>
+              <p className="text-[16px] font-bold">{page.name}</p>
               <p className="text-[11px]">Owner: CINC <span className="ml-1 bg-black px-1 text-[10px] text-white uppercase">{page.category}</span> {!page.active ? <span className="ml-1 bg-[#d9363e] px-1 text-[10px] text-white">Disabled</span> : null} <span className="ml-1 bg-[#1c93b5] px-1 text-[10px] text-white">CINC</span></p>
               <p className="text-[12px] text-[#1c93b5]">url: {page.url}</p>
             </div>
@@ -1886,29 +1869,6 @@ function ProfileTab() {
           <span className="pt-2 text-right">Biography</span>
           <textarea className="h-24 w-full border border-[#ccc] p-2 text-[14px]" value={profile.bio} onChange={(event) => set("bio", event.target.value)} />
         </label>
-      </Card>
-      <Card title="Cover & Video" action={<Btn kind="blue" onClick={() => void persist("Profile media saved.")}>Update</Btn>}>
-        <div className="grid grid-cols-[160px_1fr] gap-3 text-[14px]">
-          <span className="pt-2 text-right">Cover image</span>
-          <div>
-            <div className="mb-2 flex h-[140px] items-center justify-center rounded border border-[#ddd] bg-[#f3f3f3] text-[#888]">{profile.photoName || "Cover preview"}</div>
-            <div className="flex gap-2">
-              <label className="inline-flex h-[30px] cursor-pointer items-center rounded border border-[#329bb9] px-3 text-[#329bb9]">
-                Edit Image
-                <input className="sr-only" type="file" onChange={(event) => set("photoName", event.target.files?.[0]?.name || "")} />
-              </label>
-              <button type="button" className="h-[30px] rounded border border-[#ccc] px-3" onClick={() => set("photoName", "")}>Remove Image</button>
-            </div>
-          </div>
-          <span className="pt-2 text-right">Video</span>
-          <div className="flex h-36 items-center justify-center rounded border border-dashed border-[#bbb] bg-[#fafafa] text-[#888]">Wide video region</div>
-          <span className="pt-1 text-right">Visibility</span>
-          <div className="flex flex-col gap-2">
-            {["Show email", "Show cell phone", "Show office phone", "Show license"].map((label) => (
-              <label key={label} className="flex items-center gap-2"><input type="checkbox" defaultChecked /> {label}</label>
-            ))}
-          </div>
-        </div>
       </Card>
       <Card title="Signature" action={<Btn kind="blue" onClick={() => void persist("Signature saved.")}>Update</Btn>}>
         <p className="mb-1 text-[13px] text-[#888]">Paragraph · 12pt</p>
@@ -2531,9 +2491,9 @@ export function CalendarView() {
           </div>
         </div>
         <p className="px-3 py-2 text-[12px] text-[#666]">{owner}</p>
-        <div className="bg-[#329bb9] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">CINC Calendars</div>
-        <div className="m-2 flex items-center gap-2 rounded border border-[#329bb9] bg-[#e7f6fb] px-2 py-2 text-[13px]">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#329bb9] text-[12px] font-semibold text-white">{owner.slice(0, 1)}</span>
+        <div className="bg-[#5c4d7a] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">CINC Calendars</div>
+        <div className="m-2 flex items-center gap-2 rounded border border-[#6b5b95] bg-[#efe8f7] px-2 py-2 text-[13px]">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#6b5b95] text-[12px] font-semibold text-white">{owner.slice(0, 1)}</span>
           <span>{owner}</span>
         </div>
         <div className="flex items-center justify-between bg-[#4a4a4a] px-3 py-2 text-[12px] font-semibold tracking-wide text-white uppercase">
@@ -2569,14 +2529,13 @@ export function CalendarView() {
             <button type="button" className="ml-2 rounded bg-[#329bb9] px-2 py-1 text-[12px] text-white" onClick={() => openNew(selected)}>Add Appointment</button>
           </div>
         </div>
-        <div className="mt-3 rounded border border-dashed border-[#bbb] bg-white p-4 shadow-sm">
-          <div className="flex h-24 items-center justify-center rounded bg-[#eee] text-[16px] font-semibold text-[#666]">+ Event</div>
+        <div className="mt-3 rounded-md border-2 border-dashed border-[#c5c5c5] bg-white p-5 shadow-sm">
+          <div className="flex h-28 items-center justify-center rounded bg-[#e6e6e6] text-[18px] font-semibold text-[#666] shadow-sm">+ Event</div>
         </div>
         {mode === "agenda" ? (
           <div className="mt-3">
-            <OfficeListBar query={agendaList.query} update={agendaList.update} views={agendaList.views} saveView={agendaList.saveView} filters={[{ id: "agent", label: "Agent", options: [owner, "Casey Archibald", "Kayla Gerak"] }]} columns={OFFICE_LISTS.calendar.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.calendar)} toggleSort={agendaList.toggleSort} onSelectPage={() => setPickedAppts(agendaItems.map((item) => item.id))} total={arrangedAgenda.total} emptyLabel="No events match this search and these filters." />
             {pickedAppts.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, appointments: current.appointments.filter((item) => !pickedAppts.includes(item.id)) })); setPickedAppts([]); chrome.toast("Selected events deleted."); }}>Delete selected</button> : null}
-            <ul className="bg-white">{agendaItems.length ? agendaItems.map((item) => <li key={item.id} className="flex items-center gap-2 border-b border-[#eee] px-3 py-2"><input type="checkbox" aria-label={`Select ${item.title}`} checked={pickedAppts.includes(item.id)} onChange={(event) => setPickedAppts(event.target.checked ? [...pickedAppts, item.id] : pickedAppts.filter((id) => id !== item.id))} />{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="px-3 py-4 text-[#888]">No events match this search and these filters.</li>}</ul>
+            <ul className="bg-white">{agendaItems.length ? agendaItems.map((item) => <li key={item.id} className="flex items-center gap-2 border-b border-[#eee] px-3 py-2"><input type="checkbox" aria-label={`Select ${item.title}`} checked={pickedAppts.includes(item.id)} onChange={(event) => setPickedAppts(event.target.checked ? [...pickedAppts, item.id] : pickedAppts.filter((id) => id !== item.id))} />{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="px-3 py-4 text-[#888]">No events.</li>}</ul>
           </div>
         ) : mode === "week" ? (
           <div className="grid grid-cols-7 gap-1">
@@ -2770,7 +2729,7 @@ export function MarketingView() {
             const pieRows = [...report.locations].filter((row) => row.leads > 0).sort((a, b) => b.leads - a.leads).slice(0, 6);
             const pieTotal = pieRows.reduce((sum, row) => sum + row.leads, 0);
             const colors = ["#1c93b5", "#16324f", "#2e9e5b", "#e39b2b", "#5c6b7a", "#8fd3e8"];
-            if (!pieTotal) return <p className="mt-3 text-[12px] text-[#888]">No leads in this month.</p>;
+            if (!pieTotal) return <p className="mt-3 text-[13px] text-[#666]">Data unavailable for this time period</p>;
             const slices = pieRows.reduce<{ nodes: React.ReactNode[]; angle: number }>((acc, row, index) => {
               const sweep = (row.leads / pieTotal) * Math.PI * 2;
               const start = acc.angle;
@@ -2803,7 +2762,7 @@ export function MarketingView() {
         <table className="w-full border border-[#e5e5e5] bg-white text-left text-[13px]">
           <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Location</th><th>Leads</th><th>%</th><th>Cost per lead</th></tr></thead>
           <tbody>
-            {areaRows.length ? areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{areaTotal ? `${Math.round((row.leads / areaTotal) * 100)}%` : "0%"}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>) : <tr><td className="px-3 py-3 text-[#888]" colSpan={4}>No leads in this month.</td></tr>}
+            {areaRows.length ? areaRows.map((row) => <tr key={row.location} className="border-t border-[#eee]"><td className="px-3 py-2">{row.location}</td><td>{row.leads}</td><td>{areaTotal ? `${Math.round((row.leads / areaTotal) * 100)}%` : "0%"}</td><td>{row.cost == null ? "—" : `$${row.cost}`}</td></tr>) : <tr><td className="px-3 py-3 text-[#666]" colSpan={4}>Data unavailable for this time period</td></tr>}
             <tr className="border-t border-[#ddd] font-bold"><td className="px-3 py-2">Total</td><td>{areaTotal}</td><td /></tr>
           </tbody>
         </table>

@@ -532,18 +532,6 @@ export function LeadsView({
     chrome.toast("Filter saved.");
   }
 
-  function moveLeadColumn(id: string, direction: -1 | 1) {
-    setLeadColumns((current) => {
-      const index = current.indexOf(id);
-      const next = index + direction;
-      if (index < 0 || next < 0 || next >= current.length) return current;
-      const copy = [...current];
-      const [item] = copy.splice(index, 1);
-      copy.splice(next, 0, item);
-      return copy;
-    });
-  }
-
   const assignChoices = useMemo(() => {
     const people = office.roster;
     if (!people.length) return { agents: TEAM, partners: TEAM, listing: LISTING_AGENTS };
@@ -1005,24 +993,6 @@ export function LeadsView({
             }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8l3 3v9H3V2zm2 1v4h6V3H5zm1 7h4v3H6v-3z" /></svg>
             </button>
-            <select aria-label="Show or hide a lead column" className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value="" onChange={(event) => {
-              const id = event.target.value;
-              if (!id) return;
-              setLeadColumns((current) => current.includes(id) ? (current.length === 1 ? current : current.filter((item) => item !== id)) : [...current, id]);
-            }}>
-              <option value="">Columns</option>
-              {LEAD_COLUMNS.map((id) => <option key={id} value={id}>{leadColumns.includes(id) ? "Hide" : "Show"} {id}</option>)}
-            </select>
-            <select aria-label="Reorder a lead column" className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value="" onChange={(event) => {
-              const [id, direction] = event.target.value.split(":");
-              if (id) moveLeadColumn(id, direction === "left" ? -1 : 1);
-            }}>
-              <option value="">Move column</option>
-              {leadColumns.flatMap((id) => [
-                <option key={`${id}-left`} value={`${id}:left`}>{id} left</option>,
-                <option key={`${id}-right`} value={`${id}:right`}>{id} right</option>,
-              ])}
-            </select>
             <button type="button" title="Column config" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => setDrawer(true)}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.2" fill="white" /><circle cx="10" cy="8" r="1.2" fill="white" /><circle cx="7" cy="12" r="1.2" fill="white" /></svg>
             </button>
@@ -1047,25 +1017,27 @@ export function LeadsView({
             </span>
             <button type="button" className="px-1 disabled:opacity-30" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>‹</button>
             <button type="button" className="px-1 text-[#1c93b5] disabled:opacity-30" disabled={safePage >= pages - 1} onClick={() => setPage((value) => value + 1)}>›</button>
-            <button type="button" className="ml-2 inline-flex h-8 items-center gap-1 rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
-              const digits = input.phone.replace(/\D/g, "");
-              const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
-              add({ ...input, source: "general", notes: "Added by an agent" });
-              chrome.closeModal();
-              chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
-            }} />)}>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
-              Add New Lead
-            </button>
           </>
         )}
+      </div>
+      <div className="mt-2 flex items-center justify-end rounded border border-[#e5e5e5] bg-white px-3 py-2 shadow-sm">
+        <button type="button" className="inline-flex h-10 items-center gap-2 rounded bg-[#329bb9] px-4 text-[16px] text-white shadow-sm" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+          const digits = input.phone.replace(/\D/g, "");
+          const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
+          add({ ...input, source: "general", notes: "Added by an agent" });
+          chrome.closeModal();
+          chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
+        }} />)}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
+          Add New Lead
+        </button>
       </div>
 
       <div className="relative mt-2 flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
             <table className="w-full min-w-[1280px] border-collapse bg-white text-left text-[14px]">
               <thead className="sticky top-0 z-10 bg-white text-center text-[11px] font-normal tracking-wide text-[#888] uppercase">
-                <tr className="grid min-h-[48px]" style={{ gridTemplateColumns: `36px repeat(${leadColumns.length}, minmax(72px, 1fr))` }}>
+                <tr className="grid min-h-[48px]" style={{ gridTemplateColumns: `36px minmax(260px, 1.7fr) repeat(${Math.max(leadColumns.length - 1, 1)}, minmax(90px, 1fr))` }}>
                   <th className="border-r border-b border-[#e5e5e5]" />
                   {leadColumns.map((col) => (
                     <th key={col} className={`border-r border-b border-[#e5e5e5] px-1 text-left text-[10px] leading-tight ${col === "Name/Info" ? "min-w-[180px]" : ""}`}>
@@ -1082,7 +1054,7 @@ export function LeadsView({
               </thead>
               <tbody>
                 {slice.map((row, index) => (
-                  <tr key={row.id} className={`group grid h-[105px] border-b border-[#f0f0f0] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#eee] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`} style={{ gridTemplateColumns: `36px repeat(${leadColumns.length}, minmax(90px, 1fr))` }}>
+                  <tr key={row.id} className={`group grid h-[118px] border-b border-[#e5e5e5] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#d5d5d5] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`} style={{ gridTemplateColumns: `36px minmax(260px, 1.7fr) repeat(${Math.max(leadColumns.length - 1, 1)}, minmax(90px, 1fr))` }}>
                     <td className="px-2" style={{ order: 0 }}>
                       <input className={checkCls} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
                     </td>
@@ -1561,7 +1533,7 @@ function LeadDetail({
               <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
             {activityChecks.includes("Notes") && notes[0] ? (
-              <article className="mb-3 rounded border border-[#d5e8ee] bg-[#e7f6fb] p-4 text-[14px] shadow-sm">
+              <article className="mb-3 rounded-md border border-[#d5e8ee] bg-[#e7f6fb] p-4 text-[15px] shadow-md">
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
                 <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{notes[0].body}</p>

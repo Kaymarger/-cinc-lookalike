@@ -48,7 +48,7 @@ export function OfficeGeneralSettings() {
   if (!ready) return <p className="p-4 text-[13px] text-[#666]">Loading office settings…</p>;
   const amounts = form.reassignUnit === "minute(s)" ? REASSIGN_MINUTES : form.reassignUnit === "day(s)" ? REASSIGN_DAYS : REASSIGN_HOURS;
   return (
-        <div className="space-y-4 pt-2">
+        <div className="mx-auto max-w-[1335px] space-y-4 pt-2 pr-8">
       <Box title="Seller" onUpdate={() => void save()}>
         <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
           <span>Auto-Apply Label</span>
@@ -152,7 +152,7 @@ export function OfficeGeneralSettings() {
 
 function Box({ title, onUpdate, children }: { title: string; onUpdate?: () => void; children: ReactNode }) {
   return (
-    <section className="border border-[#e5e5e5] bg-white text-[14px]">
+    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white text-[14px] shadow-sm">
       <header className="flex items-center justify-between px-4 py-3">
         <h2 className="text-[16px] text-[#243238]">{title}</h2>
         {onUpdate ? <button type="button" className="h-7 rounded bg-[#329bb9] px-3 text-[12px] text-white" onClick={onUpdate}>Update</button> : null}

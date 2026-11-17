@@ -485,7 +485,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[28px] leading-none font-light text-[#9fd4ea]"
+                className="flex items-center gap-2 text-[34px] leading-none font-light text-[#9fd4ea]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -538,8 +538,8 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <a href={href.marketing} className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
-              <button type="button" className="text-[11px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
+              <a href={href.marketing} className="text-[13px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
+              <button type="button" className="text-[13px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
               <div className="relative">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useChrome } from "./chrome-context";
+import { Menu } from "./ui";
 
 type Vendor = {
   id: string;
@@ -92,14 +93,9 @@ export function ContactsView({ mode }: { mode: "vendors" | "people" }) {
         {["Show All", "Preferred"].map((item) => (
           <button key={item} type="button" className={`border px-2 py-1 ${filter === item ? "border-[#1c93b5] text-[#1c93b5]" : "border-[#ccc] bg-white"}`} onClick={() => setFilter(item)}>{item}{item === "Preferred" ? " ★" : ""}</button>
         ))}
-        <label className="flex items-center gap-1">Vendor Type
-          <select className="border border-[#ccc] bg-white px-2 py-1" value={type} onChange={(event) => setType(event.target.value)}>
-            <option value="">All</option>
-            {types.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
+        <Menu label={<span className="inline-flex h-8 items-center rounded border border-[#ccc] bg-white px-3 text-[13px]">Vendor Type{type ? `: ${type}` : ""} ▾</span>} items={[{ label: "All", onClick: () => setType("") }, ...types.map((item) => ({ label: item, onClick: () => setType(item) }))]} />
       </div>
-      <input className="mb-3 h-8 w-full max-w-sm border border-[#ccc] bg-white px-2 text-[13px]" placeholder="Search vendors" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <input className="mb-3 h-8 w-full max-w-sm border border-[#ccc] bg-white px-2 text-[13px]" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
       <h2 className="mb-3 text-[16px] font-bold">ALL VENDORS • {shown.length}</h2>
       <div className="flex flex-wrap gap-3">
         <button type="button" className="grid h-28 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]" onClick={() => setDraft(blank())}>• {vendors.length}<br />ADD VENDOR</button>

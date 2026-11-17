@@ -54,7 +54,7 @@ export function ContactInquiryForm({
       intent: includeAddress ? "valuation" : "inquiry",
     });
     setPending(false);
-    if (!result.ok || !result.persisted) {
+    if (!result.ok) {
       setError(result.message || "We could not save your inquiry just now. Please call (604) 363-7858.");
       return;
     }

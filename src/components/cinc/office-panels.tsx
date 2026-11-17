@@ -6,19 +6,19 @@ import { Btn, inputCls } from "./ui";
 
 const LAYOUTS = ["Default", "Lucid", "Spring", "Circles", "Split", "Photo", "Video", "Castle", "Castle Light", "Castle Dark"] as const;
 
-const PALETTES = ["Ocean", "Cedar", "Slate", "Sand", "Midnight", "Forest", "Sunset", "Berry", "Glacier", "Coral", "Ink", "Sage", "Plum", "Gold"];
+const PALETTES = ["Tetra", "Marlin", "Monarch", "Lagoon", "Harbor", "Dune", "Iris", "Pebble", "Fern", "Copper", "Glacier", "Ink", "Castle", "Sand"];
 const FONTS = ["Lato", "Roboto", "Work Sans", "Merriweather", "Source Sans"];
 
 export function ThemeLayoutPicker() {
   const [layout, setLayout] = useState<(typeof LAYOUTS)[number]>("Default");
-  const [palette, setPalette] = useState("Ocean");
+  const [palette, setPalette] = useState("Tetra");
   const [font, setFont] = useState("Lato");
   const [note, setNote] = useState("");
   useEffect(() => {
     void loadOfficePrefs().then((prefs) => {
       const saved = String(prefs.themeLayout || "Default");
       if (LAYOUTS.includes(saved as (typeof LAYOUTS)[number])) setLayout(saved as (typeof LAYOUTS)[number]);
-      if (typeof prefs.themePalette === "string") setPalette(prefs.themePalette);
+      if (typeof prefs.themePalette === "string" && PALETTES.includes(prefs.themePalette)) setPalette(prefs.themePalette);
       if (typeof prefs.themeFont === "string") setFont(prefs.themeFont);
     });
   }, []);
@@ -102,16 +102,16 @@ export function SearchSettingsPanel() {
   return (
     <div className="space-y-4">
       <h1 className="text-[18px] font-semibold">Search Settings</h1>
-      <section className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-2 font-bold">Search Widget</h2>
+      <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
+        <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">Search Widget</h2><Btn kind="blue" onClick={() => setNote("Search widget saved.")}>Update</Btn></div>
         <textarea readOnly className="h-20 w-full border border-[#ccc] p-2 font-mono text-[12px]" value={`<iframe src="${origin}/search" title="Search homes" style="width:100%;height:640px;border:0"></iframe>`} />
       </section>
-      <section className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-2 font-bold">Home Value Widget</h2>
+      <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
+        <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">Home Value Widget</h2><Btn kind="blue" onClick={() => setNote("Home value widget saved.")}>Update</Btn></div>
         <textarea readOnly className="h-20 w-full border border-[#ccc] p-2 font-mono text-[12px]" value={`<iframe src="${origin}/seller/homeestimate/homevaluation" title="Home value" style="width:100%;height:720px;border:0"></iframe>`} />
       </section>
-      <section className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-3 font-bold">Default Settings</h2>
+      <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
+        <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Default Settings</h2><Btn kind="blue" onClick={() => { void saveOfficePrefs({ searchSettings: form }).then((error) => setNote(error || "Default search settings saved.")); }}>Update</Btn></div>
         <div className="grid gap-2 sm:grid-cols-2">
           {([
             ["Keyword", "keyword"],
@@ -131,8 +131,8 @@ export function SearchSettingsPanel() {
           </label>
         </div>
       </section>
-      <section className="border border-[#ddd] bg-white p-4 text-[13px]">
-        <h2 className="mb-3 font-bold">Quick Search Settings</h2>
+      <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
+        <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Quick Search Settings</h2><Btn kind="blue" onClick={() => { void saveOfficePrefs({ searchSettings: form }).then((error) => setNote(error || "Quick search settings saved.")); }}>Update</Btn></div>
         <label className="mb-2 block">Default Layout
           <select className={inputCls} value={form.layout} onChange={(event) => set("layout", event.target.value)}>
             <option>List</option>
@@ -145,7 +145,6 @@ export function SearchSettingsPanel() {
           </select>
         </label>
       </section>
-      <div className="text-right"><Btn kind="blue" onClick={() => { void saveOfficePrefs({ searchSettings: form }).then((error) => setNote(error || "Search settings saved.")); }}>Update</Btn></div>
       {note ? <p className="text-[13px] text-[#1c93b5]">{note}</p> : null}
     </div>
   );
