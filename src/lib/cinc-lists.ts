@@ -99,6 +99,7 @@ export const AUTO_LABELS = [
   "Kevin Referral Exchange",
   "No Answer",
   "Not Interested",
+  "Out of Region",
   "Open House",
   "Property Management",
   "Wrong Number",

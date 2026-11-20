@@ -186,9 +186,12 @@ function SubIcon({ label }: { label: string }) {
 
 function Logo() {
   return (
-    <span className="flex items-center gap-2">
-      <span className="grid h-7 w-7 place-items-center rounded-[3px] bg-[#329bb9] text-[16px] font-semibold text-white">A</span>
-      <span className="text-[18px] leading-none font-semibold tracking-tight text-white">AREG</span>
+    <span className="flex items-center gap-2 text-white">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
+        <rect width="22" height="22" rx="3" fill="#3aa0d8" />
+        <path d="M6 7.2h4.2a2.6 2.6 0 0 1 0 5.2H8.2V15H6V7.2zm2.2 1.6v1.9h1.8a1 1 0 0 0 0-1.9H8.2z" fill="#fff" />
+      </svg>
+      <span className="text-[20px] leading-none font-semibold tracking-tight">cinc</span>
     </span>
   );
 }
@@ -205,27 +208,27 @@ function NavIcon({ id }: { id: NavSection }) {
   }
   if (id === "leads") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="8" cy="5" r="2.2" />
-        <path d="M3.5 13c.6-2.2 2.2-3.2 4.5-3.2S12 10.8 12.5 13" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <circle cx="5.5" cy="5" r="1.7" />
+        <path d="M2.2 12.5c.4-1.7 1.6-2.6 3.3-2.6s2.9.9 3.3 2.6" />
+        <circle cx="11" cy="5.4" r="1.5" />
+        <path d="M9.4 12.5c.3-1.2 1.1-1.9 2.2-1.9 1.2 0 2 .7 2.3 1.9" />
       </svg>
     );
   }
   if (id === "deals") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <rect x="2" y="3" width="12" height="10" rx="1" />
-        <path d="M2 6h12M6 6v7" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <circle cx="8" cy="8" r="5.2" />
+        <path d="M8 4.8v6.4M6.2 6.3c.4-.6 1-.8 1.8-.8 1 0 1.7.5 1.7 1.3S9 8.2 8 8.2s-1.8.5-1.8 1.4.8 1.4 1.8 1.4c.8 0 1.4-.3 1.8-.8" />
       </svg>
     );
   }
   if (id === "contacts") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="6" cy="6" r="2" />
-        <path d="M2.5 13c.5-2 1.8-3 3.5-3s3 1 3.5 3" />
-        <circle cx="11" cy="6.5" r="1.5" />
-        <path d="M10 13c.3-1.3 1-2 2-2" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <path d="M4 2.5h7.2v11H4z" />
+        <path d="M6 2.5v11M6.8 5.2h3M6.8 7.4h3" />
       </svg>
     );
   }
@@ -240,9 +243,8 @@ function NavIcon({ id }: { id: NavSection }) {
   }
   if (id === "marketing") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M2 10V6l9-3v10L2 10z" />
-        <path d="M11 6.5c1.2.4 2 1.2 2 2s-.8 1.6-2 2" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <path d="M3 12V8M7 12V5M11 12V7M14 12H2" />
       </svg>
     );
   }
@@ -271,8 +273,9 @@ function NavIcon({ id }: { id: NavSection }) {
   }
   if (id === "props") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M2 7.5 8 3l6 4.5V13H2V7.5z" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <rect x="2.5" y="3" width="11" height="10" rx="1" />
+        <path d="M2.5 6h11" />
       </svg>
     );
   }
@@ -446,6 +449,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                       <NavIcon id={item.id} />
                     </span>
                     <span>{item.label}</span>
+                    {item.id === "leads" || item.id === "comms" ? <span className="ml-auto h-2 w-2 rounded-full bg-[#d9363e]" aria-label="Unread" /> : null}
                   </a>
                   {active && kids.length ? (
                     <div className="bg-[#12161a] py-0.5">
@@ -485,7 +489,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[34px] leading-none font-light text-[#9fd4ea]"
+                className="flex items-center gap-2 text-[22px] leading-none font-normal text-[#1c93b5]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -546,10 +550,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 <button type="button" className="flex items-center gap-1 text-[11px] font-medium text-[#333]" onClick={() => setAccountOpen((value) => !value)} title="Region">
                   <span>CA</span>
                   <svg width="7" height="5" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-                    <circle cx="8" cy="8" r="5.2" />
-                    <path d="M3 8h10M8 3c1.6 1.6 1.6 8.4 0 10M8 3c-1.6 1.6-1.6 8.4 0 10" />
-                  </svg>
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>

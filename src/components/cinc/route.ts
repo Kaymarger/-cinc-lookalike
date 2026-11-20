@@ -97,6 +97,7 @@ function asLeadTab(value: string | undefined): LeadTab {
 
 export function parseRoute(pathname: string, hash: string): CincRoute {
   if (pathname.startsWith("/dashboard/spa/deals")) {
+    if (hash.replace(/^#/, "").split("?")[0].includes("tasks")) return { view: "tasks" };
     return { view: "deals", board: hash.includes("listings") ? "listings" : "purchases" };
   }
   if (pathname.startsWith("/dashboard/sellersuite")) return { view: "seller" };

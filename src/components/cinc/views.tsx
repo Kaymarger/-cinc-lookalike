@@ -46,6 +46,7 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
   const { leads } = useLeads();
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const office = useOfficeSession();
   const [tab, setTab] = useState("Contact Requested");
   useEffect(() => {
     const reset = () => setTab("Contact Requested");
@@ -133,7 +134,8 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
   });
   return (
     <div className="bg-[#f7f7f7] px-3 pt-3 pb-8">
-      <p className="text-[13px] text-[#555]">
+      <h1 className="text-[28px] font-light text-[#243238]">Welcome back, {team ? "team" : office.user?.name || "Casey"}.</h1>
+      <p className="mt-1 text-[13px] text-[#555]">
         {dateLine} {ordinal(today.getDate())}. You have{" "}
         <a href={href.calendar} className="font-semibold text-[#1c93b5]">{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length} appointment{state.appointments.filter((item) => item.when.startsWith(new Date().toISOString().slice(0, 10))).length === 1 ? "" : "s"}</a> scheduled today.
       </p>
@@ -677,7 +679,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
               <thead className="text-[12px] font-normal text-[#555]">
                 <tr>
                   <th className="w-6" />
-                  <th className="py-1"><button type="button" onClick={() => setSortKey("name")}>Template Name ↑</button></th>
+                  <th className="py-1"><button type="button" onClick={() => setSortKey("name")}>Template Name</button></th>
                   <th><button type="button" onClick={() => setSortKey("type")}>Type ↑</button></th>
                   <th><button type="button" onClick={() => setSortKey("by")}>Created By ↑</button></th>
                   <th>Last Edited</th>
@@ -688,7 +690,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                 {rows.map((row) => (
                   <tr key={row.id} className="h-6 border-t border-[#eee]">
                     <td><input className={checkCls} type="checkbox" checked={picked.includes(row.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, row.id] : picked.filter((id) => id !== row.id))} /></td>
-                    <td className="text-[#1c93b5]">{row.type === "Text" ? "☎ " : ""}<button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<TemplateModal group={row.group} initial={row} onClose={chrome.closeModal} />)}>{row.name}</button></td>
+                    <td className="text-[#1c93b5]"><button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<TemplateModal group={row.group} initial={row} onClose={chrome.closeModal} />)}>{row.name.includes(" - ") ? row.name : row.name.replace(/ (Email|Text)$/, " - $1")}</button></td>
                     <td>{templateAudience(row.name)}</td>
                     <td>{row.createdBy}</td>
                     <td>{row.edited}</td>
@@ -755,7 +757,7 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
         ) : null}
         {showFilters ? (
           <div className="relative">
-            <button type="button" title="Filter" aria-label="Filter" className={`${toolBtn} text-[#1c93b5]`} onClick={() => setFiltersOpen((value) => !value)}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2 3h12l-4.5 5.5V13l-3 1V8.5z" /></svg></button>
+            <button type="button" title="Filters" aria-label="Filters" className={`${toolBtn} text-[#1c93b5]`} onClick={() => setFiltersOpen((value) => !value)}><svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2 3h12l-4.5 5.5V13l-3 1V8.5z" /></svg> Filters</button>
             {filtersOpen ? (
               <div className="absolute top-7 left-0 z-30 w-64 border border-[#ddd] bg-white p-3 text-left text-[12px] shadow-md">
                 <p className="font-bold">Communication Type</p>
@@ -813,8 +815,9 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
                 ) : (
                   <>
                     <span className={`grid h-4 w-4 shrink-0 place-items-center text-white ${mail.kind === "text" ? "bg-[#2e9e5b]" : "bg-[#3aa0c8]"}`} aria-hidden />
-                    <span className="w-24 shrink-0 truncate">{mail.from || "System"}</span>
-                    <span className="min-w-0 flex-1 truncate">{mail.body}</span>
+                    <span className="w-28 shrink-0 truncate">{mail.from || "System"}</span>
+                    <span className="w-40 shrink-0 truncate font-semibold">{mail.subject || "(no subject)"}</span>
+                    <span className="min-w-0 flex-1 truncate text-[#666]">{mail.body}</span>
                   </>
                 )}
                 <span className="font-bold">{mail.at}</span>
@@ -936,7 +939,6 @@ export function AutoTracksView() {
           <button key={label} type="button" className={`rounded border px-3 py-1 text-[12px] ${cat === label ? "border-[#1c93b5] bg-[#f3fbfd] font-semibold text-[#1c93b5]" : "border-[#ddd] bg-white text-[#555]"}`} onClick={() => setCat(label)}>{label}</button>
         ))}
       </div>
-      <OfficeListBar query={trackList.query} update={trackList.update} views={trackList.views} saveView={trackList.saveView} filters={[{ id: "category", label: "Category", options: ["General", "Buyer", "Listing", "Nurture", "Past Client", "My AutoTracks"] }, { id: "status", label: "Status", options: ["active", "paused", "draft"] }]} columns={OFFICE_LISTS.automations.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.automations)} toggleSort={trackList.toggleSort} onSelectPage={() => setPickedTracks(shown.map((track) => track.id))} total={arrangedTracks.total} emptyLabel="No AutoTracks match this search and these filters." />
       {pickedTracks.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, tracks: current.tracks.map((track) => pickedTracks.includes(track.id) ? { ...track, status: "paused" as const } : track) })); setPickedTracks([]); chrome.toast("Selected AutoTracks paused."); }}>Pause selected</button> : null}
       <div className="border border-[#e5e5e5] bg-white shadow-sm">
         {shown.map((track) => {
@@ -1114,7 +1116,6 @@ function PropertyNav({ sub }: { sub: "list" | "text" | "open" | "virtual" | "add
     ["Text Responder", href.textResponder, sub === "text"],
     ["Upcoming Open Houses", href.openHouses, sub === "open"],
     ["Virtual Open Houses", href.virtualOpenHouses, sub === "virtual"],
-    ["Add Pocket Listing", href.addProperty, sub === "add"],
   ] as const;
   return (
     <div className="flex flex-wrap gap-4 border-b border-[#e5e5e5] bg-white px-4 py-2 text-[13px]">
@@ -1229,6 +1230,17 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   return (
     <div>
       {nav}
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e5e5] bg-white px-4 py-2 text-[13px]">
+        {["Team Listings", "Seller Prospects", "Contacted", "Listing Appointment", "Pre-Listing", "Active", "Pending", "Sold", "Post Close"].map((label) => (
+          <button key={label} type="button" className="border-b-2 border-transparent px-1 py-2 text-[#666] hover:text-[#1c93b5]" onClick={() => setStatusFilter(label === "Active" || label === "Pending" || label === "Sold" ? label : "Any")}>{label}</button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 bg-white px-4 py-3">
+        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => chrome.toast("Coming soon listings use the same office list.")}>Coming Soon</button>
+        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setOffice("My Listings")}>Agent Listings</button>
+        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setStatusFilter("Active")}>Filter Listings</button>
+        <a href={href.addProperty} className="ml-2 grid h-24 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]">Add Property Listing</a>
+      </div>
       <div className="flex">
         <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[12px]">
           <p className="mb-2 font-bold">Agents</p>
@@ -2523,10 +2535,9 @@ export function CalendarView() {
             setMode("day");
           }}>›</button>
           <div className="ml-auto flex items-center gap-1 text-[14px] font-normal">
-            {([["agenda", "My Agenda"], ["week", "Week"], ["month", "Month"], ["day", "Day"]] as const).map(([item, label]) => (
+            {([["agenda", "my agenda"], ["week", "week"], ["month", "month"], ["day", "day"]] as const).map(([item, label]) => (
               <button key={item} type="button" className={`rounded px-2 py-1 ${mode === item ? "bg-white text-[#333]" : "text-white"}`} onClick={() => setMode(item)}>{label}</button>
             ))}
-            <button type="button" className="ml-2 rounded bg-[#329bb9] px-2 py-1 text-[12px] text-white" onClick={() => openNew(selected)}>Add Appointment</button>
           </div>
         </div>
         <div className="mt-3 rounded-md border-2 border-dashed border-[#c5c5c5] bg-white p-5 shadow-sm">
@@ -2722,7 +2733,7 @@ export function MarketingView() {
           <label className="mt-2 block text-[12px]">BUYER $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
           <label className="mt-1 block text-[12px]">ListCast $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
           <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => void contact()}>Need to discuss your campaign?</button>
-          <p className="mt-3 text-[12px] leading-5 text-[#666]">Lead counts are people who registered on the site during the selected month, grouped by the city or search they used. Cost per lead divides the buyer search budget by those leads. Google Marketing shows the same lead counts beside the office Google budget. This page does not purchase advertising, and the figures are not a quote from Google or any other ad network.</p>
+          <p className="mt-3 text-[12px] leading-5 text-[#666]">Reducing a budget does not cancel an active campaign. Contact the office before changing a live budget.</p>
           <p className="mt-3 font-semibold">Target Areas <span title="The six areas with the most buyer and seller leads this month." className="text-[12px] text-[#1c93b5]">?</span></p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
           {(() => {

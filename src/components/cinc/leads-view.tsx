@@ -20,7 +20,7 @@ import { nowLabel, uid, useCinc, type Assign } from "./store";
 import { loadOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
-const LEAD_COLUMNS = ["Name/Info", "Labels", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"];
+const LEAD_COLUMNS = ["Name/Info", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"];
 
 type LeadViewSnapshot = { name: string; stage: string; agent: string; type: string; checks: string[]; q: string };
 
@@ -200,6 +200,15 @@ function ago(iso: string) {
   if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
   const days = Math.round(hours / 24);
   return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function tidyTime(value: string) {
+  return value.replace(/\b1 hours\b/g, "1 hour").replace(/\b1 days\b/g, "1 day");
+}
+
+function scoreBadge(score: number) {
+  if (!score) return 0;
+  return score <= 5 ? Math.round(score * 20) : Math.round(score);
 }
 
 const SOURCE: Record<string, string> = {
@@ -1021,12 +1030,16 @@ export function LeadsView({
         )}
       </div>
       <div className="mt-2 flex items-center justify-end rounded border border-[#e5e5e5] bg-white px-3 py-2 shadow-sm">
-        <button type="button" className="inline-flex h-10 items-center gap-2 rounded bg-[#329bb9] px-4 text-[16px] text-white shadow-sm" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+        <button type="button" className="inline-flex h-8 items-center rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
           const digits = input.phone.replace(/\D/g, "");
-          const existing = leads.some((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
+          const existing = leads.find((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
+          if (existing && existing.name.trim().toLowerCase() !== input.name.trim().toLowerCase()) {
+            chrome.toast("A lead with that phone or email already exists. Open that lead instead of replacing their name.");
+            return;
+          }
           add({ ...input, source: "general", notes: "Added by an agent" });
           chrome.closeModal();
-          chrome.toast(existing ? "Updated the existing lead." : "Lead added.");
+          chrome.toast("Lead added.");
         }} />)}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
           Add New Lead
@@ -1041,13 +1054,7 @@ export function LeadsView({
                   <th className="border-r border-b border-[#e5e5e5]" />
                   {leadColumns.map((col) => (
                     <th key={col} className={`border-r border-b border-[#e5e5e5] px-1 text-left text-[10px] leading-tight ${col === "Name/Info" ? "min-w-[180px]" : ""}`}>
-                      {col === "Labels" ? <span>Labels</span> : <button type="button" className="uppercase" onClick={() => { if (sortKey === col && sortMode === "value") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("value"); setSortDir(1); } }}>{col}{sortKey === col && sortMode === "value" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>}
-                      {col === "Last Login" || col === "Last Touch" || col === "Next Reminder" ? (
-                        <button type="button" aria-label={`Sort ${col} by count`} className="block normal-case text-[#1c93b5]" onClick={() => { if (sortKey === col && sortMode === "count") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("count"); setSortDir(1); } }}>count{sortKey === col && sortMode === "count" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
-                      ) : null}
-                      {col === "Registered" || col === "Last Login" || col === "Last Touch" || col === "Next Reminder" ? (
-                        <button type="button" aria-label={`Sort ${col} by recency`} className="block normal-case text-[#1c93b5]" onClick={() => { if (sortKey === col && sortMode === "recent") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("recent"); setSortDir(1); } }}>recent{sortKey === col && sortMode === "recent" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
-                      ) : null}
+                      <button type="button" className="uppercase" onClick={() => { if (sortKey === col && sortMode === "value") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("value"); setSortDir(1); } }}>{col}{sortKey === col && sortMode === "value" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
                     </th>
                   ))}
                 </tr>
@@ -1077,11 +1084,7 @@ export function LeadsView({
                         {row.email} <span className={row.emailValid ? "text-[#2e9e5b]" : "text-[#c9a227]"}><ValidityIcon ok={row.emailValid} /></span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="inline-flex gap-0.5 text-[#e39b2b]" aria-label={`Rating ${Math.min(5, Math.round(row.score || 0))}`}>
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button key={star} type="button" className="text-[14px] leading-none" onClick={() => update((current) => ({ ...current, stars: { ...current.stars, [row.id]: star } }))}>{star <= Math.min(5, Math.round(row.score || 0)) ? "★" : "☆"}</button>
-                          ))}
-                        </span>
+                        <button type="button" className="grid h-5 min-w-5 place-items-center rounded bg-[#e8eef3] px-1 text-[11px] font-semibold text-[#243238]" aria-label={`Score ${scoreBadge(row.score)}`} onClick={() => update((current) => ({ ...current, stars: { ...current.stars, [row.id]: Math.min(5, (current.stars[row.id] || row.score || 0) + 1) } }))}>{scoreBadge(row.score)}</button>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
                     </td> : null}
@@ -1129,28 +1132,28 @@ export function LeadsView({
                         />
                       </div>
                     </td> : null}
-                    {leadColumns.includes("Registered") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Registered") + 1 }}>{row.registered}<br />{row.source}</td> : null}
+                    {leadColumns.includes("Registered") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Registered") + 1 }}>{tidyTime(row.registered)}<br />{row.source}</td> : null}
                     {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td> : null}
                     {leadColumns.includes("Timeframe") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Timeframe") + 1 }}>{row.timeframe}</td> : null}
-                    {leadColumns.includes("Last Login") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Last Login") + 1 }}>{row.logins === 0 ? "—" : <>{row.lastLogin}<br />{row.logins} Total</>}</td> : null}
+                    {leadColumns.includes("Last Login") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Last Login") + 1 }}>{row.logins === 0 ? "—" : <>{tidyTime(row.lastLogin)}<br />{row.logins} Total</>}</td> : null}
                     {leadColumns.includes("Last Touch") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Last Touch") + 1 }}>
-                      <span title="Last touch">{row.lastTouch === "—" ? "—" : row.lastTouch}</span><br />
+                      <span title="Last touch">{row.lastTouch === "—" ? "—" : tidyTime(row.lastTouch)}</span><br />
                       <span className="text-[#888]">{row.touchCount || 0} touch{(row.touchCount || 0) === 1 ? "" : "es"}</span>
                     </td> : null}
                     {leadColumns.includes("Next Reminder") ? <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`} style={{ order: leadColumns.indexOf("Next Reminder") + 1 }}>
                       <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
                     </td> : null}
-                    {leadColumns.includes("Activity") ? <td className="px-2 text-[11px] leading-5" style={{ order: leadColumns.indexOf("Activity") + 1 }}>
-                      <span className="text-[#2e9e5b]">{row.views} Views</span><br />
-                      <span className="text-[#e39b2b]">{row.saved} Saved</span><br />
-                      <span className="text-[#d9363e]">{row.fav} Fav</span><br />
-                      <span className="text-[#1c93b5]">{row.inq} Inq</span>
+                    {leadColumns.includes("Activity") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Activity") + 1 }}>
+                      <span className="text-[#2e9e5b]" title="Views">Views {row.views}</span><br />
+                      <span className="text-[#e39b2b]" title="Saved">Saved {row.saved}</span><br />
+                      <span className="text-[#d9363e]" title="Favourites">Fav {row.fav}</span><br />
+                      <span className="text-[#1c93b5]" title="Inquiries">Inq {row.inq}</span>
                     </td> : null}
                     {leadColumns.includes("Assigned To") ? <td className="px-2 text-[13px] leading-6" style={{ order: leadColumns.indexOf("Assigned To") + 1 }}>
                       {(["agent", "partner", "listing"] as const).map((slot) => (
                         <div key={slot} className="block">
                         <Menu
-                          label={<span className="block text-[#329bb9]">{row.assigned[slot]} ▾</span>}
+                          label={<span className="block text-[#329bb9] uppercase">{row.assigned[slot]} ▾</span>}
                           items={(slot === "agent" ? assignChoices.agents : slot === "partner" ? assignChoices.partners : assignChoices.listing).map((name) => ({
                             label: name,
                             onClick: () => saveAssign(row.id, { ...row.assigned, [slot]: name }),
@@ -1231,6 +1234,7 @@ function RailIcon({ name }: { name: string }) {
   if (name === "Dialer") return <svg {...props}><rect x="4" y="2" width="8" height="12" rx="1.5" /><path d="M7 12h2" /></svg>;
   if (name === "Text") return <svg {...props}><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" /></svg>;
   if (name === "Email") return <svg {...props}><path d="M2 4h12v8H2zM2 5l6 4 6-4" /></svg>;
+  if (name === "Etta") return <svg {...props}><path d="M8 2.2 9.4 6H13l-2.9 2.1L11.2 12 8 9.8 4.8 12l1.1-3.9L3 6h3.6z" /></svg>;
   return <svg {...props}><circle cx="4" cy="8" r="1" fill="currentColor" /><circle cx="8" cy="8" r="1" fill="currentColor" /><circle cx="12" cy="8" r="1" fill="currentColor" /></svg>;
 }
 
@@ -1333,7 +1337,7 @@ function LeadDetail({
   return (
     <div className={`${expanded ? "relative flex min-w-0 flex-1" : "absolute top-0 left-[310px] z-30 flex h-full w-[calc(100%-310px)]"} bg-[#f5f5f5] shadow-lg`}>
       {!expanded ? (
-        <div className="absolute top-14 left-0 z-20 flex w-16 -translate-x-1/2 flex-col items-center gap-2">
+        <div className="z-20 flex w-[72px] shrink-0 flex-col items-center gap-2 bg-[#f5f5f5] pt-3">
           {rail.map(([label, , action]) => (
             <button key={label} type="button" title={label === "Email" ? "Email Lead" : label === "Text" ? "Text Lead" : label} className="grid place-items-center text-[#1c93b5]" onClick={action}>
               <span className="grid h-11 w-11 place-items-center rounded-full bg-[#329bb9] text-white"><RailIcon name={label} /></span>
@@ -1410,13 +1414,13 @@ function LeadDetail({
               ))}
             </div>
             <LeadSearches leadId={row.id} leadEmail={row.email} />
-            <p className="mt-3 flex justify-center gap-3 text-[14px] text-[#555]">
-              <span>{row.views} views</span><span>{row.saved} saved</span><span>{row.fav} fav</span><span>{row.inq} inq</span>
+            <p className="mt-3 flex justify-center gap-3 text-[13px] text-[#555]">
+              <span title="Views">Views {row.views}</span><span title="Saved">Saved {row.saved}</span><span title="Favourites">Fav {row.fav}</span><span title="Inquiries">Inq {row.inq}</span>
             </p>
             <div className="mt-2">
               <Menu
                 className="w-full"
-                label={<span className="flex w-full items-center justify-between bg-[#2e9e5b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} ({new Intl.DateTimeFormat("en-US", { timeZone: "America/Vancouver", month: "2-digit", day: "2-digit", year: "2-digit" }).format(new Date(row.registeredAt || Date.now()))}) ▾</span>}
+                label={<span className="flex w-full items-center justify-between bg-[#e39b2b] px-2 py-1.5 text-[13px] text-white">{row.pipeline} ({new Intl.DateTimeFormat("en-US", { timeZone: "America/Vancouver", month: "2-digit", day: "2-digit", year: "2-digit" }).format(new Date(row.registeredAt || Date.now()))}) ▾</span>}
                 items={PIPELINES.map((stage) => ({ label: stage, onClick: () => onPipeline(row.id, stage) }))}
               />
             </div>
@@ -1450,7 +1454,7 @@ function LeadDetail({
             <div className="grid grid-cols-2 gap-1 bg-[#e7f4f8] p-2 text-left text-[10px]">
               <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>—</b></p>
             </div>
-            <p className="mt-3 text-left text-[14px] text-[#666]">Registered {row.registered} ago from {row.source}</p>
+            <p className="mt-3 text-left text-[14px] text-[#666]">Registered {tidyTime(row.registered)} ago from {row.source}</p>
           </div>
         </aside>
       ) : null}
@@ -2064,7 +2068,6 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
       <Field label="Neighbourhood"><select className={inputCls}>{neighbourhoods.map((item) => <option key={item}>{item}</option>)}</select></Field>
       <Field label="Property type"><select className={inputCls} value={propertyType} onChange={(event) => setPropertyType(event.target.value)}><option>Condo</option><option>Townhouse</option><option>House</option></select></Field>
       <Field label="Price"><select className={inputCls}>{prices.map((item) => <option key={item}>{item}</option>)}</select></Field>
-      <p className="mb-2 text-[12px] text-[#666]">Price choices change with the property type. Neighbourhood choices change with the area. The exact CINC option tree is not in the reference notes, so these are the office lists.</p>
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {

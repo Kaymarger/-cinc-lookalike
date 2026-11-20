@@ -77,10 +77,10 @@ type SearchDefaults = {
 
 const SEARCH_DEFAULTS: SearchDefaults = {
   keyword: "",
-  city: "Vancouver",
+  city: "",
   postal: "",
-  beds: "Any",
-  baths: "Any",
+  beds: "",
+  baths: "",
   minPrice: "",
   maxPrice: "",
   sortBy: "Latest",
@@ -103,11 +103,11 @@ export function SearchSettingsPanel() {
     <div className="space-y-4">
       <h1 className="text-[18px] font-semibold">Search Settings</h1>
       <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
-        <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">Search Widget</h2><Btn kind="blue" onClick={() => setNote("Search widget saved.")}>Update</Btn></div>
+        <h2 className="mb-2 font-bold">Search Widget</h2>
         <textarea readOnly className="h-20 w-full border border-[#ccc] p-2 font-mono text-[12px]" value={`<iframe src="${origin}/search" title="Search homes" style="width:100%;height:640px;border:0"></iframe>`} />
       </section>
       <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
-        <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">Home Value Widget</h2><Btn kind="blue" onClick={() => setNote("Home value widget saved.")}>Update</Btn></div>
+        <h2 className="mb-2 font-bold">Home Value Widget</h2>
         <textarea readOnly className="h-20 w-full border border-[#ccc] p-2 font-mono text-[12px]" value={`<iframe src="${origin}/seller/homeestimate/homevaluation" title="Home value" style="width:100%;height:720px;border:0"></iframe>`} />
       </section>
       <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white p-4 text-[13px] shadow-sm">
@@ -126,7 +126,7 @@ export function SearchSettingsPanel() {
           ))}
           <label>Sort By
             <select className={inputCls} value={form.sortBy} onChange={(event) => set("sortBy", event.target.value)}>
-              {["None", "Highest price", "Lowest price", "Latest", "Baths", "Beds", "Year built"].map((option) => <option key={option}>{option}</option>)}
+              {["None", "Highest Price (highestprice)", "Lowest Price (lowestprice)", "Latest Listings (latest)", "Baths (baths)", "Beds (beds)", "Year Built (newest)"].map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
         </div>
@@ -141,7 +141,7 @@ export function SearchSettingsPanel() {
         </label>
         <label className="block">Sort Order Override
           <select className={inputCls} value={form.sortOverride} onChange={(event) => set("sortOverride", event.target.value)}>
-            {["None", "Highest price", "Lowest price", "Latest", "Baths", "Beds", "Year built"].map((option) => <option key={option}>{option}</option>)}
+            {["None", "Highest Price (highestprice)", "Lowest Price (lowestprice)", "Latest Listings (latest)", "Baths (baths)", "Beds (beds)", "Year Built (newest)"].map((option) => <option key={option}>{option}</option>)}
           </select>
         </label>
       </section>
@@ -176,6 +176,11 @@ export function DialerSettingsPanel() {
       <h1 className="mb-3 text-[18px] font-semibold">Dialer Settings</h1>
       <h2 className="font-bold">Dialer Account Settings</h2>
       <p className="mt-2">{status}</p>
+      <p className="mt-2 text-[13px]">Dialer Account Status: {status.startsWith("Connected") ? "ACTIVE" : "NOT CONNECTED"}</p>
+      <button type="button" className="mt-2 border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => setNote("A number request was saved for the office.")}>Request a number</button>
+      <h2 className="mt-4 font-bold">Dialer Recording Settings</h2>
+      <label className="mt-2 block"><input type="checkbox" defaultChecked /> Site-wide call recording</label>
+      <label className="mt-1 block"><input type="checkbox" defaultChecked /> Play “Call is being recorded”</label>
       <h2 className="mt-4 font-bold">Phone number assignment</h2>
       <p className="mt-1">Twilio number: {number || "not connected"}</p>
       <h2 className="mt-4 font-bold">Agent dialer lines</h2>
@@ -236,10 +241,11 @@ export function CustomFieldsPanel() {
   return (
     <div className="border border-[#ddd] bg-white p-4 text-[13px]">
       <h1 className="text-[18px] font-semibold">Custom Fields</h1>
-      <p className="mt-2 max-w-2xl text-[#444]">Manage custom fields that are not available by default. Fields you add here show on a lead&apos;s Info tab.</p>
+      <p className="mt-2 max-w-2xl text-[#444]">This site is not designed or intended to collect sensitive confidential customer information. Edits to these fields happen on the lead details page.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input className={`${inputCls} max-w-xs`} placeholder="Field name" value={name} onChange={(event) => setName(event.target.value)} />
-        <select className={`${inputCls} max-w-[140px]`} value={type} onChange={(event) => setType(event.target.value)}>
+        <select className={`${inputCls} max-w-[180px]`} value={type} onChange={(event) => setType(event.target.value)}>
+          <option value="">(Select Field Type)</option>
           <option>Text</option>
           <option>Number</option>
           <option>Date</option>
@@ -247,7 +253,7 @@ export function CustomFieldsPanel() {
         </select>
         <Btn kind="teal" onClick={() => {
           const label = name.trim();
-          if (!label) return;
+          if (!label || !type) return;
           if (editing) {
             persist(fields.map((field) => field.id === editing ? { ...field, name: label, type } : field), "Custom field updated.");
             setEditing(null);
@@ -256,7 +262,7 @@ export function CustomFieldsPanel() {
           }
           setName("");
           setType("Text");
-        }}>{editing ? "Save field" : "Create field"}</Btn>
+        }}>{editing ? "Save field" : "Add Field"}</Btn>
       </div>
       <h2 className="mt-4 text-[15px] font-semibold">Active Fields</h2>
       <ul className="mt-2">
@@ -277,10 +283,21 @@ export function CustomFieldsPanel() {
 }
 
 export function BillingPlaceholder() {
+  const [tab, setTab] = useState<"Invoices" | "Billing Details">("Invoices");
   return (
     <div className="border border-[#ddd] bg-white p-6">
       <h1 className="text-[18px] font-semibold">Billing & Invoices</h1>
-      <p className="mt-3 text-[13px] text-[#555]">Invoices for this office will show here. There are no invoices to display yet.</p>
+      <div className="mt-3 flex gap-4 border-b border-[#e5e5e5] text-[14px]">
+        {(["Invoices", "Billing Details"] as const).map((label) => (
+          <button key={label} type="button" className={tab === label ? "border-b-2 border-[#1c93b5] pb-2 font-semibold text-[#1c93b5]" : "pb-2 text-[#666]"} onClick={() => setTab(label)}>{label}</button>
+        ))}
+      </div>
+      {tab === "Invoices" ? (
+        <table className="mt-4 w-full text-left text-[13px]">
+          <thead><tr>{["DATE", "EMAILED TO", "TOTAL", "PAID"].map((column) => <th key={column} className="border-b border-[#eee] py-2">{column}</th>)}</tr></thead>
+          <tbody><tr><td className="py-4 text-[#888]" colSpan={4}>There are no invoices to display yet.</td></tr></tbody>
+        </table>
+      ) : <p className="mt-4 text-[13px] text-[#555]">Billing details for this office will show here.</p>}
     </div>
   );
 }
@@ -333,7 +350,16 @@ export function PageEditor({ page }: { page: string }) {
   }, [page]);
   return (
     <div className="p-4 text-[13px]">
-      <h1 className="text-[18px] font-semibold">{title}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-[18px] font-semibold">{title}</h1>
+        <Btn kind="blue" onClick={() => {
+          void loadOfficePrefs().then((prefs) => {
+            const pages = { ...((prefs.pages as object) || {}), [page]: { permalink, metaTitle, metaDescription, sections } };
+            void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
+            return saveOfficePrefs({ pages });
+          }).then((error) => setNote(error || "Page saved."));
+        }}>Save Page</Btn>
+      </div>
       <label className="mt-4 block max-w-lg">Permalink
         <input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={permalink} onChange={(event) => setPermalink(event.target.value)} />
       </label>
