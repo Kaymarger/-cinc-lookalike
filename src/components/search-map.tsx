@@ -123,6 +123,8 @@ export function SearchMap({
     return [lat, lng];
   }, [properties, circle]);
   const [drawing, setDrawing] = useState(false);
+  const [canClose, setCanClose] = useState(false);
+  const closeShape = useRef<(() => void) | null>(null);
 
   return (
     <div className="relative h-full w-full">
@@ -138,7 +140,7 @@ export function SearchMap({
       />
       <FitBounds properties={properties} selectedId={selectedId} circle={drawing ? null : circle} />
       <CircleDraw drawing={false} circle={drawing ? null : circle ?? null} onCircle={(next) => { setDrawing(false); onCircle?.(next); }} />
-      <ShapeDraw drawing={drawing} shape={shape ?? null} onShape={(next) => { setDrawing(false); onShape?.(next); if (next) onCircle?.(null); }} />
+      <ShapeDraw drawing={drawing} shape={shape ?? null} onCanClose={setCanClose} closeShape={closeShape} onShape={(next) => { setDrawing(false); setCanClose(false); onShape?.(next); if (next) onCircle?.(null); }} />
       {properties
         .filter(
           (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)
@@ -183,7 +185,12 @@ export function SearchMap({
               Clear
             </button>
           ) : null}
-          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Press and drag to draw any shape. Drag a corner to edit it, or clear it.</p> : null}
+          {drawing && canClose ? (
+            <button type="button" className="h-9 rounded bg-[#04427d] px-3 text-xs font-semibold text-white shadow" onClick={() => closeShape.current?.()}>
+              Close shape
+            </button>
+          ) : null}
+          {drawing ? <p className="rounded bg-white/95 p-2 text-[11px] leading-snug text-[#243238] shadow">Tap each corner, then tap Close shape. You can also press and drag. Clear starts again.</p> : null}
         </div>
       ) : null}
     </div>
@@ -363,73 +370,127 @@ function ShapeDraw({
   drawing,
   shape,
   onShape,
+  onCanClose,
+  closeShape,
 }: {
   drawing: boolean;
   shape: LatLng[] | null;
   onShape?: (shape: LatLng[] | null) => void;
+  onCanClose?: (open: boolean) => void;
+  closeShape?: MutableRefObject<(() => void) | null>;
 }) {
   const map = useMap();
   const [draft, setDraft] = useState<LatLng[]>([]);
+  const [corners, setCorners] = useState<LatLng[]>([]);
   const onShapeRef = useRef(onShape);
   useEffect(() => {
     onShapeRef.current = onShape;
   }, [onShape]);
+  useEffect(() => {
+    if (!drawing) setCorners([]);
+  }, [drawing]);
+  useEffect(() => {
+    onCanClose?.(drawing && corners.length >= 3);
+    if (closeShape) {
+      closeShape.current = corners.length >= 3 ? () => { onShapeRef.current?.(corners); setCorners([]); } : null;
+    }
+  }, [closeShape, corners, drawing, onCanClose]);
 
   useEffect(() => {
     if (!drawing) return;
     const container = map.getContainer();
     map.dragging.disable();
+    map.doubleClickZoom.disable();
+    const tap = (map as L.Map & { tap?: { disable: () => void; enable: () => void } }).tap;
+    if (tap) tap.disable();
     const previousTouchAction = container.style.touchAction;
     container.style.cursor = "crosshair";
     container.style.touchAction = "none";
-    let points: LatLng[] = [];
+    let stroke: LatLng[] = [];
+    let active = false;
     const pointFromClient = (clientX: number, clientY: number) => {
       const origin = container.getBoundingClientRect();
       const latlng = map.containerPointToLatLng(L.point(clientX - origin.left, clientY - origin.top));
       return { lat: latlng.lat, lng: latlng.lng };
     };
+    const nearFirst = (point: LatLng, existing: LatLng[]) => {
+      if (existing.length < 3) return false;
+      const first = map.latLngToContainerPoint([existing[0].lat, existing[0].lng]);
+      const next = map.latLngToContainerPoint([point.lat, point.lng]);
+      return first.distanceTo(next) < 22;
+    };
     const down = (event: PointerEvent) => {
       if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
       const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-circle-handle], button, a, input")) return;
+      if (target?.closest("button, a, input")) return;
       event.preventDefault();
-      points = [pointFromClient(event.clientX, event.clientY)];
-      setDraft(points);
-      container.setPointerCapture(event.pointerId);
+      event.stopPropagation();
+      active = true;
+      stroke = [pointFromClient(event.clientX, event.clientY)];
+      setDraft(stroke);
+      try { container.setPointerCapture(event.pointerId); } catch { /* already captured */ }
     };
     const move = (event: PointerEvent) => {
-      if (!points.length) return;
+      if (!active) return;
       event.preventDefault();
       const next = pointFromClient(event.clientX, event.clientY);
-      const last = points[points.length - 1];
-      const moved = map.distance([last.lat, last.lng], [next.lat, next.lng]);
-      if (moved < 12 || points.length >= 80) return;
-      points = [...points, next];
-      setDraft(points);
+      const last = stroke[stroke.length - 1];
+      if (!last || map.distance([last.lat, last.lng], [next.lat, next.lng]) < 18 || stroke.length >= 80) return;
+      stroke = [...stroke, next];
+      setDraft(stroke);
     };
-    const up = () => {
-      const finished = points;
-      points = [];
+    const up = (event: PointerEvent) => {
+      if (!active) return;
+      active = false;
+      const finished = stroke;
+      stroke = [];
       setDraft([]);
-      if (finished.length >= 3) onShapeRef.current?.(finished);
+      if (finished.length >= 3) {
+        onShapeRef.current?.(finished);
+        setCorners([]);
+        return;
+      }
+      const point = finished[0];
+      if (!point) return;
+      setCorners((existing) => {
+        if (nearFirst(point, existing)) {
+          onShapeRef.current?.(existing);
+          return [];
+        }
+        return [...existing, point].slice(0, 80);
+      });
     };
-    container.addEventListener("pointerdown", down);
-    container.addEventListener("pointermove", move);
-    container.addEventListener("pointerup", up);
-    container.addEventListener("pointercancel", up);
+    container.addEventListener("pointerdown", down, true);
+    container.addEventListener("pointermove", move, true);
+    container.addEventListener("pointerup", up, true);
+    container.addEventListener("pointercancel", up, true);
     return () => {
-      container.removeEventListener("pointerdown", down);
-      container.removeEventListener("pointermove", move);
-      container.removeEventListener("pointerup", up);
-      container.removeEventListener("pointercancel", up);
+      container.removeEventListener("pointerdown", down, true);
+      container.removeEventListener("pointermove", move, true);
+      container.removeEventListener("pointerup", up, true);
+      container.removeEventListener("pointercancel", up, true);
       map.dragging.enable();
+      map.doubleClickZoom.enable();
+      if (tap) tap.enable();
       container.style.cursor = "";
       container.style.touchAction = previousTouchAction;
     };
   }, [drawing, map]);
 
-  if (draft.length > 1) {
-    return <Polyline positions={draft.map((point) => [point.lat, point.lng])} pathOptions={{ color: "#04427d", weight: 2 }} />;
+  const preview = draft.length > 1 ? draft : corners;
+  if (drawing && preview.length > 1) {
+    return (
+      <>
+        <Polyline positions={preview.map((point) => [point.lat, point.lng])} pathOptions={{ color: "#04427d", weight: 2 }} />
+        {corners.length >= 3 ? (
+          <Marker
+            position={[corners[0].lat, corners[0].lng]}
+            icon={handleIcon("Close shape")}
+            eventHandlers={{ click: () => { onShapeRef.current?.(corners); setCorners([]); } }}
+          />
+        ) : null}
+      </>
+    );
   }
   if (!shape || shape.length < 3 || drawing) return null;
   return <ShapeEditor shape={shape} onShapeRef={onShapeRef} />;

@@ -126,7 +126,7 @@ export function propertyFromRow(row: ListingRow): Property {
     features: [],
     images,
     status: "Active",
-    listedDaysAgo: daysAgo(row.listed_at || row.modification_timestamp),
+    listedDaysAgo: row.listed_at ? daysAgo(row.listed_at) : 100000 + daysAgo(row.modification_timestamp),
     brokerage: row.brokerage_name,
     lat: Number(row.latitude ?? 0) || 0,
     lng: Number(row.longitude ?? 0) || 0,
@@ -221,7 +221,7 @@ export async function upsertDdfListings(listings: DdfListing[]): Promise<number>
         realtor_url = EXCLUDED.realtor_url,
         latitude = EXCLUDED.latitude,
         longitude = EXCLUDED.longitude,
-        listed_at = EXCLUDED.listed_at,
+        listed_at = COALESCE(EXCLUDED.listed_at, ddf_listings.listed_at),
         photos = CASE WHEN EXCLUDED.photos <> '[]'::jsonb THEN EXCLUDED.photos ELSE ddf_listings.photos END,
         modification_timestamp = EXCLUDED.modification_timestamp,
         neighbourhood = CASE WHEN EXCLUDED.neighbourhood <> '' THEN EXCLUDED.neighbourhood ELSE ddf_listings.neighbourhood END,
@@ -347,8 +347,9 @@ function orderBy(sql: NonNullable<Awaited<ReturnType<typeof officeDb>>>, sort: S
       return sql`beds DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
     case "baths-desc":
       return sql`baths DESC NULLS LAST, listed_at DESC NULLS LAST, listing_id DESC`;
+    case "newest":
     default:
-      return sql`COALESCE(listed_at, modification_timestamp) DESC NULLS LAST, listing_id DESC`;
+      return sql`(listed_at IS NULL), listed_at DESC NULLS LAST, modification_timestamp DESC NULLS LAST, listing_id DESC`;
   }
 }
 
@@ -481,23 +482,27 @@ export async function featuredDdfListingsByMls(ids: string[]): Promise<Property[
   });
 }
 
-export async function stampNeighbourhoods(stamps: { listingKey: string; city: string; neighbourhood: string }[]): Promise<number> {
+export async function stampNeighbourhoods(stamps: { listingKey: string; city: string; neighbourhood: string; listedAt?: string | null }[]): Promise<number> {
   const sql = await officeDb();
-  const usable = stamps.filter((stamp) => stamp.listingKey && stamp.neighbourhood);
+  const usable = stamps.filter((stamp) => stamp.listingKey && (stamp.neighbourhood || stamp.listedAt));
   if (!sql || !usable.length) return 0;
   const keys = usable.map((stamp) => stamp.listingKey);
-  const areas = usable.map((stamp) => stamp.neighbourhood);
+  const areas = usable.map((stamp) => stamp.neighbourhood || "");
   const cities = usable.map((stamp) => stamp.city);
+  const listed = usable.map((stamp) => stamp.listedAt || null);
   const rows = await sql<{ listing_key: string }[]>`
     UPDATE ddf_listings AS listing
-    SET neighbourhood = stamp.neighbourhood
-    FROM unnest(${keys}::text[], ${areas}::text[], ${cities}::text[]) AS stamp(listing_key, neighbourhood, city)
+    SET neighbourhood = CASE WHEN stamp.neighbourhood <> '' THEN stamp.neighbourhood ELSE listing.neighbourhood END,
+        listed_at = COALESCE(stamp.listed_at, listing.listed_at)
+    FROM unnest(${keys}::text[], ${areas}::text[], ${cities}::text[], ${listed}::timestamptz[]) AS stamp(listing_key, neighbourhood, city, listed_at)
     WHERE listing.listing_key = stamp.listing_key
-      AND stamp.neighbourhood <> ''
-      AND listing.neighbourhood IS DISTINCT FROM stamp.neighbourhood
+      AND (
+        (stamp.neighbourhood <> '' AND listing.neighbourhood IS DISTINCT FROM stamp.neighbourhood)
+        OR (stamp.listed_at IS NOT NULL AND listing.listed_at IS DISTINCT FROM stamp.listed_at)
+      )
     RETURNING listing.listing_key
   `;
-  searchCache.clear();
+  if (rows.length) searchCache.clear();
   return rows.length;
 }
 
@@ -568,7 +573,7 @@ export async function ddfListingsForAlert(input: {
       )
       AND COALESCE(listed_at, modification_timestamp, updated_at) >= now() - (${input.windowDays} || ' days')::interval
       AND NOT (listing_key = ANY(${input.exclude}))
-    ORDER BY listed_at DESC NULLS LAST
+    ORDER BY (listed_at IS NULL), listed_at DESC NULLS LAST, modification_timestamp DESC NULLS LAST
     LIMIT 12
   `;
   return rows.map(propertyFromRow);

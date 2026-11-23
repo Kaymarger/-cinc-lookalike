@@ -100,9 +100,7 @@ export function ContactInquiryForm({
         </p>
       </div>
       <form onSubmit={onSubmit} noValidate className="space-y-3 p-5">
-        {user ? (
-          <p className="text-sm text-[#444]">Sending as {user.name}. We already have your email and phone.</p>
-        ) : (
+        {user ? null : (
           <>
             <input name="FullName" required placeholder="Full Name" aria-label="Full Name" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />
             <EmailField name="Email" required placeholder="Email" aria-label="Email" className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]" />

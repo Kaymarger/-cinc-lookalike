@@ -1,5 +1,5 @@
 import { fetchListingDetail, fetchListingsByMls } from "@/lib/ddf/client";
-import { pullAreaIntoSearch } from "@/lib/ddf/areas";
+import { pullAreaIntoSearch, warmNeighbourhoodNames } from "@/lib/ddf/areas";
 import { ddfConfigured } from "@/lib/ddf/credentials";
 import { featuredDdfListingsByMls, getDdfListing, searchDdfListings, upsertDdfListings } from "@/lib/ddf/db";
 import { activeFeaturedMlsIds } from "@/lib/featured-source";
@@ -19,6 +19,14 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
     const needle = filters.q?.trim() || "";
     const placeName = needle.length >= 4 && !/^\d/.test(needle) && !/^[a-z]\d{4,}/i.test(needle);
     const unlabeled = result.properties.length > 0 && result.properties.every((property) => !property.neighborhood);
+    const missingFacts = result.properties.some((property) => !property.neighborhood || property.listedDaysAgo >= 100000);
+    if ((filters.page || 1) === 1 && missingFacts && (filters.sort === "newest" || !filters.sort || Boolean(filters.q))) {
+      await Promise.race([
+        warmNeighbourhoodNames(2200).catch(() => undefined),
+        new Promise((resolve) => setTimeout(resolve, 2200)),
+      ]);
+      result = await searchDdfListings(filters);
+    }
     if (placeName && (result.total === 0 || unlabeled) && (filters.page || 1) === 1) {
       const pulled = await Promise.race([
         pullAreaIntoSearch(needle).catch(() => 0),

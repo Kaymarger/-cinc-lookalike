@@ -182,21 +182,35 @@ export function openHousesFromRecord(record: Record<string, unknown>): DdfOpenHo
   return houses;
 }
 
+function areaName(value: unknown, city: string): string {
+  const name = text(value).replace(/\s+/g, " ").trim();
+  if (!name || name.length > 60 || /^\d+(\.\d+)?$/.test(name)) return "";
+  if (city && name.toLowerCase() === city) return "";
+  return name;
+}
+
 export function neighbourhoodOf(record: Record<string, unknown>): string {
   const city = text(record.City).toLowerCase();
   const values: string[] = [];
-  const named = ["SubdivisionName", "MLSAreaMinor", "CityRegion", "Neighbourhood", "Neighborhood", "SubArea", "Community"];
-  for (const key of named) {
-    const name = text(record[key]);
-    if (name) values.push(name);
+  const named = ["SubdivisionName", "MLSAreaMinor", "MLSAreaMajor", "CityRegion", "Neighbourhood", "Neighborhood", "SubArea", "Community", "CommunityName", "District"];
+  const take = (row: Record<string, unknown>) => {
+    for (const key of named) {
+      const name = areaName(row[key], city);
+      if (name) values.push(name);
+    }
+    for (const [key, value] of Object.entries(row)) {
+      if (!/region|subdiv|subarea|neighbour|community|district/i.test(key)) continue;
+      if (/office|school|tax|fee|building|living|lot|url/i.test(key)) continue;
+      const name = areaName(value, city);
+      if (name) values.push(name);
+    }
+  };
+  take(record);
+  for (const value of Object.values(record)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    take(value as Record<string, unknown>);
   }
-  for (const [key, value] of Object.entries(record)) {
-    if (!/region|subdiv|subarea|neighbour|community|district/i.test(key)) continue;
-    const name = text(value);
-    if (name && name.length <= 60) values.push(name);
-  }
-  const unique = [...new Set(values.map((value) => value.trim()).filter((value) => value && value.toLowerCase() !== city))];
-  return unique[0] || "";
+  return [...new Set(values)][0] || "";
 }
 
 function officeName(record: Record<string, unknown>): string {
@@ -224,10 +238,28 @@ function addressOf(record: Record<string, unknown>): string {
 }
 
 function when(value: unknown): string | null {
+  if (value && typeof value === "object") {
+    const row = value as Record<string, unknown>;
+    return when(row.date ?? row.Date ?? row.value ?? row.Value);
+  }
   const raw = text(value);
   if (!raw) return null;
   const parsed = new Date(raw);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+export function listedAtOf(record: Record<string, unknown>): string | null {
+  const named = ["ListingContractDate", "OriginalEntryTimestamp", "OnMarketDate", "OnMarketTimestamp", "ListingDate", "ContractDate"];
+  for (const key of named) {
+    const parsed = when(record[key]);
+    if (parsed) return parsed;
+  }
+  for (const [key, value] of Object.entries(record)) {
+    if (!/listingcontract|onmarket|originalentry|listdate|contractdate/i.test(key)) continue;
+    const parsed = when(value);
+    if (parsed) return parsed;
+  }
+  return null;
 }
 
 /** Keep feed text as provided. Missing numbers stay zero and are omitted in the UI. */
@@ -256,7 +288,7 @@ export function listingFromOData(record: Record<string, unknown>): DdfListing | 
     realtorUrl: realtorUrl(record) || (listingKey ? `https://www.realtor.ca/real-estate/${listingKey}` : ""),
     latitude: num(record.Latitude),
     longitude: num(record.Longitude),
-    listedAt: when(record.ListingContractDate ?? record.OriginalEntryTimestamp ?? record.OnMarketDate),
+    listedAt: listedAtOf(record),
     modifiedAt: when(record.ModificationTimestamp),
     photos: media.photos.slice(0, 24),
     neighbourhood: neighbourhoodOf(record),
@@ -318,10 +350,10 @@ export function listingFromRetsXml(block: string): DdfListing | null {
     realtorUrl: xmlText(block, "MoreInformationLink") || xmlText(block, "ListingURL"),
     latitude: num(xmlText(block, "Latitude")),
     longitude: num(xmlText(block, "Longitude")),
-    listedAt: when(xmlText(block, "ListingContractDate")),
+    listedAt: when(xmlText(block, "ListingContractDate") || xmlText(block, "OriginalEntryTimestamp") || xmlText(block, "OnMarketDate")),
     modifiedAt: when(xmlText(block, "LastUpdated") || xmlText(block, "ModificationTimestamp")),
     photos: photoUrls.filter((url) => url.startsWith("http")).map((url, order) => ({ url, order })),
-    neighbourhood: xmlText(block, "CityRegion") || xmlText(block, "SubdivisionName"),
+    neighbourhood: xmlText(block, "SubdivisionName") || xmlText(block, "CityRegion") || xmlText(block, "MLSAreaMinor") || xmlText(block, "Neighbourhood"),
     virtualTourUrl: xmlText(block, "VirtualTourURL") || xmlText(block, "VirtualTourURLUnbranded"),
     videoUrl: xmlText(block, "VideoURL"),
     floorPlans: [],

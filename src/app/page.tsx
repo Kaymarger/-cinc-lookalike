@@ -3,7 +3,8 @@ import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { PublicPageSections } from "@/components/public-page-sections";
 import { HeroSearch } from "@/components/hero-search";
-import { catalogFeatured } from "@/lib/catalog";
+import { PropertyCard } from "@/components/property-card";
+import { catalogFeatured, catalogSearch } from "@/lib/catalog";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 
 const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
@@ -37,6 +38,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const featured = await catalogFeatured(8);
+  const latest = await catalogSearch({ sort: "newest" }).then((result) => result.properties.slice(0, 6)).catch(() => []);
 
   return (
     <>
@@ -93,6 +95,31 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      {latest.length ? (
+        <section className="bg-[#f7f9fb] py-12">
+          <div className="mx-auto max-w-[1350px] px-4">
+            <h2 className="text-center font-[family-name:var(--font-display)] text-[28px] font-normal text-[#1f2930]">
+              Latest listings
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
+              Newest list dates from the CREA feed.
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {latest.map((property) => (
+                <PropertyCard key={property.id} property={property} />
+              ))}
+            </div>
+            <div className="mt-8 text-center">
+              <Link
+                href="/search?sort=newest"
+                className="inline-flex h-10 items-center bg-[#3498d8] px-6 text-sm font-bold tracking-[1px] !text-white uppercase hover:brightness-90"
+              >
+                View more
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
       <PublicPageSections page="home" />
 
       <section className="bg-white pb-14">

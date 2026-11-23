@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { safeDdfError } from "./credentials.ts";
-import { isBritishColumbia, listingFromOData, listingFromRetsXml } from "./normalize.ts";
+import { isBritishColumbia, listedAtOf, listingFromOData, listingFromRetsXml, neighbourhoodOf } from "./normalize.ts";
 
 test("oauth records keep feed text and drop other provinces", () => {
   assert.equal(isBritishColumbia({ StateOrProvince: "ON" }), false);
@@ -62,6 +62,19 @@ test("neighbourhood, video, floor plan, and open house stay with the listing", (
   assert.match(listing?.virtualTourUrl || "", /matterport/);
   assert.equal(listing?.openHouses[0]?.date, "2099-06-01");
   assert.equal(listing?.openHouses[0]?.start, "13:00");
+});
+
+test("list date prefers the contract date and neighbourhood reads the subdivision", () => {
+  const record = {
+    City: "Vancouver",
+    SubdivisionName: "Kitsilano",
+    ListingContractDate: "2026-11-02",
+    ModificationTimestamp: "2026-11-20T00:00:00Z",
+  };
+  assert.equal(neighbourhoodOf(record), "Kitsilano");
+  assert.equal(listedAtOf(record)?.slice(0, 10), "2026-11-02");
+  assert.equal(neighbourhoodOf({ City: "Surrey" }), "");
+  assert.equal(listedAtOf({ ModificationTimestamp: "2026-11-20T00:00:00Z" }), null);
 });
 
 test("rets xml keeps the more information link", () => {

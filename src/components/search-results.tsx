@@ -94,7 +94,9 @@ export function SearchResults({
               circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
               shape={parseShape(filters?.shape)}
               onShape={filters ? (next) => {
-                router.push(`/search${filtersToQuery({ ...filters, shape: next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined })}`);
+                const shape = next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined;
+                const query = filtersToQuery({ ...filters, shape, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined });
+                window.location.assign(`/search${query}`);
               } : undefined}
               onCircle={filters ? (next) => {
                 router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
@@ -236,7 +238,9 @@ export function SearchResults({
               circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
               shape={parseShape(filters?.shape)}
               onShape={filters ? (next) => {
-                router.push(`/search${filtersToQuery({ ...filters, shape: next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined })}`);
+                const shape = next ? next.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join(";") : undefined;
+                const query = filtersToQuery({ ...filters, shape, circleLat: undefined, circleLng: undefined, circleKm: undefined, page: undefined });
+                window.location.assign(`/search${query}`);
               } : undefined}
               onCircle={filters ? (next) => {
                 router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);

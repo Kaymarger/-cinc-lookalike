@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { ddfCredentials, safeDdfError } from "@/lib/ddf/credentials";
-import { listingFromOData, listingFromRetsXml, neighbourhoodOf, openHousesFromRecord, xmlBlocks, type DdfListing } from "@/lib/ddf/normalize";
+import { listedAtOf, listingFromOData, listingFromRetsXml, neighbourhoodOf, openHousesFromRecord, xmlBlocks, type DdfListing } from "@/lib/ddf/normalize";
 
 const TOKEN_URL = "https://identity.crea.ca/connect/token";
 const ODATA = "https://ddfapi.realtor.ca/odata/v1";
@@ -168,7 +168,8 @@ export async function fetchDdfPropertyPage(nextUrl?: string | null): Promise<Ddf
   const active = await session();
   if (active.mode === "rets") return fetchRetsPage(active, nextUrl);
   const filter = encodeURIComponent("StateOrProvince eq 'BC'");
-  const filtered = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$filter=${filter}&$expand=Media,ListOffice`;
+  const fields = encodeURIComponent("ListingKey,ListingKeyNumeric,ListingId,ListPrice,UnparsedAddress,StreetNumber,StreetName,StreetSuffix,StreetDirPrefix,StreetDirSuffix,City,StateOrProvince,PostalCode,BedroomsTotal,BathroomsTotalInteger,BathroomsTotalDecimal,LivingArea,BuildingAreaTotal,PropertyType,PropertySubType,PublicRemarks,ListOfficeName,ListOfficeKey,Latitude,Longitude,ListingContractDate,OriginalEntryTimestamp,OnMarketDate,ModificationTimestamp,CityRegion,SubdivisionName,MLSAreaMajor,MLSAreaMinor,ListingURL");
+  const filtered = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc&$filter=${filter}&$select=${fields}&$expand=Media,ListOffice`;
   const plain = `${ODATA}/Property?$top=100&$orderby=ModificationTimestamp desc`;
   let payload: { value?: unknown; "@odata.nextLink"?: string };
   try {
@@ -304,13 +305,13 @@ export async function fetchAreaListings(name: string): Promise<DdfListing[]> {
   return [];
 }
 
-export type AreaStamp = { listingKey: string; city: string; neighbourhood: string };
+export type AreaStamp = { listingKey: string; city: string; neighbourhood: string; listedAt: string | null };
 
 /** One page of listing keys plus their MLS sub-area, for autocomplete. */
 export async function fetchAreaStampPage(nextUrl?: string | null): Promise<{ stamps: AreaStamp[]; nextUrl: string | null }> {
   const active = await session();
   if (active.mode !== "oauth") return { stamps: [], nextUrl: null };
-  const select = encodeURIComponent("ListingKey,City,CityRegion,SubdivisionName");
+  const select = encodeURIComponent("ListingKey,City,CityRegion,SubdivisionName,MLSAreaMinor,MLSAreaMajor,ListingContractDate,OriginalEntryTimestamp,OnMarketDate,ModificationTimestamp");
   const url = nextUrl || `${ODATA}/Property?$top=200&$select=${select}&$orderby=ModificationTimestamp desc`;
   let payload: { value?: unknown; "@odata.nextLink"?: string };
   try {
@@ -327,8 +328,9 @@ export async function fetchAreaStampPage(nextUrl?: string | null): Promise<{ sta
     .map((row) => {
       const listingKey = String(row.ListingKey || "");
       const neighbourhood = neighbourhoodOf(row);
-      if (!listingKey || !neighbourhood) return null;
-      return { listingKey, city: String(row.City || ""), neighbourhood };
+      const listedAt = listedAtOf(row);
+      if (!listingKey || (!neighbourhood && !listedAt)) return null;
+      return { listingKey, city: String(row.City || ""), neighbourhood, listedAt };
     })
     .filter((row): row is AreaStamp => Boolean(row));
   return { stamps, nextUrl: payload["@odata.nextLink"] || null };

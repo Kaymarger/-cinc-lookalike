@@ -133,9 +133,7 @@ export function HomeEstimateHero({
                     />
                   </label>
                 </div>
-                {user ? (
-                  <p className="text-sm text-[#444]">Using {user.name}&apos;s saved contact details. No need to opt in again.</p>
-                ) : (
+                {user ? null : (
                   <>
                     <input name="FullName" required placeholder="Full name" aria-label="Full name" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />
                     <EmailField name="Email" required placeholder="Email" aria-label="Email" className="h-12 w-full border border-[#ddd] px-3 text-[16px] outline-none focus:border-[var(--cedar)]" />

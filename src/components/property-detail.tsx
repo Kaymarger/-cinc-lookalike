@@ -40,14 +40,15 @@ function FactGroup({
   title: string;
   rows: { label: string; value: string }[];
 }) {
-  if (rows.length === 0) return null;
+  const visible = rows.filter((row) => row.value.trim());
+  if (visible.length === 0) return null;
   return (
     <div>
       <h3 className="border-b border-[var(--cedar)] pb-2 font-[family-name:var(--font-display)] text-xl text-[var(--cedar)]">
         {title}
       </h3>
       <dl className="mt-1">
-        {rows.map((row) => (
+        {visible.map((row) => (
           <SnapshotRow key={row.label} label={row.label} value={row.value} />
         ))}
       </dl>
@@ -142,7 +143,7 @@ export function PropertyDetail({ property }: { property: Property }) {
     { label: "City:", value: property.city },
     { label: "Province:", value: property.province },
     { label: "Postal Code:", value: property.postalCode },
-    { label: "Community:", value: property.city },
+    { label: "Neighbourhood:", value: property.neighborhood || property.city },
     { label: "Listing Status:", value: property.status },
     { label: "Listing Type:", value: property.propertyType },
   ];
@@ -211,7 +212,7 @@ export function PropertyDetail({ property }: { property: Property }) {
 
   const land = [
     { label: "Lot Features:", value: property.features.filter((feature) => /yard|garden|lot|view/i.test(feature)).join(", ") || "See listing" },
-    { label: "Community:", value: property.neighborhood || property.city },
+    { label: "Neighbourhood:", value: property.neighborhood || property.city },
     { label: "Zoning:", value: attached ? "Multi-family" : "Residential" },
   ];
 
@@ -332,8 +333,8 @@ export function PropertyDetail({ property }: { property: Property }) {
                   ? snapshot.filter((row) => {
                       if (row.label === "Year Built:" && property.yearBuilt <= 0) return false;
                       if (row.label === "Square Footage:" && property.sqft <= 0) return false;
-                      if (row.label === "Community:") return false;
-                      return Boolean(row.value);
+                      if (row.label === "Neighbourhood:" && !row.value.trim()) return false;
+                      return Boolean(row.value && row.value.trim());
                     })
                   : snapshot
                 ).map((row) => (
