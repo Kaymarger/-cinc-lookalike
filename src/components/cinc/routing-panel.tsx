@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
-import type { OfficeProfile } from "./office-session";
+import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
 import { Btn, inputCls } from "./ui";
 
@@ -11,7 +11,9 @@ const ROUTABLE: OfficeRole[] = ["admin", "broker", "agent", "isa"];
 type Mode = "default" | "fixed" | "round_robin" | "source";
 
 export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidden?: boolean })[] }) {
-  const eligible = users.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
+  const office = useOfficeSession();
+  const roster: (OfficeProfile & { routingHidden?: boolean })[] = users.length ? users : office.user ? [{ ...office.user }] : [];
+  const eligible = roster.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
   const [mode, setMode] = useState<Mode>("default");
   const [fixedUserId, setFixedUserId] = useState("");
   const [poolIds, setPoolIds] = useState<string[]>([]);
@@ -81,13 +83,18 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
           <table className="w-full text-left text-[12px]">
             <thead><tr>{["AGENT", "STATUS", "WEIGHT", "MIN PRICE", "MAX PRICE"].map((column) => <th key={column} className="border-b border-[#eee] py-2">{column}</th>)}</tr></thead>
             <tbody>
-              {users.filter((user) => user.active).map((user) => {
-                const row = weights[user.id] || { weight: "1", min: "", max: "" };
+              {(roster.length ? roster : []).map((user) => {
+                const row = weights[user.id] || { weight: "17", min: "0", max: "999999999" };
                 const setRow = (key: "weight" | "min" | "max", value: string) => setWeights((current) => ({ ...current, [user.id]: { ...row, [key]: value } }));
                 return (
                   <tr key={user.id} className="border-b border-[#f3f3f3]">
                     <td className="py-2">{user.name}</td>
-                    <td>{user.active ? "Active" : "Disabled"}</td>
+                    <td>
+                      <select className={inputCls} defaultValue={user.active ? "Yes" : "No"} aria-label={`${user.name} status`}>
+                        <option>Yes</option>
+                        <option>No</option>
+                      </select>
+                    </td>
                     <td><input className={inputCls} value={row.weight} onChange={(event) => setRow("weight", event.target.value)} /></td>
                     <td><input className={inputCls} value={row.min} onChange={(event) => setRow("min", event.target.value)} /></td>
                     <td><input className={inputCls} value={row.max} onChange={(event) => setRow("max", event.target.value)} /></td>
@@ -97,6 +104,10 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
             </tbody>
           </table>
           <div className="mt-3"><Btn kind="teal" onClick={() => void updateTable()}>Update</Btn></div>
+          <h3 className="mt-4 text-[13px] font-semibold">Loan Officers</h3>
+          <p className="text-[12px] text-[#888]">No loan officers on this office.</p>
+          <h3 className="mt-3 text-[13px] font-semibold">Listing Agents</h3>
+          <p className="text-[12px] text-[#888]">No listing agents on this office.</p>
         </div>
       ) : null}
       {tab !== "Routing Overview" ? <div className="mt-3 space-y-2 text-[13px]">

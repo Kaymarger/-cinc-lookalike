@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
+import { useChrome } from "./chrome-context";
+import { loadOfficePrefs, readLocalPrefs, saveOfficePrefs, writeLocalPrefs } from "./office-prefs";
 import { Btn, inputCls } from "./ui";
 
 const LAYOUTS = ["Default", "Lucid", "Spring", "Circles", "Split", "Photo", "Video", "Castle", "Castle Light", "Castle Dark"] as const;
@@ -222,7 +223,7 @@ const CANONICAL_FIELDS: FieldDef[] = [
 export function CustomFieldsPanel() {
   const [fields, setFields] = useState<FieldDef[]>(CANONICAL_FIELDS);
   const [name, setName] = useState("");
-  const [type, setType] = useState("Text");
+  const [type, setType] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [note, setNote] = useState("");
   useEffect(() => {
@@ -242,8 +243,9 @@ export function CustomFieldsPanel() {
     <div className="border border-[#ddd] bg-white p-4 text-[13px]">
       <h1 className="text-[18px] font-semibold">Custom Fields</h1>
       <p className="mt-2 max-w-2xl text-[#444]">This site is not designed or intended to collect sensitive confidential customer information. Edits to these fields happen on the lead details page.</p>
+      <h2 className="mt-4 text-[16px] font-semibold">Add a New Field</h2>
       <div className="mt-3 flex flex-wrap gap-2">
-        <input className={`${inputCls} max-w-xs`} placeholder="Field name" value={name} onChange={(event) => setName(event.target.value)} />
+        <input className={`${inputCls} max-w-xs`} placeholder="New Field Name" value={name} onChange={(event) => setName(event.target.value)} />
         <select className={`${inputCls} max-w-[180px]`} value={type} onChange={(event) => setType(event.target.value)}>
           <option value="">(Select Field Type)</option>
           <option>Text</option>
@@ -261,7 +263,7 @@ export function CustomFieldsPanel() {
             persist([...fields, { id: `cf-${Date.now()}`, name: label, type }], "Custom field created.");
           }
           setName("");
-          setType("Text");
+          setType("");
         }}>{editing ? "Save field" : "Add Field"}</Btn>
       </div>
       <h2 className="mt-4 text-[15px] font-semibold">Active Fields</h2>
@@ -326,6 +328,7 @@ function starterSections(page: string): EditorSection[] {
 }
 
 export function PageEditor({ page }: { page: string }) {
+  const chrome = useChrome();
   const title = PAGE_TITLES[page] ?? "Edit Home Page";
   const [permalink, setPermalink] = useState(page === "home" ? "/" : `/${page}`);
   const [metaOpen, setMetaOpen] = useState(false);
@@ -334,31 +337,47 @@ export function PageEditor({ page }: { page: string }) {
   const [sections, setSections] = useState<EditorSection[]>(() => starterSections(page));
   const [note, setNote] = useState("");
   useEffect(() => {
-    setPermalink(page === "home" ? "/" : `/${page}`);
-    setSections(starterSections(page));
-    setMetaTitle("");
-    setMetaDescription("");
+    let cancelled = false;
     void loadOfficePrefs().then((prefs) => {
+      if (cancelled) return;
       const pages = prefs.pages as Record<string, { permalink?: string; metaTitle?: string; metaDescription?: string; sections?: EditorSection[] }> | undefined;
       const saved = pages?.[page];
-      if (!saved) return;
+      if (!saved) {
+        setPermalink(page === "home" ? "/" : `/${page}`);
+        setSections(starterSections(page));
+        setMetaTitle("");
+        setMetaDescription("");
+        return;
+      }
       if (saved.permalink) setPermalink(saved.permalink);
       if (saved.metaTitle) setMetaTitle(saved.metaTitle);
       if (saved.metaDescription) setMetaDescription(saved.metaDescription);
       if (saved.sections?.length) setSections(saved.sections.map((section) => ({ ...section, body: section.body || "", agents: section.agents || [] })));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [page]);
+  function savePage() {
+    const local = readLocalPrefs();
+    const previous = local.pages && typeof local.pages === "object" ? local.pages as Record<string, unknown> : {};
+    const pages = { ...previous, [page]: { permalink, metaTitle, metaDescription, sections } };
+    writeLocalPrefs({ ...local, pages });
+    chrome.toast("Page saved.");
+    setNote("Page saved.");
+    void saveOfficePrefs({ pages }).then((error) => {
+      if (error) {
+        chrome.toast(error);
+        setNote(error);
+      }
+    });
+    void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
+  }
   return (
     <div className="p-4 text-[13px]">
       <div className="flex items-center justify-between">
         <h1 className="text-[18px] font-semibold">{title}</h1>
-        <Btn kind="blue" onClick={() => {
-          void loadOfficePrefs().then((prefs) => {
-            const pages = { ...((prefs.pages as object) || {}), [page]: { permalink, metaTitle, metaDescription, sections } };
-            void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
-            return saveOfficePrefs({ pages });
-          }).then((error) => setNote(error || "Page saved."));
-        }}>Save Page</Btn>
+        <Btn kind="blue" onClick={savePage}>Save Page</Btn>
       </div>
       <label className="mt-4 block max-w-lg">Permalink
         <input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={permalink} onChange={(event) => setPermalink(event.target.value)} />
@@ -404,13 +423,7 @@ export function PageEditor({ page }: { page: string }) {
           if (!name) return;
           setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, body: "", agents: [] }]);
         }}>Add Section</button>
-        <Btn kind="blue" onClick={() => {
-          void loadOfficePrefs().then((prefs) => {
-            const pages = { ...((prefs.pages as object) || {}), [page]: { permalink, metaTitle, metaDescription, sections } };
-            void fetch("/api/site/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
-            return saveOfficePrefs({ pages });
-          }).then((error) => setNote(error || "Page saved."));
-        }}>Save Page</Btn>
+        <Btn kind="blue" onClick={savePage}>Save Page</Btn>
       </div>
       {note ? <p className="mt-2 text-[#1c93b5]">{note}</p> : null}
     </div>

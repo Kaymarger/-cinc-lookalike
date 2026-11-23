@@ -1084,7 +1084,7 @@ export function LeadsView({
                         {row.email} <span className={row.emailValid ? "text-[#2e9e5b]" : "text-[#c9a227]"}><ValidityIcon ok={row.emailValid} /></span>
                       </button>
                       <p className="mt-1 flex flex-wrap items-center gap-1">
-                        <button type="button" className="grid h-5 min-w-5 place-items-center rounded bg-[#e8eef3] px-1 text-[11px] font-semibold text-[#243238]" aria-label={`Score ${scoreBadge(row.score)}`} onClick={() => update((current) => ({ ...current, stars: { ...current.stars, [row.id]: Math.min(5, (current.stars[row.id] || row.score || 0) + 1) } }))}>{scoreBadge(row.score)}</button>
+                        <span className="inline-flex items-center gap-1 rounded bg-[#eef3f6] px-1.5 py-0.5 text-[12px] text-[#243238]" aria-label={`Score ${scoreBadge(row.score)}`}><span className="text-[#e39b2b]">★</span> {scoreBadge(row.score)}</span>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
                     </td> : null}
@@ -1575,7 +1575,7 @@ function LeadDetail({
               </article>
             )) : null}
             </div>
-            <p className="py-4 text-center text-[12px] text-[#999]">That&apos;s Everything!</p>
+            <p className="py-4 text-center text-[12px] text-[#999]">Thats Everything!</p>
           </div>
         ) : null}
         {tab === "info" ? <InfoTab row={row} assignChoices={assignChoices} onAssign={onAssign} onTrash={() => { update((current) => ({ ...current, trashed: [...new Set([...current.trashed, row.id])] })); go(href.leadsReturn); chrome.toast("Lead moved to trash."); }} /> : null}

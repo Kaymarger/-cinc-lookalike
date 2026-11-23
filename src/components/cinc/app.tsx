@@ -60,7 +60,7 @@ function View() {
   if (route.view === "leads") return <LeadsView mode={route.mode} leadId={route.leadId} tab={route.tab} />;
   if (route.view === "leadsearch") return <LeadSearchPage leadId={route.leadId} searchId={route.searchId} />;
   if (route.view === "contacts") return <ContactsView mode={route.mode} />;
-  if (route.view === "deals") return <DealsView board={route.board} />;
+  if (route.view === "deals") return <DealsView board={route.board} dealId={route.dealId} />;
   if (route.view === "inbox") return <InboxView folder={route.folder} />;
   if (route.view === "autotracks") return <AutoTracksView />;
   if (route.view === "behavioral") return <BehavioralView />;

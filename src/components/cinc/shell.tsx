@@ -187,11 +187,11 @@ function SubIcon({ label }: { label: string }) {
 function Logo() {
   return (
     <span className="flex items-center gap-2 text-white">
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-        <rect width="22" height="22" rx="3" fill="#3aa0d8" />
-        <path d="M6 7.2h4.2a2.6 2.6 0 0 1 0 5.2H8.2V15H6V7.2zm2.2 1.6v1.9h1.8a1 1 0 0 0 0-1.9H8.2z" fill="#fff" />
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+        <rect width="28" height="28" rx="4" fill="#1f6f86" />
+        <path d="M6 19V11M11 19V8M16 19V12M21 19H5" stroke="#fff" strokeWidth="2" />
       </svg>
-      <span className="text-[20px] leading-none font-semibold tracking-tight">cinc</span>
+      <span className="text-[26px] leading-none font-semibold tracking-[0.04em]">CINC</span>
     </span>
   );
 }
@@ -200,9 +200,9 @@ function NavIcon({ id }: { id: NavSection }) {
   const common = "h-6 w-6";
   if (id === "launchpad") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M2 12V7l6-4 6 4v5" />
-        <path d="M6 12V8h4v4" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <circle cx="8" cy="8" r="5.2" />
+        <path d="M8 5v3.2L10 10" />
       </svg>
     );
   }
@@ -234,10 +234,10 @@ function NavIcon({ id }: { id: NavSection }) {
   }
   if (id === "agents") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="8" cy="5" r="2" />
-        <path d="M3.5 13c.6-2.2 2.2-3.2 4.5-3.2S12 10.8 12.5 13" />
-        <path d="M11 3.2h3M12.5 1.7v3" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <circle cx="8" cy="8" r="5.2" />
+        <circle cx="8" cy="6.4" r="1.5" />
+        <path d="M5 11.4c.5-1.4 1.5-2 3-2s2.5.6 3 2" />
       </svg>
     );
   }
@@ -258,24 +258,24 @@ function NavIcon({ id }: { id: NavSection }) {
   }
   if (id === "comms") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M2 3h12v8H5l-3 2V3z" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <path d="M2 10h12l-1.2 3H3.2z" />
+        <path d="M3 10 4.2 4h7.6L13 10" />
       </svg>
     );
   }
   if (id === "auto") {
     return (
-      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3" />
-        <circle cx="8" cy="8" r="2" />
+      <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <circle cx="8" cy="8" r="5.2" />
+        <path d="M6.2 11 8 4.8 9.8 11M6.8 9h2.4" />
       </svg>
     );
   }
   if (id === "props") {
     return (
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-        <rect x="2.5" y="3" width="11" height="10" rx="1" />
-        <path d="M2.5 6h11" />
+        <path d="M2 7.5 8 3l6 4.5V13H2z" />
       </svg>
     );
   }
@@ -288,9 +288,9 @@ function NavIcon({ id }: { id: NavSection }) {
     );
   }
   return (
-    <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <circle cx="8" cy="8" r="5.2" />
-      <path d="M3 8h10M8 3c1.6 1.6 1.6 8.4 0 10M8 3c-1.6 1.6-1.6 8.4 0 10" />
+    <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+      <rect x="2" y="3" width="12" height="10" rx="1" />
+      <path d="M2 6h12" />
     </svg>
   );
 }
@@ -445,11 +445,11 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     href={item.href}
                     className={`flex h-[46px] items-center gap-3 px-4 text-[14px] whitespace-nowrap ${active ? "bg-[#263644] text-[#329bb9]" : "text-[#f4f7f8] hover:bg-[#36485a]"}`}
                   >
-                    <span className="grid h-6 w-6 shrink-0 place-items-center">
+                    <span className="relative grid h-6 w-6 shrink-0 place-items-center">
                       <NavIcon id={item.id} />
+                      {item.id === "leads" || item.id === "comms" ? <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#d9363e]" aria-label="Unread" /> : null}
                     </span>
-                    <span>{item.label}</span>
-                    {item.id === "leads" || item.id === "comms" ? <span className="ml-auto h-2 w-2 rounded-full bg-[#d9363e]" aria-label="Unread" /> : null}
+                    <span className="text-[13px]">{item.label}</span>
                   </a>
                   {active && kids.length ? (
                     <div className="bg-[#12161a] py-0.5">
@@ -489,7 +489,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[22px] leading-none font-normal text-[#1c93b5]"
+                className="flex items-center gap-2 text-[18px] leading-none font-light text-[#1786a8]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>
@@ -542,8 +542,8 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <a href={href.marketing} className="text-[13px] font-semibold tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
-              <button type="button" className="text-[13px] font-semibold tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
+              <a href={href.marketing} className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
+              <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
               <div className="relative">

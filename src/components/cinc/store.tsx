@@ -367,14 +367,18 @@ function defaultNotify(): Record<string, NotifyPref> {
 }
 
 export const INTEGRATIONS = [
+  "Flair",
+  "Follow Up Boss",
   "Google",
   "Zapier",
   "CRM Connect",
   "Slack",
+  "BrokerMint",
   "Zillow Tech Connect",
   "Zillow Contact API",
   "Dotloop",
   "Mojo",
+  "ProLinc",
   "API Nation",
   "External Email Tracking",
 ];
@@ -515,6 +519,7 @@ function load(raw: string | null): SpaState {
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
       notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
       appointments: (parsed.appointments ?? []).filter((item) => !/qa audit appt/i.test(item.title || "")),
+      deals: (parsed.deals ?? []).filter((deal) => !/qa test/i.test(`${deal.client} ${deal.address}`)),
       leadTracks: parsed.leadTracks ?? {},
       leadSubs: parsed.leadSubs ?? {},
       verify: parsed.verify ?? {},

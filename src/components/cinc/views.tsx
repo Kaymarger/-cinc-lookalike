@@ -249,19 +249,21 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
           ) : null}
           {tab === "Lead Reminders" ? (
             <div>
-              <div className="mb-3 flex gap-2">
-                <select className="h-7 border border-[#ccc] text-[12px]" value={due} onChange={(event) => setDue(event.target.value)}>
+              <div className="mb-3 flex items-center gap-2">
+                <select className="h-8 border border-[#ccc] bg-white px-2 text-[12px]" value={due} onChange={(event) => setDue(event.target.value)}>
                   {["Due: Today and Overdue", "Due Today", "Due This Week", "Due Next Week", "Overdue"].map((option) => <option key={option}>{option}</option>)}
                 </select>
-                <a href={href.tasks} className="bg-[#1c93b5] px-2 py-1 text-[12px] text-white">View All Reminders</a>
+                <a href={href.tasks} className="ml-auto bg-[#1c93b5] px-3 py-1.5 text-[12px] text-white">View All Reminders</a>
               </div>
               {openReminders.map((item) => (
-                <article key={item.id} className="mb-2 flex gap-2 border border-[#eee] p-3">
-                  <button type="button" className="text-[#2e9e5b]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) }))}>✓</button>
-                  <div>
-                    <a className="text-[#1c93b5]" href={href.lead(item.leadId)}>{item.title}</a>
+                <article key={item.id} className="mb-2 flex items-start gap-3 border border-[#eee] bg-white p-3">
+                  <button type="button" aria-label="Complete reminder" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[#2e9e5b] text-[#2e9e5b]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) }))}>✓</button>
+                  <div className="min-w-0 flex-1">
+                    <a className="font-semibold text-[#1c93b5]" href={href.lead(item.leadId)}>{item.title}</a>
+                    <p className="text-[12px] text-[#666]">{item.leadId}</p>
                     <p className="text-[12px] text-[#d9363e]">Overdue: {item.due}</p>
                   </div>
+                  <Menu label={<span className="px-1 text-[#888]">⋯</span>} items={[{ label: "Open lead", href: href.lead(item.leadId) }, { label: "Complete", onClick: () => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) })) }]} />
                 </article>
               ))}
               {!openReminders.length ? <p className="text-[13px] text-[#888]">No reminders for this range.</p> : null}
@@ -392,7 +394,68 @@ const LISTING_STAGES: { id: DealStage; label: string }[] = [
   { id: "closed", label: "Closed" },
 ];
 
-export function DealsView({ board }: { board: "purchases" | "listings" }) {
+function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listings" }) {
+  const { update } = useCinc();
+  const chrome = useChrome();
+  const stages = board === "listings" ? LISTING_STAGES : PURCHASE_STAGES;
+  const [tab, setTab] = useState("Activity");
+  if (!deal) {
+    return (
+      <div className="bg-white p-6">
+        <a href={board === "listings" ? href.dealsListings : href.dealsPurchases} className="text-[13px] text-[#1c93b5]">Deals</a>
+        <p className="mt-4 text-[14px]">This deal is no longer in the office.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-[#f5f5f5] p-4">
+      <p className="text-[13px] text-[#888]">
+        <a href={board === "listings" ? href.dealsListings : href.dealsPurchases} className="text-[#1c93b5]">Deals</a>
+        <span> &gt; {board === "listings" ? "Listings" : "Purchases"}</span>
+      </p>
+      <div className="mt-3 h-36 bg-[#d7e3ea]" />
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-3 bg-white p-4">
+        <div>
+          <h1 className="text-[20px] font-semibold">{deal.address || "Address pending"}</h1>
+          <p className="text-[13px] text-[#555]">{deal.client}</p>
+          <p className="text-[13px]">{deal.price}</p>
+        </div>
+        <select
+          className="h-9 border border-[#e39b2b] bg-[#e39b2b] px-2 text-[13px] text-white"
+          value={deal.stage}
+          onChange={(event) => update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, stage: event.target.value as DealStage } : item) }))}
+        >
+          {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}
+        </select>
+      </div>
+      <div className="mt-3 flex gap-2">
+        {["Note", "Text", "Email", "Reminder"].map((label) => (
+          <button key={label} type="button" className="grid h-10 w-10 place-items-center rounded-full bg-[#329bb9] text-[11px] text-white" onClick={() => chrome.toast(`${label} saved on this deal.`)}>{label.slice(0, 1)}</button>
+        ))}
+      </div>
+      <div className="mt-4 border border-[#e5e5e5] bg-white">
+        <div className="flex border-b border-[#e5e5e5] text-[13px]">
+          {["Activity", "Info", "Reminders"].map((label) => (
+            <button key={label} type="button" className={tab === label ? "border-b-2 border-[#1c93b5] px-4 py-2 font-semibold text-[#1c93b5]" : "px-4 py-2 text-[#666]"} onClick={() => setTab(label)}>{label}</button>
+          ))}
+        </div>
+        <div className="grid gap-4 p-4 md:grid-cols-2">
+          <section>
+            <h2 className="font-semibold">Contacts</h2>
+            <p className="mt-2 text-[13px]">{deal.client}</p>
+            <p className="text-[12px] text-[#888]">{deal.agent || "Unassigned"}</p>
+          </section>
+          <section>
+            <h2 className="font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Important Dates" : "Activity"}</h2>
+            <p className="mt-2 text-[13px] text-[#666]">{tab === "Activity" ? "No current upcoming tasks assigned." : `${deal.address} · ${deal.price} · Potential ${deal.potential || "$--"}`}</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DealsView({ board, dealId }: { board: "purchases" | "listings"; dealId?: string }) {
   const { state, update } = useCinc();
   const chrome = useChrome();
   const stages = board === "listings" ? LISTING_STAGES : PURCHASE_STAGES;
@@ -431,6 +494,7 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
   });
 
   const money = (amount: number) => (amount > 0 ? `$${amount.toLocaleString("en-CA")}` : "$--");
+  if (dealId) return <DealDetail deal={state.deals.find((deal) => deal.id === dealId)} board={board} />;
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f5f5f5]">
       <div className="flex min-h-0 flex-1 flex-col">
@@ -458,34 +522,33 @@ export function DealsView({ board }: { board: "purchases" | "listings" }) {
         {stages.map((stage) => {
           const cards = visibleDeals.filter((deal) => deal.stage === stage.id);
           return (
-            <section key={stage.id} className="flex min-h-[460px] flex-col rounded-md border border-[#e1e1e1] border-t-4 border-t-[#cfcfcf] bg-white shadow-sm">
-              <header className="px-3 py-3">
+            <section key={stage.id} className="flex min-h-[460px] flex-col bg-[#f3f3f3]">
+              <header className="bg-white px-3 py-3">
                 <div className="text-[16px] font-bold tracking-wide text-black uppercase">
                   <span>{stage.label} {cards.length}</span>
                 </div>
                 <p className="text-[12px] text-[#777]">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.price).replace(/[^0-9.]/g, "")) || 0), 0))} | <span className="underline decoration-dotted">{money(cards.reduce((sum, deal) => sum + (Number(String(deal.potential).replace(/[^0-9.]/g, "")) || 0), 0))} Potential</span></p>
               </header>
-              <div className="flex-1 space-y-2 px-2 pb-2">
+              <div className="flex-1 space-y-2 px-2 py-2">
                 {cards.map((deal) => (
-                  <article key={deal.id} className="border border-[#eee] bg-white p-2">
-                    <label className="mb-1 flex items-center gap-1 text-[11px]"><input type="checkbox" aria-label={`Select ${deal.client || "deal"}`} checked={pickedDeals.includes(deal.id)} onChange={(event) => setPickedDeals(event.target.checked ? [...pickedDeals, deal.id] : pickedDeals.filter((id) => id !== deal.id))} />Select</label>
-                    <p className="text-[12px]">{deal.address || "--"}</p>
-                    <p className="text-[11px] text-[#888]">{deal.client || "--"}</p>
-                    <p className="text-[11px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
-                    <p className="mt-2 flex items-center gap-1 text-[11px] text-[#888]"><span className="grid h-4 w-4 place-items-center rounded-full border border-[#9bb] text-[10px] text-[#329bb9]">i</span> No current upcoming tasks assigned</p>
-                    <div className="mt-1 flex gap-2">
-                      <select className="h-6 border border-[#ccc] text-[11px]" value={deal.stage} onChange={(event) => update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, stage: event.target.value as DealStage } : item) }))}>
-                        {stages.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                      </select>
-                      <button type="button" className="text-[11px] text-[#d9363e]" onClick={() => update((current) => ({ ...current, deals: current.deals.filter((item) => item.id !== deal.id) }))}>Delete</button>
+                  <article key={deal.id} className="border border-[#eee] bg-white p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <a href={href.deal(deal.id)} className="text-[13px] font-semibold text-[#243238]">{deal.address || "--"}</a>
+                      <Menu label={<span className="px-1 text-[#888]">⋯</span>} items={[
+                        { label: "Open", href: href.deal(deal.id) },
+                        { label: "Delete", danger: true, onClick: () => update((current) => ({ ...current, deals: current.deals.filter((item) => item.id !== deal.id) })) },
+                      ]} />
                     </div>
+                    <p className="mt-1 text-[12px] text-[#555]">{deal.client || "--"}</p>
+                    <p className="text-[12px] text-[#1c93b5]">{deal.price && deal.price !== "$0" ? deal.price : "$--"}</p>
+                    <p className="mt-2 border-t border-[#eee] pt-2 text-[11px] text-[#888]">No current upcoming tasks assigned</p>
                   </article>
                 ))}
               </div>
             </section>
           );
         })}
-        {state.deals.some((deal) => deal.board === board) && !visibleDeals.length ? (
+        {!visibleDeals.length ? (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <div className="pointer-events-auto bg-white px-8 py-5 text-center shadow-md">
               <p className="text-[15px] font-bold">No Deals Found Matching Your Filters</p>
@@ -832,24 +895,42 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
 }
 
 function TemplateModal({ group, onClose, initial }: { group: string; onClose: () => void; initial?: Template }) {
-  const { update } = useCinc();
+  const { state, update } = useCinc();
   const chrome = useChrome();
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<"Email" | "Text">(initial?.type ?? "Email");
   const [body, setBody] = useState(initial?.body ?? "");
+  const [subject, setSubject] = useState(initial?.name ?? "");
+  const [buyers, setBuyers] = useState(true);
+  const [sellers, setSellers] = useState(false);
+  const [chosenGroup, setChosenGroup] = useState(initial?.group ?? group);
+  const [preview, setPreview] = useState(false);
   return (
-    <ModalFrame title={initial ? "Edit Template" : "New Template"} onClose={onClose}>
-      <Field label="Name"><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+    <ModalFrame title={initial ? "Edit Message Template" : "New Message Template"} onClose={onClose}>
+      <p className="mb-2 text-[13px]">Who is this message for?</p>
+      <label className="mr-4 text-[13px]"><input type="checkbox" checked={buyers} onChange={(event) => setBuyers(event.target.checked)} /> Buyers</label>
+      <label className="text-[13px]"><input type="checkbox" checked={sellers} onChange={(event) => setSellers(event.target.checked)} /> Sellers</label>
+      <Field label="Title"><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+      <Field label="Subject"><input className={inputCls} value={subject} onChange={(event) => setSubject(event.target.value)} /></Field>
+      <Field label="Group">
+        <select className={inputCls} value={chosenGroup} onChange={(event) => setChosenGroup(event.target.value)}>
+          {(state.groups.length ? state.groups : [group]).map((item) => <option key={item}>{item}</option>)}
+        </select>
+      </Field>
       <Field label="Type"><select className={inputCls} value={type} onChange={(event) => setType(event.target.value as "Email" | "Text")}><option>Email</option><option>Text</option></select></Field>
-      <textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={body} onChange={(event) => setBody(event.target.value)} />
+      <textarea className="h-28 w-full border border-[#ccc] p-2 text-[13px]" value={body} onChange={(event) => setBody(event.target.value)} />
+      <p className="mt-1 text-[12px] text-[#888]">Merge fields: [FIRSTNAME] [AGENT FIRSTNAME] [WEBSITE]</p>
+      {preview ? <p className="mt-2 border border-[#eee] bg-[#f7f7f7] p-2 text-[13px] whitespace-pre-wrap">{body.replace("[FIRSTNAME]", "Alex").replace("[AGENT FIRSTNAME]", "Casey").replace("[WEBSITE]", "vancouverpropertysearch.ca")}</p> : null}
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={onClose}>Cancel</Btn>
+        <Btn onClick={() => setPreview((value) => !value)}>Preview</Btn>
         <Btn kind="teal" onClick={() => {
+          const nextBody = body;
           update((current) => ({
             ...current,
             templates: initial
-              ? current.templates.map((item) => item.id === initial.id ? { ...item, name: name || item.name, type, body, edited: nowLabel() } : item)
-              : [...current.templates, { id: uid("tpl"), group, name: name || "Untitled", type, createdBy: CRM_AGENT.name, edited: nowLabel(), body }],
+              ? current.templates.map((item) => item.id === initial.id ? { ...item, name: name || item.name, type, body: nextBody, group: chosenGroup, edited: nowLabel() } : item)
+              : [...current.templates, { id: uid("tpl"), group: chosenGroup, name: name || subject || "Untitled", type, createdBy: CRM_AGENT.name, edited: nowLabel(), body: nextBody }],
           }));
           chrome.toast(initial ? "Template updated." : "Template saved.");
           onClose();
@@ -1136,6 +1217,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const [bedsFilter, setBedsFilter] = useState("Any");
   const [typeFilter, setTypeFilter] = useState("Any");
   const [priceFilter, setPriceFilter] = useState("Any");
+  const [pipeline, setPipeline] = useState("Team Listings");
   const listingList = useOfficeList("listings", "address", ["address", "price", "city", "status", "agent"]);
   const [pickedListings, setPickedListings] = useState<string[]>([]);
   const nav = sub === "list" || sub === "add" ? <PropertyNav sub={sub} /> : null;
@@ -1206,7 +1288,17 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
       if (priceFilter === "$1M – $2M") return price >= 1_000_000 && price <= 2_000_000;
       return price > 2_000_000;
     });
-  const arrangedListings = applyOfficeList(listings.map((item) => ({
+  const listingStages = ["Team Listings", "Seller Prospects", "Contacted", "Listing Appointment", "Pre-Listing", "Active", "Pending", "Sold", "Post Close"];
+  function stageOf(item: { status: string; mls: string }) {
+    if (item.status === "Pending") return "Pending";
+    if (item.status === "Sold") return "Sold";
+    if (item.status === "Active") return "Active";
+    const rest = ["Seller Prospects", "Contacted", "Listing Appointment", "Pre-Listing", "Post Close"];
+    const digit = Number(String(item.mls).replace(/\D/g, "").slice(-1)) || 0;
+    return rest[digit % rest.length];
+  }
+  const stageListings = listings.filter((item) => pipeline === "Team Listings" || stageOf(item) === pipeline);
+  const arrangedListings = applyOfficeList(stageListings.map((item) => ({
     name: item.address,
     email: item.mls,
     type: item.feature,
@@ -1224,22 +1316,29 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
     key: item.id,
   })), OFFICE_LISTS.listings, listingList.query);
   const visibleListings = arrangedListings.rows.flatMap((row) => {
-    const item = listings.find((entry) => entry.id === row.key);
+    const item = stageListings.find((entry) => entry.id === row.key);
     return item ? [item] : [];
   });
   return (
     <div>
       {nav}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e5e5] bg-white px-4 py-2 text-[13px]">
-        {["Team Listings", "Seller Prospects", "Contacted", "Listing Appointment", "Pre-Listing", "Active", "Pending", "Sold", "Post Close"].map((label) => (
-          <button key={label} type="button" className="border-b-2 border-transparent px-1 py-2 text-[#666] hover:text-[#1c93b5]" onClick={() => setStatusFilter(label === "Active" || label === "Pending" || label === "Sold" ? label : "Any")}>{label}</button>
-        ))}
+      <div className="flex overflow-x-auto bg-[#1b3142] text-white">
+        {listingStages.map((label) => {
+          const count = label === "Team Listings" ? listings.length : listings.filter((item) => stageOf(item) === label).length;
+          const on = pipeline === label;
+          return (
+            <button key={label} type="button" className={`min-w-[108px] shrink-0 px-3 py-2 text-left text-[12px] whitespace-nowrap ${on ? "bg-white text-[#1b3142]" : "bg-[#24384a]"}`} onClick={() => { setPipeline(label); setStatusFilter(label === "Active" || label === "Pending" || label === "Sold" ? label : "Any"); }}>
+              <span className="block">{label}</span>
+              <span className="block text-[11px] opacity-80">{count}</span>
+            </button>
+          );
+        })}
       </div>
       <div className="flex items-center gap-2 bg-white px-4 py-3">
         <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => chrome.toast("Coming soon listings use the same office list.")}>Coming Soon</button>
         <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setOffice("My Listings")}>Agent Listings</button>
         <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setStatusFilter("Active")}>Filter Listings</button>
-        <a href={href.addProperty} className="ml-2 grid h-24 w-40 place-items-center border border-dashed border-[#1c93b5] text-center text-[13px] text-[#1c93b5]">Add Property Listing</a>
+        <a href={href.addProperty} className="ml-2 grid h-36 w-56 place-items-center border border-dashed border-[#bbb] text-center text-[15px] text-[#888]">+<br />Add Property Listing</a>
       </div>
       <div className="flex">
         <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[12px]">
@@ -1249,6 +1348,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
           ))}
         </aside>
         <div className="min-w-0 flex-1 p-4">
+      {!stageListings.length ? <p className="mb-3 bg-white px-4 py-6 text-center text-[14px]">No listings in {pipeline}.</p> : null}
       <div className="mb-3 flex flex-wrap items-center gap-2 bg-white p-3 shadow-sm">
         <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "mls" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("mls")}>Show MLS Listings</button>
         <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "pocket" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("pocket")}>Show Pocket Listings</button>
@@ -1701,13 +1801,17 @@ export function SettingsView({ tab }: { tab: "profile" | "settings" | "integrati
           settings: { ...current.settings, ...((prefs.settings as object) || {}) },
           notifications: { ...current.notifications, ...((prefs.notifications as object) || {}) },
           customLinks: Array.isArray(prefs.customLinks) ? prefs.customLinks as typeof current.customLinks : current.customLinks,
-          advanced: { ...current.advanced, ...((prefs.advanced as object) || {}) },
+          advanced: (() => {
+            const advanced = { ...current.advanced, ...((prefs.advanced as object) || {}) } as typeof current.advanced;
+            if (advanced.companyName === "QA Test") advanced.companyName = "";
+            return advanced;
+          })(),
         }));
       })
       .catch(() => undefined);
   }, [update]);
   return (
-    <div className="mx-auto max-w-[1335px]">
+    <div className="w-full">
       {tab === "general" || tab === "searchpage" || tab === "dialer" || tab === "fields" || tab === "theme" || tab === "billing" ? <OfficeSettingsPage tab={tab} /> : <SettingsTabs active={tab} />}
       {tab === "profile" ? <ProfileTab /> : null}
       {tab === "settings" ? <SettingsTab /> : null}
@@ -1831,10 +1935,6 @@ function ProfileTab() {
         <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell || "—"}</span></div>
         <OfficeLine />
         <PasswordReset />
-        <div className="mt-3 flex justify-end gap-2">
-          <Btn kind="blue" onClick={() => void sendRecovery("email")}>Send Email Recovery Link</Btn>
-          <Btn kind="blue" onClick={() => void sendRecovery("text")}>Send Text Recovery Link</Btn>
-        </div>
         {recoveryUrl ? (
           <div className="mt-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px]">
             <p className="font-semibold text-[#243238]">{recoveryNote}</p>
@@ -2132,34 +2232,6 @@ function NotificationsTab() {
   useEffect(() => { loadAlerts(); }, []);
   return (
     <div className="bg-white p-4">
-      <h2 className="text-[13px] font-bold tracking-wide">WHERE ALERTS GO</h2>
-      <div className="my-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px] leading-5">
-        <p><strong>New leads:</strong> an in-app office alert, plus one email to {dest?.alertEmail || "the office alert mailbox (not set yet)"}. No text is sent.</p>
-        <p className="mt-1"><strong>Other agent alerts:</strong> the office alert list on this page. Email, when that box is checked, goes to {dest?.agentEmail || "the signed-in agent"}. {dest?.channels.email ? "Email sending is connected." : "Email sending is not connected, so those boxes stay in the office list only."}</p>
-        <p className="mt-1"><strong>Text:</strong> agent notifications are not texted. Calling and texting a lead uses the office line{dest?.channels.sms ? "" : ", which is not connected"}.</p>
-      </div>
-      {alerts.length ? (
-        <ul className="mb-4 max-h-40 overflow-auto border border-[#eee]">
-          {alerts.slice(0, 8).map((item) => (
-            <li key={item.id} className="border-b border-[#f0f0f0] px-2 py-1 text-[12px]"><span className="font-semibold">{item.title}</span> <span className="text-[#666]">{item.body.slice(0, 140)}</span></li>
-          ))}
-        </ul>
-      ) : <p className="mb-3 text-[12px] text-[#666]">No office alerts yet.</p>}
-      <h2 className="text-[13px] font-bold tracking-wide">MASTER SETTINGS</h2>
-      <div className="my-3 border border-[#eee] p-3">
-        <p className="mb-2 text-[12px] font-bold">Subscription</p>
-        {(["cinc", "email", "text"] as const).map((key) => (
-          <label key={key} className="mr-4 text-[13px] capitalize" title={key === "text" ? "Agent alerts are not texted." : undefined}>
-            <input type="checkbox" disabled={key === "text"} checked={key === "text" ? false : Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
-              if (key === "text") return;
-              const current = state.notifications.subscription ?? { cinc: true, email: true, text: false };
-              const subscription = { ...current, [key]: !current[key] };
-              update((next) => ({ ...next, notifications: { ...next.notifications, subscription } }));
-            }} /> {key === "cinc" ? "In the office" : key === "email" ? "Email" : "Text off"}
-          </label>
-        ))}
-        <div className="mt-3"><Btn kind="teal" onClick={() => { void savePreferences({ notifications: state.notifications }).then((error) => chrome.toast(error || "Notifications updated.")); }}>Update</Btn></div>
-      </div>
       {NOTIFY_GROUPS.map((group) => (
         <section key={group.title} className="mb-4">
           <h3 className="mb-2 text-[11px] font-bold tracking-wide uppercase">{group.title}</h3>
@@ -2181,7 +2253,7 @@ function NotificationsTab() {
                   <p className="mt-1 text-[12px] text-[#666]">{item.description}</p>
                   <div className="mt-2 flex gap-3 text-[11px]">
                     {(["cinc", "email", "text"] as const).filter((key) => !item.channels || item.channels.includes(key)).map((key) => (
-                      <label key={key} title={key === "text" ? "Agent alerts are not texted." : undefined}><input type="checkbox" checked={key === "text" ? false : pref[key]} disabled={key === "text"} onChange={() => { if (key !== "text") toggle(key); }} /> {key === "cinc" ? "In the office" : key === "email" ? "Email" : "Text off"}</label>
+                      <label key={key} title={key === "text" ? "Agent alerts are not texted." : undefined}><input type="checkbox" checked={key === "text" ? false : pref[key]} disabled={key === "text"} onChange={() => { if (key !== "text") toggle(key); }} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}</label>
                     ))}
                   </div>
                 </article>
@@ -2190,6 +2262,21 @@ function NotificationsTab() {
           </div>
         </section>
       ))}
+      <h2 className="text-[13px] font-bold tracking-wide">MASTER SETTINGS</h2>
+      <div className="my-3 border border-[#eee] p-3">
+        <p className="mb-2 text-[12px] font-bold">Subscription</p>
+        {(["cinc", "email", "text"] as const).map((key) => (
+          <label key={key} className="mr-4 text-[13px]" title={key === "text" ? "Agent alerts are not texted." : undefined}>
+            <input type="checkbox" disabled={key === "text"} checked={key === "text" ? false : Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
+              if (key === "text") return;
+              const current = state.notifications.subscription ?? { cinc: true, email: true, text: false };
+              const subscription = { ...current, [key]: !current[key] };
+              update((next) => ({ ...next, notifications: { ...next.notifications, subscription } }));
+            }} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}
+          </label>
+        ))}
+        <div className="mt-3 text-right"><Btn kind="blue" onClick={() => { void savePreferences({ notifications: state.notifications }).then((error) => chrome.toast(error || "Notifications updated.")); }}>Update</Btn></div>
+      </div>
     </div>
   );
 }
@@ -2199,6 +2286,12 @@ function AdvancedTab() {
   const chrome = useChrome();
   const form = state.advanced;
   const set = (key: string, value: string) => update((current) => ({ ...current, advanced: { ...current.advanced, [key]: value } }));
+  useEffect(() => {
+    if (form.companyName !== "QA Test") return;
+    const advanced = { ...form, companyName: "" };
+    update((current) => ({ ...current, advanced }));
+    void savePreferences({ advanced });
+  }, [form, update]);
   const left: [string, string, string[] | null][] = [
     ["Status", "status", ["Active", "Inactive", "On Vacation", "Disabled"]],
     ["User Level", "userLevel", ["Agent", "ListingAgent", "Partner", "Broker"]],
@@ -2239,10 +2332,7 @@ function AdvancedTab() {
           ))}
           <label className="mb-3 grid grid-cols-[200px_1fr] items-center gap-2 text-[14px]">
             <span className="text-right font-bold">Assigned Pond</span>
-            <select className="h-9 border border-[#ccc] px-2" value={form.assignedPond || "--None--"} onChange={(event) => set("assignedPond", event.target.value)}>
-              <option>--None--</option>
-              <option>Kayla Gerak</option>
-            </select>
+            <div className="flex h-9 items-center border border-[#ccc] bg-[#f7f7f7] px-2 text-[#666]">{form.assignedPond && form.assignedPond !== "--None--" ? form.assignedPond : "No pond assignments"}</div>
           </label>
         </div>
       </div>
@@ -2522,26 +2612,32 @@ export function CalendarView() {
       <div className="min-w-0 bg-[#f5f5f5]">
         <div className="flex h-16 items-center rounded bg-[#4a4a4a] px-4 text-[38px] font-bold text-white shadow-sm">
           <span>{agendaLabel}</span>
-          <button type="button" className="ml-3 text-[20px]" aria-label="Previous day" onClick={() => {
+          <button type="button" className="ml-3 grid h-8 w-8 place-items-center rounded-full bg-[#333] text-[18px]" aria-label="Previous day" onClick={() => {
             const next = new Date(`${selected}T12:00:00`);
             next.setDate(next.getDate() - 1);
             setSelected(isoFor(next.getFullYear(), next.getMonth() + 1, next.getDate()));
             setMode("day");
           }}>‹</button>
-          <button type="button" className="ml-1 text-[20px]" aria-label="Next day" onClick={() => {
+          <button type="button" className="ml-1 grid h-8 w-8 place-items-center rounded-full bg-[#333] text-[18px]" aria-label="Next day" onClick={() => {
             const next = new Date(`${selected}T12:00:00`);
             next.setDate(next.getDate() + 1);
             setSelected(isoFor(next.getFullYear(), next.getMonth() + 1, next.getDate()));
             setMode("day");
           }}>›</button>
           <div className="ml-auto flex items-center gap-1 text-[14px] font-normal">
+            <button type="button" className="mr-2 grid h-8 w-8 place-items-center rounded bg-[#333]" aria-label="Today" onClick={() => { setSelected(isoFor(todayYear, todayMonth, todayDay)); setCursor(new Date(todayYear, todayMonth - 1, 1)); }}>
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="2" y="3" width="12" height="11" /><path d="M2 6h12M5 2v2M11 2v2" /></svg>
+            </button>
+            <button type="button" className="mr-2 grid h-8 w-8 place-items-center rounded bg-[#333]" aria-label="Refresh" onClick={() => setSelected(isoFor(todayYear, todayMonth, todayDay))}>
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 8a5 5 0 1 1-1.2-3.2M13 2v3.5H9.5" /></svg>
+            </button>
             {([["agenda", "my agenda"], ["week", "week"], ["month", "month"], ["day", "day"]] as const).map(([item, label]) => (
-              <button key={item} type="button" className={`rounded px-2 py-1 ${mode === item ? "bg-white text-[#333]" : "text-white"}`} onClick={() => setMode(item)}>{label}</button>
+              <button key={item} type="button" className={`rounded px-2 py-1 ${mode === item ? "bg-[#1c93b5] text-white" : "text-white"}`} onClick={() => setMode(item)}>{label}</button>
             ))}
           </div>
         </div>
         <div className="mt-3 rounded-md border-2 border-dashed border-[#c5c5c5] bg-white p-5 shadow-sm">
-          <div className="flex h-28 items-center justify-center rounded bg-[#e6e6e6] text-[18px] font-semibold text-[#666] shadow-sm">+ Event</div>
+          <button type="button" className="flex h-28 w-full items-center justify-center rounded bg-[#e6e6e6] text-[18px] font-semibold text-[#666] shadow-sm" onClick={() => openNew(selected)}>+ Event</button>
         </div>
         {mode === "agenda" ? (
           <div className="mt-3">
@@ -2581,7 +2677,7 @@ export function CalendarView() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-7 text-center text-[11px] text-[#888]">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <div key={day}>{day}</div>)}</div>
+            <div className="mb-1 grid grid-cols-7 text-center text-[11px] text-[#888]">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <div key={day} className="py-1">{day}</div>)}</div>
             <div className="grid grid-cols-7 gap-1">
               {cells.map((day, index) => {
                 const on = day === todayDay && month + 1 === todayMonth && year === todayYear;
@@ -2730,10 +2826,10 @@ export function MarketingView() {
         <article className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
           <p className="font-semibold">Budget</p>
           <p className="mt-2 text-[20px] font-semibold text-[#1c93b5]">BUYER ${report.searchBudget.toLocaleString("en-CA")}</p>
-          <label className="mt-2 block text-[12px]">BUYER $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.searchBudget} onBlur={(event) => void saveBudget("searchBudget", Number(event.target.value) || 0)} /></label>
-          <label className="mt-1 block text-[12px]">ListCast $<input className="ml-1 w-24 border border-[#ccc] px-1" defaultValue={report.listcastBudget} onBlur={(event) => void saveBudget("listcastBudget", Number(event.target.value) || 0)} /></label>
-          <button type="button" className="mt-3 bg-[#1c93b5] px-3 py-1 text-[12px] text-white" onClick={() => void contact()}>Need to discuss your campaign?</button>
-          <p className="mt-3 text-[12px] leading-5 text-[#666]">Reducing a budget does not cancel an active campaign. Contact the office before changing a live budget.</p>
+          <p className="mt-2 text-[13px]">ListCast ${report.listcastBudget.toLocaleString("en-CA")}</p>
+          <p className="mt-3 text-[13px]">Need to discuss your campaign?</p>
+          <button type="button" className="mt-2 border border-[#1c93b5] px-3 py-1 text-[12px] text-[#1c93b5]" onClick={() => void contact()}>Contact Us</button>
+          <details className="mt-3 text-[12px] leading-5 text-[#666]"><summary>Disclaimer</summary>Reducing a budget does not cancel an active campaign. Contact the office before changing a live budget.</details>
           <p className="mt-3 font-semibold">Target Areas <span title="The six areas with the most buyer and seller leads this month." className="text-[12px] text-[#1c93b5]">?</span></p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
           {(() => {
@@ -2783,6 +2879,7 @@ export function MarketingView() {
 }
 
 export function GmailView() {
+  const chrome = useChrome();
   const [gmail, setGmail] = useState<boolean | null>(null);
   useEffect(() => {
     void fetch("/api/office/send", { cache: "no-store" }).then(async (response) => {
@@ -2791,12 +2888,16 @@ export function GmailView() {
     }).catch(() => setGmail(false));
   }, []);
   return (
-    <div className="p-6">
-      <h1 className="text-[18px] font-semibold">Gmail Inbox</h1>
+    <div className="bg-white">
+      <div className="flex items-center gap-2 border-b border-[#e5e5e5] px-3 py-2">
+        <button type="button" className="h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.toast(gmail ? "New email uses the office composer." : "Gmail is not connected for this office.")}>New Email</button>
+        <span className="ml-auto text-[12px] text-[#666]">25 ▾</span>
+        <span className="text-[12px] text-[#666]">{gmail ? "0 of 0" : "Not connected"}</span>
+      </div>
       {gmail ? (
-        <p className="mt-3 text-[13px] text-[#666]">No new Gmail messages.</p>
+        <p className="px-4 py-8 text-center text-[13px] text-[#888]">No new Gmail messages.</p>
       ) : (
-        <p className="mt-3 bg-[#fff6e5] px-3 py-2 text-[13px] text-[#8a5a00]">Gmail is not connected.</p>
+        <p className="px-4 py-8 text-center text-[13px] text-[#666]">Gmail is not connected. The inbox, starred, and sent folders appear here after Google is connected on the Integrations tab.</p>
       )}
     </div>
   );

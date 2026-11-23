@@ -14,6 +14,7 @@ export const href = {
   leadSearch: (id: string, searchId?: string) => `${SPA}#leads/details/${encodeURIComponent(id)}/search${searchId ? `/${encodeURIComponent(searchId)}` : ""}`,
   dealsPurchases: `${SPA}/deals#/dashboard`,
   dealsListings: `${SPA}/deals#/dashboard/listings`,
+  deal: (id: string) => `${SPA}/deals#/dashboard/deal/${encodeURIComponent(id)}`,
   inbox: `${SPA}#inbox`,
   sent: `${SPA}#inbox/sent`,
   drafts: `${SPA}#inbox/drafts`,
@@ -66,7 +67,7 @@ export type CincRoute =
   | { view: "callsummary" }
   | { view: "leads"; mode: "list" | "export" | "history" | "sources"; leadId?: string; tab: LeadTab }
   | { view: "leadsearch"; leadId: string; searchId?: string }
-  | { view: "deals"; board: "purchases" | "listings" }
+  | { view: "deals"; board: "purchases" | "listings"; dealId?: string }
   | { view: "inbox"; folder: "inbox" | "sent" | "drafts" | "trashed" | "templates" }
   | { view: "autotracks" }
   | { view: "behavioral" }
@@ -97,8 +98,12 @@ function asLeadTab(value: string | undefined): LeadTab {
 
 export function parseRoute(pathname: string, hash: string): CincRoute {
   if (pathname.startsWith("/dashboard/spa/deals")) {
-    if (hash.replace(/^#/, "").split("?")[0].includes("tasks")) return { view: "tasks" };
-    return { view: "deals", board: hash.includes("listings") ? "listings" : "purchases" };
+    const clean = hash.replace(/^#/, "").split("?")[0];
+    if (clean.includes("tasks")) return { view: "tasks" };
+    const deal = clean.match(/(?:^|\/)deal\/([^/]+)/);
+    const board = clean.includes("listings") ? "listings" : "purchases";
+    if (deal) return { view: "deals", board, dealId: decodeURIComponent(deal[1]) };
+    return { view: "deals", board };
   }
   if (pathname.startsWith("/dashboard/sellersuite")) return { view: "seller" };
   if (pathname.startsWith("/dashboard/settings")) {
