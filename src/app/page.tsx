@@ -3,8 +3,9 @@ import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { PublicPageSections } from "@/components/public-page-sections";
 import { HeroSearch } from "@/components/hero-search";
-import { PropertyCard } from "@/components/property-card";
 import { catalogFeatured, catalogSearch } from "@/lib/catalog";
+import { propertyHref } from "@/lib/listing-url";
+import { formatPrice } from "@/lib/search";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 
 const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
@@ -104,11 +105,17 @@ export default async function HomePage() {
             <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#4a5560]">
               Newest list dates from the CREA feed.
             </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {latest.map((property) => (
-                <PropertyCard key={property.id} property={property} />
+                <li key={property.id} className="border border-[#e5e5e5] bg-white p-4">
+                  <a href={propertyHref(property)} className="block">
+                    <p className="text-[20px] text-[#3498d8]">{formatPrice(property.price)}</p>
+                    <p className="mt-1 text-[14px] text-[#333]">{property.address}</p>
+                    <p className="text-[13px] text-[#555]">{[property.neighborhood, property.city].filter(Boolean).join(", ")}</p>
+                  </a>
+                </li>
               ))}
-            </div>
+            </ul>
             <div className="mt-8 text-center">
               <Link
                 href="/search?sort=newest"
