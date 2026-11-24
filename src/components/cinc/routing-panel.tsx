@@ -12,7 +12,7 @@ type Mode = "default" | "fixed" | "round_robin" | "source";
 
 export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidden?: boolean })[] }) {
   const office = useOfficeSession();
-  const roster: (OfficeProfile & { routingHidden?: boolean })[] = users.length ? users : office.user ? [{ ...office.user }] : [];
+  const roster: (OfficeProfile & { routingHidden?: boolean })[] = (users.length ? users : office.user ? [{ ...office.user }] : []).filter((user) => user.active);
   const eligible = roster.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
   const [mode, setMode] = useState<Mode>("default");
   const [fixedUserId, setFixedUserId] = useState("");

@@ -188,10 +188,10 @@ function Logo() {
   return (
     <span className="flex items-center gap-2 text-white">
       <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-        <rect width="28" height="28" rx="4" fill="#1f6f86" />
-        <path d="M6 19V11M11 19V8M16 19V12M21 19H5" stroke="#fff" strokeWidth="2" />
+        <rect width="28" height="28" rx="6" fill="#3aa0b8" />
+        <path d="M7 18V12M12 18V8M17 18V11M22 18H6" stroke="#fff" strokeWidth="1.6" />
       </svg>
-      <span className="text-[26px] leading-none font-semibold tracking-[0.04em]">CINC</span>
+      <span className="text-[22px] leading-none font-light tracking-[0.08em] lowercase">cinc</span>
     </span>
   );
 }
@@ -220,7 +220,7 @@ function NavIcon({ id }: { id: NavSection }) {
     return (
       <svg className={common} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
         <circle cx="8" cy="8" r="5.2" />
-        <path d="M8 4.8v6.4M6.2 6.3c.4-.6 1-.8 1.8-.8 1 0 1.7.5 1.7 1.3S9 8.2 8 8.2s-1.8.5-1.8 1.4.8 1.4 1.8 1.4c.8 0 1.4-.3 1.8-.8" />
+        <path d="M8 4.6v6.8M9.7 6.1c-.3-.5-.9-.8-1.7-.8-1.1 0-1.8.6-1.8 1.4S7 8.2 8 8.2s1.9.5 1.9 1.4-.8 1.5-1.9 1.5c-.8 0-1.4-.3-1.8-.8" />
       </svg>
     );
   }
@@ -489,7 +489,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
             <div className="relative" ref={titleRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-[18px] leading-none font-light text-[#1786a8]"
+                className="flex items-center gap-2 text-[15px] leading-none font-light text-[#7ec8de]"
                 onClick={() => menu.length && setTitleOpen((value) => !value)}
               >
                 <span>{titleOf(route)}</span>

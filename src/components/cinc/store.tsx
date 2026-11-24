@@ -27,6 +27,7 @@ export type Deal = {
   status: "Active" | "Archived";
   createdAt: number;
   agent?: string;
+  activity?: { id: string; kind: string; text: string; at: string }[];
 };
 
 export type Mail = {
@@ -497,6 +498,14 @@ const DEFAULT: SpaState = {
   dataVersion: DATA_VERSION,
 };
 
+function cleanNotes(notes: SpaState["notes"]): SpaState["notes"] {
+  const next: SpaState["notes"] = {};
+  for (const [id, list] of Object.entries(notes || {})) {
+    next[id] = (list || []).filter((note) => !/QA Test note 1124/i.test(note.body || ""));
+  }
+  return next;
+}
+
 function load(raw: string | null): SpaState {
   if (!raw) return DEFAULT;
   try {
@@ -517,9 +526,9 @@ function load(raw: string | null): SpaState {
       groups: fresh ? DEFAULT.groups : parsed.groups ?? DEFAULT.groups,
       campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
       landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
-      notes: fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes },
-      appointments: (parsed.appointments ?? []).filter((item) => !/qa audit appt/i.test(item.title || "")),
-      deals: (parsed.deals ?? []).filter((deal) => !/qa test/i.test(`${deal.client} ${deal.address}`)),
+      notes: cleanNotes(fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes }),
+      appointments: (parsed.appointments ?? []).filter((item) => !/qa audit appt/i.test(item.title || "") && !/^QA Test Event$/i.test(item.title || "")),
+      deals: parsed.deals ?? [],
       leadTracks: parsed.leadTracks ?? {},
       leadSubs: parsed.leadSubs ?? {},
       verify: parsed.verify ?? {},

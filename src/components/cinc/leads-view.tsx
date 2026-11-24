@@ -995,11 +995,9 @@ export function LeadsView({
                 onClick: () => applySavedFilter(label),
               }))}
             />
-            <button type="button" title="Save filter" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#888]" onClick={() => {
-              const name = window.prompt("Name this filter");
-              if (!name) return;
-              saveLeadView(name);
-            }}>
+            <button type="button" title="Save filter" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#888]" onClick={() => chrome.openModal(
+              <NamePrompt title="Save filter" label="Filter name" onClose={chrome.closeModal} onSave={(name) => { saveLeadView(name); chrome.closeModal(); chrome.toast("Filter saved."); }} />
+            )}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h8l3 3v9H3V2zm2 1v4h6V3H5zm1 7h4v3H6v-3z" /></svg>
             </button>
             <button type="button" title="Column config" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white" onClick={() => setDrawer(true)}>
@@ -1194,11 +1192,9 @@ export function LeadsView({
           onClose={() => setDrawer(false)}
           onClear={clearFilters}
           dirty={dirty}
-          onSave={() => {
-            const name = window.prompt("Name this filter");
-            if (!name) return;
-            saveLeadView(name);
-          }}
+          onSave={() => chrome.openModal(
+            <NamePrompt title="Save filter" label="Filter name" onClose={chrome.closeModal} onSave={(name) => { saveLeadView(name); chrome.closeModal(); chrome.toast("Filter saved."); }} />
+          )}
           stage={drawerStage}
           setStage={setDrawerStage}
           agent={drawerAgent}
@@ -1541,7 +1537,7 @@ function LeadDetail({
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
                 <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{notes[0].body}</p>
-                <div className="mt-2 text-right"><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={notes[0].body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === notes[0].id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button></div>
+                <div className="mt-2 flex justify-end gap-3"><button type="button" className="text-[12px] text-[#d9363e]" onClick={() => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).filter((note) => note.id !== notes[0].id) } })); chrome.toast("Note deleted."); }}>Delete</button><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={notes[0].body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === notes[0].id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button></div>
               </article>
             ) : null}
             <p className="my-2 border-t border-dotted border-[#ccc] pt-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
@@ -1590,8 +1586,8 @@ function LeadDetail({
                 <div className="flex-1">
                   <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
                   <p className="text-[11px] text-[#888]">Assigned to {item.title.match(/\(([^,]+),/)?.[1] || "the agent you chose"}</p>
-                  <p className="text-[11px] text-[#888]">Due {item.due}</p>
-                  <p className={`text-[13px] ${item.done ? "text-[#888] line-through" : ""}`}>{item.title}</p>
+                  <p className="text-[11px] text-[#888]">Due {item.due.includes("-") && item.due.slice(0, 4) > "2000" ? item.due : item.due}</p>
+                  <p className={`text-[13px] ${item.done ? "text-[#888] line-through" : ""}`}>{item.title.replace(/^(?:Call|Email|Other): /, "").replace(/ \([^)]+\)$/, "")}</p>
                   {item.done ? <p className="mt-1 text-[12px] font-semibold text-[#2e9e5b]">Completed</p> : null}
                   <label className="mt-1 flex items-center gap-2 text-[12px]">
                     <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
@@ -2252,6 +2248,19 @@ function LeadDealModal({ client, onClose }: { client: string; onClose: () => voi
   );
 }
 
+function NamePrompt({ title, label, onClose, onSave }: { title: string; label: string; onClose: () => void; onSave: (name: string) => void }) {
+  const [name, setName] = useState("");
+  return (
+    <ModalFrame title={title} onClose={onClose}>
+      <Field label={label}><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="teal" onClick={() => { if (name.trim()) onSave(name.trim()); }}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
 function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", initialDue = "" }: { leadId: string; onClose: () => void; reminderId?: string; initialTitle?: string; initialDue?: string }) {
   const { update } = useCinc();
   const chrome = useChrome();
@@ -2271,7 +2280,7 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
   const [error, setError] = useState("");
   return (
     <ModalFrame title={reminderId ? "Edit Reminder" : "Add Reminder"} onClose={onClose}>
-      <Field label="Lead"><input className={inputCls} value={lead?.name || "Lead"} readOnly /></Field>
+      <Field label="Lead"><input className={inputCls} value={lead?.name || CRM_LEADS.find((item) => item.id === leadId)?.name || "This lead"} readOnly /></Field>
       <div className="mb-2 text-[13px]">
         {["Call", "Email", "Other"].map((item) => <label key={item} className="mr-3"><input type="radio" checked={kind === item} onChange={() => { setKind(item); if (!reminderId) setName(item); }} /> {item}</label>)}
       </div>
@@ -2301,8 +2310,10 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
         <Btn kind="teal" onClick={() => {
           if (!name.trim()) { setError("Enter a reminder name."); return; }
           if (!date) { setError("Choose a date."); return; }
-          const due = anytime ? `${date} Anytime` : `${date} ${time} ${meridiem}`;
-          const title = `${kind}: ${name.trim()}${details.trim() ? ` — ${details.trim()}` : ""} (${notify}, ${timing})`;
+          const dueDate = new Date(`${date}T12:00:00`);
+          const dueLabel = Number.isNaN(dueDate.getTime()) ? date : dueDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+          const due = anytime ? dueLabel : `${dueLabel} at ${time} ${meridiem}`;
+          const title = name.trim();
           update((current) => ({
             ...current,
             reminders: reminderId

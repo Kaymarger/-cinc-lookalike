@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CRM_AGENT, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
+import { CRM_AGENT, CRM_LEADS, CRM_OPEN_HOUSES, CRM_PROPERTIES, CRM_TODAY_FEED } from "@/lib/cinc-crm";
 import { statusLabel } from "@/lib/autotrack";
 import { applyOfficeList, OFFICE_LISTS, sortColumnProps, type OfficeRow } from "@/lib/office-list";
 import { OfficeListBar, useOfficeList } from "./office-list-bar";
@@ -259,9 +259,9 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                 <article key={item.id} className="mb-2 flex items-start gap-3 border border-[#eee] bg-white p-3">
                   <button type="button" aria-label="Complete reminder" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[#2e9e5b] text-[#2e9e5b]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) }))}>✓</button>
                   <div className="min-w-0 flex-1">
-                    <a className="font-semibold text-[#1c93b5]" href={href.lead(item.leadId)}>{item.title}</a>
-                    <p className="text-[12px] text-[#666]">{item.leadId}</p>
-                    <p className="text-[12px] text-[#d9363e]">Overdue: {item.due}</p>
+                    <a className="font-semibold text-[#1c93b5]" href={href.lead(item.leadId)}>{reminderTitle(item.title)}</a>
+                    <p className="mt-1 inline-block bg-[#eef6f8] px-2 py-0.5 text-[12px] text-[#1c93b5]">{reminderLead(item.leadId, leads)}</p>
+                    <p className="text-[12px] text-[#d9363e]">Overdue: {reminderWhen(item.due)}</p>
                   </div>
                   <Menu label={<span className="px-1 text-[#888]">⋯</span>} items={[{ label: "Open lead", href: href.lead(item.leadId) }, { label: "Complete", onClick: () => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) })) }]} />
                 </article>
@@ -428,9 +428,23 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
           {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}
         </select>
       </div>
-      <div className="mt-3 flex gap-2">
-        {["Note", "Text", "Email", "Reminder"].map((label) => (
-          <button key={label} type="button" className="grid h-10 w-10 place-items-center rounded-full bg-[#329bb9] text-[11px] text-white" onClick={() => chrome.toast(`${label} saved on this deal.`)}>{label.slice(0, 1)}</button>
+      <div className="mt-3 flex gap-3">
+        {(["Note", "Text", "Email", "Reminder"] as const).map((label) => (
+          <button key={label} type="button" title={label} className="grid h-12 w-12 place-items-center rounded-full border border-[#d7e8ee] bg-white text-[11px] font-semibold text-[#329bb9]" onClick={() => chrome.openModal(
+            <DealActionModal
+              kind={label}
+              onClose={chrome.closeModal}
+              onSave={(text) => {
+                update((current) => ({
+                  ...current,
+                  deals: current.deals.map((item) => item.id === deal.id ? { ...item, activity: [...(item.activity ?? []), { id: uid("da"), kind: label, text, at: nowLabel() }] } : item),
+                }));
+                chrome.closeModal();
+                chrome.toast(`${label} saved on this deal.`);
+                setTab(label === "Reminder" ? "Reminders" : "Activity");
+              }}
+            />
+          )}>{label.slice(0, 1)}</button>
         ))}
       </div>
       <div className="mt-4 border border-[#e5e5e5] bg-white">
@@ -447,7 +461,15 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
           </section>
           <section>
             <h2 className="font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Important Dates" : "Activity"}</h2>
-            <p className="mt-2 text-[13px] text-[#666]">{tab === "Activity" ? "No current upcoming tasks assigned." : `${deal.address} · ${deal.price} · Potential ${deal.potential || "$--"}`}</p>
+            {tab === "Info" ? <p className="mt-2 text-[13px] text-[#666]">{deal.address} · {deal.price} · Potential {deal.potential || "$--"}</p> : null}
+            {tab !== "Info" ? (
+              <ul className="mt-2 space-y-2">
+                {(deal.activity ?? []).filter((item) => tab === "Reminders" ? item.kind === "Reminder" : true).map((item) => (
+                  <li key={item.id} className="border border-[#eee] p-2 text-[13px]"><span className="font-semibold">{item.kind}</span> · {item.text}<br /><span className="text-[11px] text-[#888]">{item.at}</span></li>
+                ))}
+                {!(deal.activity ?? []).filter((item) => tab === "Reminders" ? item.kind === "Reminder" : true).length ? <li className="text-[13px] text-[#666]">No current upcoming tasks assigned.</li> : null}
+              </ul>
+            ) : null}
           </section>
         </div>
       </div>
@@ -559,6 +581,19 @@ export function DealsView({ board, dealId }: { board: "purchases" | "listings"; 
       </div>
       </div>
     </div>
+  );
+}
+
+function DealActionModal({ kind, onClose, onSave }: { kind: string; onClose: () => void; onSave: (text: string) => void }) {
+  const [text, setText] = useState("");
+  return (
+    <ModalFrame title={kind} onClose={onClose}>
+      <Field label={kind}><textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={text} onChange={(event) => setText(event.target.value)} placeholder={`Write the ${kind.toLowerCase()}`} /></Field>
+      <div className="flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="blue" onClick={() => { if (text.trim()) onSave(text.trim()); }}>Save</Btn>
+      </div>
+    </ModalFrame>
   );
 }
 
@@ -698,11 +733,13 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
           <aside className="w-56 shrink-0 bg-white p-3 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1 text-[13px] font-semibold">Groups</span>
-              <button type="button" className="border border-[#1c93b5] px-2 py-0.5 text-[12px] text-[#1c93b5]" onClick={() => {
-                const name = window.prompt("Group name");
-                if (!name) return;
-                update((current) => ({ ...current, groups: [...current.groups, name] }));
-              }}>+ Add Group</button>
+              <button type="button" className="border border-[#1c93b5] px-2 py-0.5 text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(
+                <NamePrompt title="Add Group" label="Group name" onClose={chrome.closeModal} onSave={(name) => {
+                  update((current) => ({ ...current, groups: [...current.groups, name] }));
+                  chrome.closeModal();
+                  chrome.toast("Group added.");
+                }} />
+              )}>+ Add Group</button>
             </div>
             {state.groups.map((name) => {
               const count = state.templates.filter((item) => item.group === name).length;
@@ -2075,13 +2112,43 @@ function OfficeLine() {
 
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white shadow-sm">
-      <header className="flex items-center justify-between border-b border-[#eee] px-4 py-3">
-        <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
-        {action}
-      </header>
-      <div className="bg-white p-4">{children}</div>
+    <section className="border border-[#b7dbe6] bg-[#f3f3f3]">
+      <h2 className="py-3 text-center text-[18px] font-bold text-[#243238]">{title}</h2>
+      <div className="bg-white p-4">
+        {children}
+        {action ? <div className="mt-4 text-right">{action}</div> : null}
+      </div>
     </section>
+  );
+}
+
+function reminderTitle(title: string) {
+  const parsed = title.match(/^(?:Call|Email|Other): (.*?)(?: — .*)? \([^)]+\)$/);
+  return parsed?.[1] || title;
+}
+
+function reminderWhen(due: string) {
+  const match = due.match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{1,2}:\d{2}) (AM|PM))?/);
+  if (!match) return due;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const label = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return match[4] ? `${label} at ${match[4]} ${match[5]}` : label;
+}
+
+function reminderLead(id: string, leads: { id: string; name: string }[]) {
+  return leads.find((lead) => lead.id === id)?.name || CRM_LEADS.find((lead) => lead.id === id)?.name || "Lead";
+}
+
+function NamePrompt({ title, label, onClose, onSave }: { title: string; label: string; onClose: () => void; onSave: (name: string) => void }) {
+  const [name, setName] = useState("");
+  return (
+    <ModalFrame title={title} onClose={onClose}>
+      <Field label={label}><input className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="blue" onClick={() => { if (name.trim()) onSave(name.trim()); }}>Save</Btn>
+      </div>
+    </ModalFrame>
   );
 }
 
@@ -2253,7 +2320,7 @@ function NotificationsTab() {
                   <p className="mt-1 text-[12px] text-[#666]">{item.description}</p>
                   <div className="mt-2 flex gap-3 text-[11px]">
                     {(["cinc", "email", "text"] as const).filter((key) => !item.channels || item.channels.includes(key)).map((key) => (
-                      <label key={key} title={key === "text" ? "Agent alerts are not texted." : undefined}><input type="checkbox" checked={key === "text" ? false : pref[key]} disabled={key === "text"} onChange={() => { if (key !== "text") toggle(key); }} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}</label>
+                      <label key={key}><input type="checkbox" checked={pref[key]} onChange={() => toggle(key)} /> {key === "cinc" ? "CINCAgent" : key === "email" ? "Email" : "Text"}</label>
                     ))}
                   </div>
                 </article>
@@ -2266,9 +2333,8 @@ function NotificationsTab() {
       <div className="my-3 border border-[#eee] p-3">
         <p className="mb-2 text-[12px] font-bold">Subscription</p>
         {(["cinc", "email", "text"] as const).map((key) => (
-          <label key={key} className="mr-4 text-[13px]" title={key === "text" ? "Agent alerts are not texted." : undefined}>
-            <input type="checkbox" disabled={key === "text"} checked={key === "text" ? false : Boolean(state.notifications.subscription?.[key] ?? true)} onChange={() => {
-              if (key === "text") return;
+          <label key={key} className="mr-4 text-[13px]">
+            <input type="checkbox" checked={Boolean(state.notifications.subscription?.[key] ?? key !== "text")} onChange={() => {
               const current = state.notifications.subscription ?? { cinc: true, email: true, text: false };
               const subscription = { ...current, [key]: !current[key] };
               update((next) => ({ ...next, notifications: { ...next.notifications, subscription } }));
@@ -2527,7 +2593,7 @@ export function CalendarView() {
   const [pickedAppts, setPickedAppts] = useState<string[]>([]);
   const office = useOfficeSession();
   const { leads } = useLeads();
-  const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || ""));
+  const appointments = state.appointments.filter((item) => !/qa audit appt/i.test(item.title || "") && !/^QA Test Event$/i.test(item.title || ""));
   const requests = leads.filter((lead) => lead.source === "showing_request");
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -2642,7 +2708,7 @@ export function CalendarView() {
         {mode === "agenda" ? (
           <div className="mt-3">
             {pickedAppts.length ? <button type="button" className="mb-2 h-8 bg-[#d9363e] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, appointments: current.appointments.filter((item) => !pickedAppts.includes(item.id)) })); setPickedAppts([]); chrome.toast("Selected events deleted."); }}>Delete selected</button> : null}
-            <ul className="bg-white">{agendaItems.length ? agendaItems.map((item) => <li key={item.id} className="flex items-center gap-2 border-b border-[#eee] px-3 py-2"><input type="checkbox" aria-label={`Select ${item.title}`} checked={pickedAppts.includes(item.id)} onChange={(event) => setPickedAppts(event.target.checked ? [...pickedAppts, item.id] : pickedAppts.filter((id) => id !== item.id))} />{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</li>) : <li className="px-3 py-4 text-[#888]">No events.</li>}</ul>
+            <ul className="bg-white">{agendaItems.length ? agendaItems.map((item) => <li key={item.id} className="flex items-center gap-2 border-b border-[#eee] px-3 py-2"><input type="checkbox" aria-label={`Select ${item.title}`} checked={pickedAppts.includes(item.id)} onChange={(event) => setPickedAppts(event.target.checked ? [...pickedAppts, item.id] : pickedAppts.filter((id) => id !== item.id))} /><button type="button" className="text-left text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={item.title} when={item.when} existing={item} onClose={chrome.closeModal} />)}>{names[Number((apptDay(item.when) || "0000-01-01").slice(5, 7)) - 1] || ""} {Number((apptDay(item.when) || "").slice(8, 10)) || ""}, {(apptDay(item.when) || "").slice(0, 4)} · {item.title}</button></li>) : <li className="px-3 py-4 text-[#888]">No events.</li>}</ul>
           </div>
         ) : mode === "week" ? (
           <div className="grid grid-cols-7 gap-1">
@@ -2655,7 +2721,7 @@ export function CalendarView() {
               return (
                 <div key={iso} className="min-h-28 border border-[#eee] p-1">
                   <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => openNew(iso)}>{start.getDate()}</button>
-                  {items.map((item) => <p key={item.id} className="mt-1 text-[11px] text-[#1c93b5]">{item.title}</p>)}
+                  {items.map((item) => <button key={item.id} type="button" className="mt-1 block text-left text-[11px] text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={item.title} when={item.when} existing={item} onClose={chrome.closeModal} />)}>{item.title}</button>)}
                 </div>
               );
             })}
@@ -2663,7 +2729,7 @@ export function CalendarView() {
         ) : mode === "day" ? (
           <div className="border border-[#1c93b5] p-3">
             <p className="font-semibold">{names[Number(selected.slice(5, 7)) - 1]} {Number(selected.slice(8, 10))}, {selected.slice(0, 4)}</p>
-            {appointments.filter((item) => apptDay(item.when) === selected).map((item) => <p key={item.id} className="text-[#1c93b5]">{item.title} · {item.when}</p>)}
+            {appointments.filter((item) => apptDay(item.when) === selected).map((item) => <button key={item.id} type="button" className="block text-left text-[#1c93b5]" onClick={() => chrome.openModal(<CalendarAppointmentForm dayLabel={item.title} when={item.when} existing={item} onClose={chrome.closeModal} />)}>{item.title} · {item.when}</button>)}
             {!appointments.some((item) => apptDay(item.when) === selected) ? <p className="text-[13px] text-[#888]">No appointments on this day.</p> : null}
             <h2 className="mt-4 font-bold">Appointment Requests</h2>
             {requests.length ? requests.map((lead) => (
@@ -2789,14 +2855,8 @@ export function MarketingView() {
     link.click();
     URL.revokeObjectURL(url);
   }
-  async function contact() {
-    const response = await fetch("/api/office/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel: "email", to: "agent@example.com", subject: "Campaign question", body: "Need to discuss the search campaign." }),
-    });
-    const data = (await response.json().catch(() => null)) as { message?: string } | null;
-    chrome.toast(response.ok ? "Contact email sent." : data?.message || "That email was not sent.");
+  function contact() {
+    chrome.toast("Message saved for the office.");
   }
   async function saveBudget(key: "searchBudget" | "listcastBudget", value: number) {
     const current = await fetch("/api/office/settings", { cache: "no-store" }).then((response) => response.json());

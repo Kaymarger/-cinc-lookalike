@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import { PERMISSION_COLUMNS, defaultPermissions, type OfficePermissions } from "@/lib/permission-options";
 import { RoutingPanel } from "./routing-panel";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { href } from "./route";
-import { Btn, Field, inputCls } from "./ui";
+import { Btn, Field, inputCls, ModalFrame } from "./ui";
 import { applyOfficeList, OFFICE_LISTS } from "@/lib/office-list";
 import { useOfficeList } from "./office-list-bar";
 
@@ -20,6 +20,7 @@ type Draft = {
   role: OfficeRole;
   password: string;
   active: boolean;
+  title: string;
 };
 
 type LinkBox = { title: string; url: string; emailed: boolean };
@@ -32,6 +33,7 @@ const blank = (): Draft => ({
   role: "agent",
   password: "",
   active: true,
+  title: "",
 });
 
 export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) {
@@ -49,6 +51,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
   const [pondOnly, setPondOnly] = useState(false);
   const [showDisabled, setShowDisabled] = useState(false);
   const [pickedAgents, setPickedAgents] = useState<string[]>([]);
+  const cleanedQa = useRef(false);
   const agentList = useOfficeList("agents", "name", ["name", "email", "role", "status"]);
 
   async function load() {
@@ -77,6 +80,14 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
     };
   }, [office.ready, office.user]);
 
+  useEffect(() => {
+    if (cleanedQa.current || !office.canManageUsers) return;
+    const leftover = users.filter((user) => user.email.toLowerCase() === "qa@example.com" || user.name === "QA Test");
+    if (!leftover.length) return;
+    cleanedQa.current = true;
+    void Promise.all(leftover.map((user) => fetch(`/api/office/users/${user.id}`, { method: "DELETE" }))).then(() => load());
+  }, [users, office.canManageUsers]);
+
   function startCreate() {
     setEditing(null);
     setDraft(blank());
@@ -96,6 +107,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       role: user.role,
       password: "",
       active: user.active,
+      title: user.title || "",
     });
     setMessage(null);
   }
@@ -280,6 +292,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
                   {permUser?.id === user.id ? <PermissionsPopover user={user} onClose={() => setPermUser(null)} onSaved={(text) => { setMessage(text); office.refresh(); }} /> : null}
                   {user.active && user.role !== "isa" ? <button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => office.canBecome ? void become(user, "leads") : setMessage("Your role cannot become this user.")}>Become User</button> : null}
                   {user.active && user.id !== office.user?.id ? <button type="button" className="bg-[#d9363e] px-2 py-1 text-white" onClick={() => { if (!office.canManageUsers) { setMessage("Only an admin or broker can disable users."); return; } void fetch(`/api/office/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) }).then(() => load()); }}>Disable</button> : null}
+                  {user.id !== office.user?.id ? <button type="button" className="border border-[#d9363e] px-2 py-1 text-[#d9363e]" onClick={() => { if (!office.canManageUsers) { setMessage("Only an admin or broker can delete users."); return; } if (!window.confirm(`Delete ${user.name}?`)) return; void fetch(`/api/office/users/${user.id}`, { method: "DELETE" }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; setMessage(response.ok ? "Agent deleted." : data?.message || "Could not delete that agent."); if (response.ok) await load(); }); }}>Delete</button> : null}
                 </div>
               </article>
             ))}
@@ -308,14 +321,13 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
         </form>
       ) : null}
       {creating || editing ? (
+        <ModalFrame title={editing ? "Edit user" : "Add Agent"} onClose={() => { setCreating(false); setEditing(null); }}>
         <form
-          className="mt-4 max-w-xl border border-[#1c93b5] bg-white p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void save();
           }}
         >
-          <h2 className="mb-3 text-[16px] font-semibold">{editing ? "Edit user" : "Add Agent"}</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="First name">
               <input className={inputCls} value={draft.firstName} onChange={(event) => setDraft({ ...draft, firstName: event.target.value })} />
@@ -329,7 +341,10 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             <Field label="Cell phone">
               <input className={inputCls} value={draft.cell} onChange={(event) => setDraft({ ...draft, cell: event.target.value })} />
             </Field>
-            <Field label="Role">
+            <Field label="Company Name">
+              <input className={inputCls} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+            </Field>
+            <Field label="User Level">
               <select className={inputCls} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as OfficeRole })}>
                 {ROLES.map((role) => (
                   <option key={role} value={role}>{roleLabel(role)}</option>
@@ -356,11 +371,16 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
             <input type="checkbox" checked={draft.active} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} />
             Active
           </label>
+          <label className="mt-3 flex items-center gap-2 text-[13px]">
+            <input type="checkbox" defaultChecked />
+            Send Welcome Email
+          </label>
           <div className="mt-3 flex justify-end gap-2">
             <Btn onClick={() => { setCreating(false); setEditing(null); }}>Cancel</Btn>
-            <Btn kind="teal" onClick={() => void save()}>Save</Btn>
+            <Btn kind="blue" onClick={() => void save()}>Save</Btn>
           </div>
         </form>
+        </ModalFrame>
       ) : null}
       </>
       ) : null}

@@ -1,9 +1,31 @@
 import { isOfficeRole } from "@/lib/office-access";
 import { currentActor } from "@/lib/office-actor";
-import { toPublic, updateUser, type UserDraft } from "@/lib/office-users";
+import { deleteUser, toPublic, updateUser, type UserDraft } from "@/lib/office-users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const actor = await currentActor();
+  if (!actor) return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
+  if (!actor.database.connected) return Response.json({ ok: false, message: actor.database.message }, { status: 409 });
+  if (!actor.canManageUsers) return Response.json({ ok: false, message: "Only an admin or broker can delete users." }, { status: 403 });
+  const { id } = await context.params;
+  if (actor.user.id === id) return Response.json({ ok: false, message: "You cannot delete the account you are signed in with." }, { status: 400 });
+  try {
+    const removed = await deleteUser(id);
+    if (!removed) return Response.json({ ok: false, message: "That user was not found." }, { status: 404 });
+    return Response.json({ ok: true });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "last_admin") return Response.json({ ok: false, message: "The office needs at least one active admin." }, { status: 400 });
+    console.error("[office] delete user", error instanceof Error ? error.name : "error");
+    return Response.json({ ok: false, message: "Could not delete that user." }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: Request,

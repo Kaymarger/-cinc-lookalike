@@ -343,6 +343,19 @@ export async function createUser(draft: UserDraft): Promise<OfficeUser> {
   return fromRow(rows[0]);
 }
 
+export async function deleteUser(id: string): Promise<boolean> {
+  const sql = await officeDb();
+  if (!sql) throw new Error("database_unconfigured");
+  const current = await findUserById(id);
+  if (!current) return false;
+  if (current.role === "admin" && current.active) {
+    const others = await countActiveAdmins(id);
+    if (others < 1) throw new Error("last_admin");
+  }
+  await sql`DELETE FROM office_users WHERE id = ${id}`;
+  return true;
+}
+
 export async function updateUser(id: string, draft: Partial<UserDraft>): Promise<OfficeUser | null> {
   const sql = await officeDb();
   if (!sql) throw new Error("database_unconfigured");

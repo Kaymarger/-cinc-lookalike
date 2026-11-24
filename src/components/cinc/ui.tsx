@@ -85,8 +85,8 @@ export function ModalFrame({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/35 px-4 py-10" onMouseDown={onClose}>
@@ -94,9 +94,9 @@ export function ModalFrame({
         className={`max-h-[86vh] w-full overflow-auto rounded-md border border-[#e5e5e5] border-t-4 border-t-[#c8c8c8] bg-white shadow-lg ${wide ? "max-w-[760px]" : "max-w-[480px]"}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">
-          <h2 className="text-[18px] font-light text-[#329bb9]">{title}</h2>
-          <button type="button" className="text-[18px] text-[#888]" onClick={onClose} aria-label="Close">
+        <div className="flex items-center justify-between bg-[#24384a] px-4 py-3 text-white">
+          <h2 className="text-[16px] font-semibold text-white">{title}</h2>
+          <button type="button" className="text-[20px] leading-none text-white" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
