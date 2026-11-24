@@ -27,6 +27,8 @@ export type Deal = {
   status: "Active" | "Archived";
   createdAt: number;
   agent?: string;
+  contractDate?: string;
+  closingDate?: string;
   activity?: { id: string; kind: string; text: string; at: string }[];
 };
 

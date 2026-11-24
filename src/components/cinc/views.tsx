@@ -200,10 +200,6 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                         />
                       </span>
                     </div>
-                    <div className="mt-3 border-t border-[#e5e5e5] pt-3">
-                    <p className="text-[16px] font-bold text-[#243238]">{item.kind}</p>
-                    <p className="mt-2 bg-[#ececec] px-3 py-2 text-[15px] text-[#555]">{item.message}</p>
-                    </div>
                     <div className="mt-3 flex items-start gap-3">
                       <img src={item.image} alt="" width={150} height={100} className="h-[100px] w-[150px] shrink-0 object-cover" />
                       <div>
@@ -406,13 +402,34 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
       </div>
     );
   }
+  const currentDeal = deal;
+  function editField(kind: "Address" | "Client" | "Price" | "Potential" | "Contract" | "Closing") {
+    chrome.openModal(
+      <DealActionModal kind={kind} onClose={chrome.closeModal} onSave={(text) => {
+        update((current) => ({
+          ...current,
+          deals: current.deals.map((item) => {
+            if (item.id !== currentDeal.id) return item;
+            if (kind === "Address") return { ...item, address: text };
+            if (kind === "Client") return { ...item, client: text };
+            if (kind === "Price") return { ...item, price: text };
+            if (kind === "Potential") return { ...item, potential: text };
+            if (kind === "Contract") return { ...item, contractDate: text };
+            return { ...item, closingDate: text };
+          }),
+        }));
+        chrome.closeModal();
+        chrome.toast(`${kind} saved.`);
+      }} />
+    );
+  }
   return (
     <div className="bg-[#f5f5f5] p-4">
       <p className="text-[13px] text-[#888]">
         <a href={board === "listings" ? href.dealsListings : href.dealsPurchases} className="text-[#1c93b5]">Deals</a>
         <span> &gt; {board === "listings" ? "Listings" : "Purchases"}</span>
       </p>
-      <div className="mt-3 h-36 bg-[#d7e3ea] bg-[linear-gradient(180deg,#d7e3ea,#9bb7c6)]" />
+      <DealBanner address={deal.address} />
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3 bg-white p-4">
         <div>
           <h1 className="text-[20px] font-semibold">{deal.address || "Address pending"}</h1>
@@ -457,15 +474,46 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
             <h2 className="font-semibold">Contacts</h2>
             <p className="mt-2 text-[13px]">{deal.client}</p>
             <p className="text-[12px] text-[#888]">{deal.agent || "Unassigned"}</p>
+            {tab === "Info" ? (
+              <>
+                <h2 className="mt-4 font-semibold">Important Dates</h2>
+                <table className="mt-2 w-full text-left text-[13px]">
+                  <tbody>
+                    {([
+                      ["Created", new Date(deal.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), ""],
+                      ["Contract", deal.contractDate || "—", "Contract"],
+                      ["Closing", deal.closingDate || "—", "Closing"],
+                    ] as const).map(([label, value, kind]) => (
+                      <tr key={label} className="border-b border-[#eee]">
+                        <th className="py-2 pr-3 font-normal text-[#888]">{label}</th>
+                        <td className="flex items-center justify-between gap-2 py-2">{value}{kind ? <button type="button" className="text-[#1c93b5]" aria-label={`Edit ${label}`} onClick={() => editField(kind)}>✎</button> : null}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : null}
           </section>
           <section>
-            <h2 className="flex items-center justify-between font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Important Dates" : "Activity"} {tab === "Info" ? <button type="button" className="text-[12px] font-normal text-[#1c93b5]" onClick={() => chrome.openModal(
-              <DealActionModal kind="Price" onClose={chrome.closeModal} onSave={(text) => {
-                update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, price: text } : item) }));
-                chrome.closeModal();
-              }} />
-            )}>Edit</button> : null}</h2>
-            {tab === "Info" ? <p className="mt-2 text-[13px] text-[#666]">{deal.address} · {deal.price} · Potential {deal.potential || "$--"}</p> : null}
+            <h2 className="font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Reminders" : "Activity"}</h2>
+            {tab === "Info" ? (
+              <table className="mt-2 w-full text-left text-[13px]">
+                <tbody>
+                  {([
+                    ["Address", deal.address || "Address pending", "Address"],
+                    ["Client", deal.client, "Client"],
+                    ["Price", deal.price || "$--", "Price"],
+                    ["Potential", deal.potential || "$--", "Potential"],
+                    ["Stage", stages.find((stage) => stage.id === deal.stage)?.label || deal.stage, ""],
+                  ] as const).map(([label, value, kind]) => (
+                    <tr key={label} className="border-b border-[#eee]">
+                      <th className="py-2 pr-3 font-normal text-[#888]">{label}</th>
+                      <td className="flex items-center justify-between gap-2 py-2">{value}{kind ? <button type="button" className="text-[#1c93b5]" aria-label={`Edit ${label}`} onClick={() => editField(kind)}>✎</button> : null}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
             {tab !== "Info" ? (
               <ul className="mt-2 space-y-2">
                 {(deal.activity ?? []).filter((item) => tab === "Reminders" ? item.kind === "Reminder" : true).map((item) => (
@@ -584,6 +632,35 @@ export function DealsView({ board, dealId }: { board: "purchases" | "listings"; 
         ) : null}
       </div>
       </div>
+    </div>
+  );
+}
+
+function catalogPhoto(address: string) {
+  const key = address.toLowerCase().split(",")[0].trim();
+  if (key.length < 4) return "";
+  return CRM_PROPERTIES.find((item) => item.image && item.address.toLowerCase().includes(key))?.image || "";
+}
+
+function DealBanner({ address }: { address: string }) {
+  const [photo, setPhoto] = useState(() => catalogPhoto(address));
+  useEffect(() => {
+    const local = catalogPhoto(address);
+    if (local) setPhoto(local);
+    void fetch("/api/listings?preview=1", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { properties?: { address?: string; image?: string }[] } | null;
+      const key = address.toLowerCase().split(",")[0].trim();
+      const match = data?.properties?.find((item) => item.image && key.length > 3 && item.address?.toLowerCase().includes(key));
+      if (match?.image) setPhoto(match.image);
+    }).catch(() => undefined);
+  }, [address]);
+  if (photo) return <img src={photo} alt="" className="mt-3 h-40 w-full object-cover" />;
+  return (
+    <div className="mt-3 grid h-40 place-items-center bg-[#d7e3ea] text-[#5c7c8c]">
+      <svg width="72" height="56" viewBox="0 0 72 56" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+        <path d="M6 26 36 6l30 20v24H6V26z" />
+        <path d="M28 50V32h16v18" />
+      </svg>
     </div>
   );
 }
@@ -1261,7 +1338,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const [pipeline, setPipeline] = useState("Team Listings");
   const listingList = useOfficeList("listings", "address", ["address", "price", "city", "status", "agent"]);
   const [pickedListings, setPickedListings] = useState<string[]>([]);
-  const nav = sub === "list" || sub === "add" ? <PropertyNav sub={sub} /> : null;
+  const nav = sub === "add" ? <PropertyNav sub={sub} /> : null;
   if (sub === "text") return <TextResponder />;
   if (sub === "add") return <div>{nav}<AddPocket /></div>;
   if (sub === "virtual") {
@@ -1364,11 +1441,11 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
     <div>
       {nav}
       <div className="flex overflow-x-auto bg-[#1b3142] text-white">
-        {listingStages.map((label) => {
+        {listingStages.map((label, index) => {
           const count = label === "Team Listings" ? listings.length : listings.filter((item) => stageOf(item) === label).length;
           const on = pipeline === label;
           return (
-            <button key={label} type="button" className={`min-w-[108px] shrink-0 px-3 py-2 text-left text-[12px] whitespace-nowrap ${on ? "bg-white text-[#1b3142]" : "bg-[#24384a]"}`} onClick={() => { setPipeline(label); setStatusFilter(label === "Active" || label === "Pending" || label === "Sold" ? label : "Any"); }}>
+            <button key={label} type="button" className={`relative min-w-[118px] shrink-0 px-5 py-2 text-left text-[12px] whitespace-nowrap ${on ? "bg-white text-[#1b3142]" : "bg-[#24384a] text-white"}`} style={{ clipPath: index === 0 ? "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)" : "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)", marginLeft: index === 0 ? 0 : -8, boxShadow: on ? "inset 0 3px 0 #1c93b5" : undefined, zIndex: on ? 2 : 1 }} onClick={() => { setPipeline(label); setStatusFilter(label === "Active" || label === "Pending" || label === "Sold" ? label : "Any"); }}>
               <span className="block">{label}</span>
               <span className="block text-[11px] opacity-80">{count}</span>
             </button>
@@ -2824,7 +2901,17 @@ export function MarketingView() {
             const pieRows = [...report.locations].filter((row) => row.leads > 0).sort((a, b) => b.leads - a.leads).slice(0, 6);
             const pieTotal = pieRows.reduce((sum, row) => sum + row.leads, 0);
             const colors = ["#1c93b5", "#16324f", "#2e9e5b", "#e39b2b", "#5c6b7a", "#8fd3e8"];
-            if (!pieTotal) return <p className="mt-3 text-[13px] text-[#666]">Data unavailable for this time period</p>;
+            if (!pieTotal) {
+              return (
+                <div className="mt-3">
+                  <svg viewBox="0 0 160 160" className="mx-auto h-40 w-40" aria-label="Target areas pie chart">
+                    <circle cx="80" cy="80" r="70" fill="#d5e3ea" />
+                    <circle cx="80" cy="80" r="36" fill="#e7f4f8" />
+                  </svg>
+                  <p className="mt-2 text-center text-[12px] text-[#666]">No lead areas for this month.</p>
+                </div>
+              );
+            }
             const slices = pieRows.reduce<{ nodes: React.ReactNode[]; angle: number }>((acc, row, index) => {
               const sweep = (row.leads / pieTotal) * Math.PI * 2;
               const start = acc.angle;

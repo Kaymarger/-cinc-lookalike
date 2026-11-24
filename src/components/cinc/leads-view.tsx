@@ -1140,19 +1140,19 @@ export function LeadsView({
                       </div>
                     </td> : null}
                     {leadColumns.includes("Registered") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Registered") + 1 }}>{tidyTime(row.registered)}<br />{row.source}</td> : null}
-                    {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br /><span title="City">⌂ {row.city && row.city !== "—" ? row.city : "n/a"}</span></td> : null}
+                    {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br /><span className="inline-flex items-center gap-1" title="City"><MiniIcon kind="home" />{row.city && row.city !== "—" ? row.city : "n/a"}</span></td> : null}
                     {leadColumns.includes("Timeframe") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Timeframe") + 1 }}>{row.timeframe}</td> : null}
                     {leadColumns.includes("Last Login") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Last Login") + 1 }}>{row.logins === 0 ? "—" : <>{tidyTime(row.lastLogin)}<br />{row.logins} Total</>}</td> : null}
                     {leadColumns.includes("Last Touch") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Last Touch") + 1 }}>
-                      <span className="text-[#2e9e5b]" title="Phone">P</span> <span className="text-[#1c93b5]" title="Text">T</span> <span className="text-[#e39b2b]" title="Email">E</span> {row.lastTouch === "—" ? "—" : tidyTime(row.lastTouch)}<br />
+                      <span className="inline-flex items-center gap-1 text-[#2e9e5b]" title="Phone"><MiniIcon kind="phone" /></span> <span className="inline-flex items-center gap-1 text-[#1c93b5]" title="Text"><MiniIcon kind="text" /></span> <span className="inline-flex items-center gap-1 text-[#e39b2b]" title="Email"><MiniIcon kind="mail" /></span> {row.lastTouch === "—" ? "—" : tidyTime(row.lastTouch)}<br />
                       <span className="text-[#888]">{row.touchCount || 0}</span>
                     </td> : null}
                     {leadColumns.includes("Next Reminder") ? <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`} style={{ order: leadColumns.indexOf("Next Reminder") + 1 }}>
                       <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
                     </td> : null}
                     {leadColumns.includes("Activity") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Activity") + 1 }}>
-                      <span className="text-[#2e9e5b]" title="Views">V {row.views}</span> <span className="text-[#e39b2b]" title="Saved">S {row.saved}</span><br />
-                      <span className="text-[#d9363e]" title="Favourites">F {row.fav}</span> <span className="text-[#1c93b5]" title="Inquiries">I {row.inq}</span>
+                      <span className="inline-flex items-center gap-1 text-[#2e9e5b]" title="Views"><MiniIcon kind="eye" />{row.views}</span> <span className="inline-flex items-center gap-1 text-[#e39b2b]" title="Saved"><MiniIcon kind="search" />{row.saved}</span><br />
+                      <span className="inline-flex items-center gap-1 text-[#d9363e]" title="Favourites"><MiniIcon kind="heart" />{row.fav}</span> <span className="inline-flex items-center gap-1 text-[#1c93b5]" title="Inquiries"><MiniIcon kind="mail" />{row.inq}</span>
                     </td> : null}
                     {leadColumns.includes("Assigned To") ? <td className="px-2 text-[13px] leading-6" style={{ order: leadColumns.indexOf("Assigned To") + 1 }}>
                       {(["agent", "partner", "listing"] as const).map((slot) => (
@@ -1224,6 +1224,18 @@ export function LeadsView({
       ) : null}
     </div>
   );
+}
+
+function MiniIcon({ kind }: { kind: "eye" | "phone" | "text" | "mail" | "heart" | "home" | "search" | "clip" }) {
+  const props = { viewBox: "0 0 16 16", className: "inline h-3.5 w-3.5", fill: "none", stroke: "currentColor", strokeWidth: 1.4, "aria-hidden": true } as const;
+  if (kind === "eye") return <svg {...props}><path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4-6.5-4-6.5-4z" /><circle cx="8" cy="8" r="1.5" /></svg>;
+  if (kind === "phone") return <svg {...props}><path d="M3.2 2.8h2l1 2.2-1.2 1a6.5 6.5 0 0 0 3 3l1-1.2 2.2 1v2a1 1 0 0 1-1 1A8 8 0 0 1 2.2 3.8a1 1 0 0 1 1-1z" /></svg>;
+  if (kind === "text") return <svg {...props}><path d="M2.5 3h11v7.5H6.2L3.5 13V3z" /></svg>;
+  if (kind === "mail") return <svg {...props}><path d="M2 4h12v8H2zM2 5l6 4 6-4" /></svg>;
+  if (kind === "heart") return <svg {...props}><path d="M8 13s-4.5-2.7-5.5-5.2C1.6 6 2.6 4 4.6 4c1.2 0 2 .6 2.4 1.4C7.4 4.6 8.2 4 9.4 4c2 0 3 2 2.1 3.8C12.5 10.3 8 13 8 13z" /></svg>;
+  if (kind === "home") return <svg {...props}><path d="M2.5 7.2 8 3l5.5 4.2V13h-3.4V9.2H5.9V13H2.5z" /></svg>;
+  if (kind === "search") return <svg {...props}><circle cx="7" cy="7" r="3.2" /><path d="M9.4 9.4 13 13" /></svg>;
+  return <svg {...props}><path d="M5 2.5h5l2 2V13H5zM10 2.8V5h2" /></svg>;
 }
 
 function ValidityIcon({ ok }: { ok: boolean }) {
@@ -1418,7 +1430,7 @@ function LeadDetail({
             </div>
             <LeadSearches leadId={row.id} leadEmail={row.email} />
             <p className="mt-3 flex justify-center gap-4 text-[13px] text-[#555]">
-              <span title="Views">V {row.views}</span><span title="Saved">S {row.saved}</span><span title="Favourites">F {row.fav}</span><span title="Inquiries">I {row.inq}</span><span title="Files">C 0</span>
+              <span className="inline-flex items-center gap-1" title="Views"><MiniIcon kind="eye" />{row.views}</span><span className="inline-flex items-center gap-1" title="Saved"><MiniIcon kind="search" />{row.saved}</span><span className="inline-flex items-center gap-1" title="Favourites"><MiniIcon kind="heart" />{row.fav}</span><span className="inline-flex items-center gap-1" title="Inquiries"><MiniIcon kind="mail" />{row.inq}</span><span className="inline-flex items-center gap-1" title="Files"><MiniIcon kind="clip" />0</span>
             </p>
             <div className="mt-2">
               <Menu
@@ -1453,8 +1465,8 @@ function LeadDetail({
               <div className="border border-[#d5e8ee] p-2"><p className="text-[14px]">{tidyTime(row.lastLogin)}</p><p>Last Login</p></div>
             </div>
             <div className="grid grid-cols-4 bg-[#e7f4f8] text-center text-[11px]">
-              {[["Calls", String(calls)], ["Texts", String(texts)], ["Alerts", String(state.alertFreq[row.id] ? 1 : 0)], ["Emails", String(emails)]].map(([label, value]) => (
-                <div key={label} className="border border-[#d5e8ee] p-2"><p className="text-[14px]">{value}</p><p>{label}</p></div>
+              {([["Calls", String(calls), "phone"], ["Texts", String(texts), "text"], ["Alerts", String(state.alertFreq[row.id] ? 1 : 0), "search"], ["Emails", String(emails), "mail"]] as const).map(([label, value, icon]) => (
+                <div key={label} className="border border-[#d5e8ee] p-2"><p className="inline-flex items-center justify-center gap-1 text-[14px]"><MiniIcon kind={icon} />{value}</p><p>{label}</p></div>
               ))}
             </div>
             <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Email Information</div>
