@@ -336,6 +336,13 @@ export function PageEditor({ page }: { page: string }) {
   const [metaDescription, setMetaDescription] = useState("");
   const [sections, setSections] = useState<EditorSection[]>(() => starterSections(page));
   const [note, setNote] = useState("");
+  const [liveCards, setLiveCards] = useState<{ id: string; address: string; price: number; beds: number; baths: number; image: string }[]>([]);
+  useEffect(() => {
+    void fetch("/api/listings?preview=1", { cache: "no-store" }).then(async (response) => {
+      const data = (await response.json().catch(() => null)) as { properties?: { id: string; address: string; price: number; beds: number; baths: number; image: string }[] } | null;
+      if (data?.properties?.length) setLiveCards(data.properties);
+    }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void loadOfficePrefs().then((prefs) => {
@@ -399,13 +406,14 @@ export function PageEditor({ page }: { page: string }) {
             <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show this section on the public page</label>
             {section.name === "Featured Listings" ? (
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {["Featured home", "New listing", "Open house"].map((label) => (
-                  <div key={label} className="border border-[#eee] p-2">
-                    <div className="mb-2 h-16 bg-[#e7f5f8]" />
-                    <p className="font-semibold">{label}</p>
-                    <p className="text-[12px] text-[#666]">Preview of a public listing card</p>
+                {(liveCards.length ? liveCards : []).map((card) => (
+                  <div key={card.id} className="border border-[#eee] p-2">
+                    {card.image ? <img src={card.image} alt="" className="mb-2 h-16 w-full object-cover" /> : <div className="mb-2 h-16 bg-[#e7f5f8]" />}
+                    <p className="font-semibold">{card.address}</p>
+                    <p className="text-[12px] text-[#666]">${card.price.toLocaleString("en-CA")} | {card.beds} bd | {card.baths} ba</p>
                   </div>
                 ))}
+                {!liveCards.length ? <p className="text-[12px] text-[#888]">Listing cards appear here when the feed has active homes.</p> : null}
               </div>
             ) : null}
             {section.name === "Neighborhood Guides" ? (

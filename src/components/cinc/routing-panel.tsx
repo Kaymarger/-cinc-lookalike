@@ -139,7 +139,33 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
         ) : null}
         {tab === "Advanced" ? (
         <>
-        <label className="flex items-start gap-2">
+        <div className="mb-3 flex flex-wrap gap-3 text-[13px]">
+          <label>Routing Overflow <select className={inputCls} defaultValue="Office default"><option>Office default</option><option>Hold</option></select></label>
+          <label>Sink or Swim <select className={inputCls} defaultValue="Off"><option>Off</option><option>On</option></select></label>
+          <label className="flex items-center gap-1"><input type="checkbox" /> Normalized Sources</label>
+        </div>
+        <div className="overflow-auto">
+          <table className="w-full min-w-[720px] text-left text-[12px]">
+            <thead><tr>{["AGENT", "STATUS", "WEIGHT", "LEAD CAP", "MIN", "MAX"].map((column) => <th key={column} className="border-b py-2">{column}</th>)}</tr></thead>
+            <tbody>
+              {roster.map((user) => {
+                const row = weights[user.id] || { weight: "17", min: "0", max: "999999999" };
+                const setRow = (key: "weight" | "min" | "max", value: string) => setWeights((current) => ({ ...current, [user.id]: { ...row, [key]: value } }));
+                return (
+                  <tr key={user.id} className="border-b border-[#f3f3f3]">
+                    <td className="py-2">{user.name}</td>
+                    <td><select className={inputCls} defaultValue="Yes"><option>Yes</option><option>No</option></select></td>
+                    <td><input className={inputCls} value={row.weight} onChange={(event) => setRow("weight", event.target.value)} /></td>
+                    <td><input className={inputCls} defaultValue="0" /></td>
+                    <td><input className={inputCls} value={row.min} onChange={(event) => setRow("min", event.target.value)} /></td>
+                    <td><input className={inputCls} value={row.max} onChange={(event) => setRow("max", event.target.value)} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <label className="mt-3 flex items-start gap-2">
           <input type="radio" name="routing" checked={mode === "source"} onChange={() => setMode("source")} />
           <span>Route by lead source. Website, phone, and partner leads can go to different agents.</span>
         </label>

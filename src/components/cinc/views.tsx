@@ -175,21 +175,20 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
               </div>
               {pickedRequests.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-white" onClick={() => { update((current) => ({ ...current, requests: { ...current.requests, ...Object.fromEntries(pickedRequests.map((id) => [id, "acted"])) } })); setPickedRequests([]); }}>Mark selected acted on</button> : null}
               {shownRequests.length ? shownRequests.map((item) => (
-                <article key={item.id} className="mb-3 flex min-h-[290px] rounded border border-[#e3e3e3] bg-white shadow-sm">
-                  <input className="m-2" type="checkbox" aria-label={`Select ${item.name}`} checked={pickedRequests.includes(item.id)} onChange={(event) => setPickedRequests(event.target.checked ? [...pickedRequests, item.id] : pickedRequests.filter((id) => id !== item.id))} />
-                  <div className="grid w-12 shrink-0 place-items-start pt-3 text-[#1c93b5]">
+                <article key={item.id} className="mb-2 flex border border-[#c8c8c8] bg-white">
+                  <div className="flex w-12 shrink-0 items-start justify-center border-r border-[#e5e5e5] pt-3 text-[#888]">
                     {item.kind === "Showing Request" ? (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="5" width="16" height="15" rx="1" /><path d="M4 9h16M8 3v4M16 3v4" /></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="5" width="16" height="15" rx="1" /><path d="M4 9h16M8 3v4M16 3v4" /></svg>
                     ) : (
-                      <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-[#1c93b5] text-[16px]">?</span>
+                      <span className="grid h-6 w-6 place-items-center rounded-full border border-[#888] text-[14px]">?</span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 px-2 py-3">
+                  <div className="min-w-0 flex-1 px-3 py-2">
                     <div className="flex items-start gap-2">
                       <div>
-                        <a className="text-[18px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
-                        <span className="ml-1 inline-block h-4 w-4 align-middle text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg> : <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>}</span>
-                        <p className="text-[13px] text-[#999]">{item.at}</p>
+                        <a className="text-[11px] font-semibold text-[#1c93b5]" href={href.lead(item.sourceId)}>{item.name}</a>
+                        <span className="ml-1 inline-block h-3 w-3 align-middle text-[#2f6fed]" title={item.verified ? "Verified" : "Locked"}>{item.verified ? <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8.5 6.2 12 13 4" /></svg> : <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>}</span>
+                        <p className="text-[11px] text-[#888]">{item.at.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm")}</p>
                       </div>
                       <span className="ml-auto">
                         <Menu
@@ -413,7 +412,7 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
         <a href={board === "listings" ? href.dealsListings : href.dealsPurchases} className="text-[#1c93b5]">Deals</a>
         <span> &gt; {board === "listings" ? "Listings" : "Purchases"}</span>
       </p>
-      <div className="mt-3 h-36 bg-[#d7e3ea]" />
+      <div className="mt-3 h-36 bg-[#d7e3ea] bg-[linear-gradient(180deg,#d7e3ea,#9bb7c6)]" />
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3 bg-white p-4">
         <div>
           <h1 className="text-[20px] font-semibold">{deal.address || "Address pending"}</h1>
@@ -460,7 +459,12 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
             <p className="text-[12px] text-[#888]">{deal.agent || "Unassigned"}</p>
           </section>
           <section>
-            <h2 className="font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Important Dates" : "Activity"}</h2>
+            <h2 className="flex items-center justify-between font-semibold">{tab === "Info" ? "Deal Details" : tab === "Reminders" ? "Important Dates" : "Activity"} {tab === "Info" ? <button type="button" className="text-[12px] font-normal text-[#1c93b5]" onClick={() => chrome.openModal(
+              <DealActionModal kind="Price" onClose={chrome.closeModal} onSave={(text) => {
+                update((current) => ({ ...current, deals: current.deals.map((item) => item.id === deal.id ? { ...item, price: text } : item) }));
+                chrome.closeModal();
+              }} />
+            )}>Edit</button> : null}</h2>
             {tab === "Info" ? <p className="mt-2 text-[13px] text-[#666]">{deal.address} · {deal.price} · Potential {deal.potential || "$--"}</p> : null}
             {tab !== "Info" ? (
               <ul className="mt-2 space-y-2">
@@ -1377,87 +1381,20 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
         <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setStatusFilter("Active")}>Filter Listings</button>
         <a href={href.addProperty} className="ml-2 grid h-36 w-56 place-items-center border border-dashed border-[#bbb] text-center text-[15px] text-[#888]">+<br />Add Property Listing</a>
       </div>
-      <div className="flex">
-        <aside className="w-44 shrink-0 border-r border-[#eee] bg-white p-3 text-[12px]">
-          <p className="mb-2 font-bold">Agents</p>
-          {["All", "Casey Archibald", "Kayla Gerak", "Anastasiia Borovyk", "Kevin Barrett"].map((name) => (
-            <button key={name} type="button" className={`block w-full py-1 text-left ${office === name || (name === "All" && office === "All MLS Listings") ? "font-semibold text-[#1c93b5]" : ""}`} onClick={() => setOffice(name === "All" ? "All MLS Listings" : name)}>{name}</button>
-          ))}
-        </aside>
-        <div className="min-w-0 flex-1 p-4">
-      {!stageListings.length ? <p className="mb-3 bg-white px-4 py-6 text-center text-[14px]">No listings in {pipeline}.</p> : null}
-      <div className="mb-3 flex flex-wrap items-center gap-2 bg-white p-3 shadow-sm">
-        <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "mls" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("mls")}>Show MLS Listings</button>
-        <button type="button" className={`h-[22px] px-3 text-[12px] text-white ${mode === "pocket" ? "bg-[#1c93b5]" : "bg-[#8fb8c4]"}`} onClick={() => setMode("pocket")}>Show Pocket Listings</button>
-        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Any</option><option>Active</option><option>Pending</option><option>Sold</option></select>
-        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={bedsFilter} onChange={(event) => setBedsFilter(event.target.value)}><option>Any</option><option value="1">1+ beds</option><option value="2">2+ beds</option><option value="3">3+ beds</option><option value="4">4+ beds</option></select>
-        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option>Any</option><option>General Listing</option><option>House</option><option>Condo</option><option>Townhouse</option></select>
-        <select className="h-[22px] border border-[#ccc] bg-white px-1 text-[12px]" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)}><option>Any</option><option>Under $1M</option><option>$1M – $2M</option><option>Over $2M</option></select>
-        <Menu label={<span className={toolBtn}>{office} ▾</span>} items={["All MLS Listings", "My Office/Agents Listings", "Listed in the past 24 hours", "Featured Listings", "Casey Archibald", "Kayla Gerak"].map((label) => ({ label, onClick: () => setOffice(label) }))} />
-        <Menu label={<span className={toolBtn}>Mass Actions ▾</span>} items={[
-          { label: "Export visible listings", onClick: () => {
-            const lines = ["Address,MLS,Status,Price", ...listings.map((item) => `"${item.address}",${item.mls},${item.status},${item.price}`)];
-            const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "listings.csv";
-            link.click();
-            URL.revokeObjectURL(url);
-          } },
-          { label: "Advertise visible listings", onClick: () => chrome.toast(listings.length ? `Advertising request saved for ${listings.length} listings.` : "No listings to advertise.") },
-        ]} />
-        <button type="button" className="ml-auto h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<ModalFrame title="Advertise Listings" onClose={chrome.closeModal}><Field label="Subject"><input className={inputCls} defaultValue="New listings this week" /></Field><Field label="Message"><textarea className="h-20 w-full border border-[#ccc] p-2 text-[13px]" defaultValue={`Please review ${listings.length} listings.`} /></Field><div className="mt-3 text-right"><Btn kind="teal" onClick={() => { chrome.toast("Advertising request saved."); chrome.closeModal(); }}>Send</Btn></div></ModalFrame>)}>Advertise Listings</button>
-        {mode === "pocket" ? <a href={href.addProperty} className="h-[22px] bg-[#1c93b5] px-3 text-[12px] leading-[22px] text-white">Add Pocket Listing</a> : null}
-      </div>
-      <OfficeListBar query={listingList.query} update={listingList.update} views={listingList.views} saveView={listingList.saveView} filters={[{ id: "status", label: "Status", options: ["Active", "Pending", "Sold"] }, { id: "city", label: "City", options: [...new Set(listings.map((item) => item.address.split(",").pop()?.trim() || "").filter(Boolean))] }, { id: "agent", label: "Agent", options: ["Kayla Gerak", "Casey Archibald"] }]} columns={OFFICE_LISTS.listings.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.listings)} toggleSort={listingList.toggleSort} onSelectPage={() => setPickedListings(visibleListings.map((item) => item.id))} total={arrangedListings.total} emptyLabel="No listings match this search and these filters." />
-      {pickedListings.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { chrome.toast(`Advertising request saved for ${pickedListings.length} listings.`); setPickedListings([]); }}>Advertise selected</button> : null}
-      <div className="space-y-3">
-        {visibleListings.map((item) => (
-          <article key={item.id} className="border border-[#e5e5e5] bg-white">
-            <div className="relative grid grid-cols-4 bg-[#d7eef3] py-1 pr-8 text-center text-[12px] font-bold whitespace-nowrap text-[#1c93b5]">
-              <span>MLS Listing</span><span>Details</span><span>Feature</span><span>Actions</span>
-              <button type="button" title="Share" className="absolute top-1 right-2 text-[#1c93b5]" onClick={() => { navigator.clipboard?.writeText(item.address); chrome.toast("Listing link copied."); }}>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="4" cy="8" r="1.6" /><circle cx="12" cy="4" r="1.6" /><circle cx="12" cy="12" r="1.6" /><path d="M5.5 7.2 10.4 4.8M5.5 8.8l4.9 2.4" /></svg>
-              </button>
-            </div>
-            <div className="grid grid-cols-4 gap-2 p-3 text-[12px]">
-              <label className="col-span-4 flex items-center gap-1"><input type="checkbox" aria-label={`Select ${item.address}`} checked={pickedListings.includes(item.id)} onChange={(event) => setPickedListings(event.target.checked ? [...pickedListings, item.id] : pickedListings.filter((id) => id !== item.id))} />Select</label>
-              <div className="flex gap-2">
-                <img src={item.image} alt="" className="h-[38px] w-[50px] border border-[#ddd] object-cover" />
-                <div>
-                  <a className="font-bold text-[#1c93b5]" href="/search">{item.address}</a>
-                  <p>MLS # {item.mls}</p>
-                  <p>MLS Status: {item.status}</p>
-                  <button type="button" className="text-[#1c93b5]" onClick={() => composer.email(item.address, (sent, value) => { const subject = value.subject || item.address; if (!sent) { update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "drafts" as const, kind: "email" as const, to: value.to, subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Draft saved."); return; } void fetch("/api/office/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: "email", to: value.to, subject, body: `${item.address}\n${value.body}` }) }).then(async (response) => { const data = (await response.json().catch(() => null)) as { message?: string } | null; if (!response.ok) { chrome.toast(data?.message || "That email was not sent."); return false; } update((current) => ({ ...current, mail: [{ id: uid("mail"), folder: "sent" as const, kind: "email" as const, to: value.to, subject, body: value.body, at: nowLabel() }, ...current.mail] })); chrome.toast("Email sent."); return true; }); })}>Send Message</button>
-                </div>
-              </div>
-              <div>
-                <p className="font-bold">{item.price}</p>
-                <p>{item.beds}bd | {item.baths}ba | {item.sqft.toLocaleString()} sqft</p>
-                <p className="italic">Last updated {item.updated}</p>
-              </div>
-              <p>{item.feature}</p>
-              <div className="flex flex-col items-start gap-1">
-                <button type="button" className={toolBtn} onClick={() => update((current) => ({ ...current, buyerMatches: { ...current.buyerMatches, [item.id]: !current.buyerMatches[item.id] } }))}>{state.buyerMatches[item.id] ? "Matches on" : "Buyer Matches"}</button>
-                <a className={toolBtn} href={href.textResponder}>Text Responder</a>
-                {mode === "pocket" ? (
-                  <>
-                    <button type="button" className="font-semibold text-[#1c93b5]" onClick={() => {
-                      const price = window.prompt("Price", item.price);
-                      if (price == null) return;
-                      update((current) => ({ ...current, pocket: current.pocket.map((pocket) => pocket.id === item.id ? { ...pocket, price } : pocket) }));
-                    }}>EDIT</button>
-                    <button type="button" className="font-semibold text-[#d9363e]" onClick={() => update((current) => ({ ...current, pocket: current.pocket.filter((pocket) => pocket.id !== item.id) }))}>DELETE</button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </article>
-        ))}
-        {!visibleListings.length ? <p className="bg-white p-6 text-center text-[13px] text-[#888]">{mode === "pocket" ? "No pocket listings match this search and these filters." : "No listings match this search and these filters."}</p> : null}
-      </div>
-        </div>
+      <div className="bg-[#f7f7f7] p-4">
+        <h2 className="mb-3 text-[13px] font-semibold text-[#666]">Activity</h2>
+        {stageListings.length ? (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {stageListings.slice(0, 12).map((item) => (
+              <li key={item.id} className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
+                <img src={item.image} alt="" className="mb-2 h-24 w-full object-cover" />
+                <p className="font-semibold text-[#1c93b5]">{item.address}</p>
+                <p>{item.price}</p>
+                <p className="text-[12px] text-[#666]">{item.beds} bd | {item.baths} ba | {item.status}</p>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="bg-white px-4 py-8 text-center text-[14px]">No listings in {pipeline}.</p>}
       </div>
     </div>
   );
@@ -1969,8 +1906,6 @@ function ProfileTab() {
       <div className="space-y-4">
       <Card title="Login Info">
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
-        <div className="mb-3 flex items-center justify-between text-[13px]"><span className="font-bold">Cell Phone</span><span>{profile.cell || "—"}</span></div>
-        <OfficeLine />
         <PasswordReset />
         {recoveryUrl ? (
           <div className="mt-3 border border-[#1c93b5] bg-[#f3fafc] p-3 text-[13px]">
@@ -2203,29 +2138,24 @@ function SettingsTab() {
 }
 
 function BrandLogo({ name }: { name: string }) {
-  if (name === "Google") {
-    return (
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-        <path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.2v2.6h3.4c2-1.8 3.1-4.5 3.1-7.6z" />
-        <path fill="#34A853" d="M12 23c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A11 11 0 0 0 12 23z" />
-        <path fill="#FBBC05" d="M6.2 14.6A6.6 6.6 0 0 1 5.8 12c0-.9.1-1.8.4-2.6V6.7H2.7A11 11 0 0 0 1 12c0 1.8.4 3.5 1.2 5l4-2.4z" />
-        <path fill="#EA4335" d="M12 5.4c1.5 0 2.9.5 4 1.5l3-3A11 11 0 0 0 2.7 6.7l3.5 2.7C7 7.2 9.3 5.4 12 5.4z" />
-      </svg>
-    );
-  }
-  if (name === "Slack") {
-    return (
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-        <path fill="#E01E5A" d="M8 15.5A2.5 2.5 0 1 1 5.5 13H8z" /><path fill="#E01E5A" d="M9 15.5A2.5 2.5 0 1 1 11.5 18V16" />
-        <path fill="#36C5F0" d="M8.5 8A2.5 2.5 0 1 1 11 5.5V8z" /><path fill="#36C5F0" d="M8.5 9A2.5 2.5 0 1 1 6 11.5H8" />
-        <path fill="#2EB67D" d="M16 8.5A2.5 2.5 0 1 1 18.5 11H16z" /><path fill="#2EB67D" d="M15 8.5A2.5 2.5 0 1 1 12.5 6v2" />
-        <path fill="#ECB22E" d="M15.5 16A2.5 2.5 0 1 1 13 18.5V16z" /><path fill="#ECB22E" d="M15.5 15A2.5 2.5 0 1 1 18 12.5H16" />
-      </svg>
-    );
-  }
-  const tone = name.startsWith("Zillow") ? "#006aff" : name === "Zapier" ? "#ff4a00" : name === "Dotloop" ? "#1f4b99" : name === "Mojo" ? "#111" : name === "API Nation" ? "#6b4eff" : name === "CRM Connect" ? "#1c93b5" : "#333";
-  const mark = name === "Zapier" ? "⚡" : name.startsWith("Zillow") ? "Z" : name === "Dotloop" ? "dl" : name === "Mojo" ? "M" : name === "API Nation" ? "AN" : name === "CRM Connect" ? "CC" : "✉";
-  return <span className="grid h-6 min-w-6 place-items-center rounded px-1 text-[11px] font-bold text-white" style={{ background: tone }}>{mark}</span>;
+  const marks: Record<string, { text: string; color: string }> = {
+    Flair: { text: "Flair", color: "#1f8a4c" },
+    "Follow Up Boss": { text: "follow up boss", color: "#f15a24" },
+    Google: { text: "Google", color: "#4285F4" },
+    Zapier: { text: "zapier", color: "#ff4a00" },
+    "CRM Connect": { text: "CRM Connect", color: "#1c93b5" },
+    Slack: { text: "slack", color: "#611f69" },
+    BrokerMint: { text: "BROKER MINT", color: "#111" },
+    "Zillow Tech Connect": { text: "Zillow", color: "#006aff" },
+    "Zillow Contact API": { text: "Zillow", color: "#006aff" },
+    Dotloop: { text: "dotloop", color: "#1f4b99" },
+    Mojo: { text: "MOJO", color: "#c41230" },
+    ProLinc: { text: "ProLinc", color: "#0b6b4f" },
+    "API Nation": { text: "API Nation", color: "#5b3cc4" },
+    "External Email Tracking": { text: "Email Tracking", color: "#333" },
+  };
+  const mark = marks[name] || { text: name, color: "#333" };
+  return <span className="text-[18px] leading-none font-semibold tracking-tight" style={{ color: mark.color }}>{mark.text}</span>;
 }
 
 function IntegrationsTab() {
@@ -2238,7 +2168,7 @@ function IntegrationsTab() {
           <button type="button" className="flex h-12 w-full items-center justify-between px-4 text-left" onClick={() => setOpen(open === name ? null : name)}>
             <span className="flex items-center gap-3">
               <BrandLogo name={name} />
-              <span className={name === "External Email Tracking" ? "text-[15px] font-bold text-[#222]" : "text-[15px] text-[#333]"}>{name}</span>
+              {name.startsWith("Zillow") ? <span className="text-[15px] text-[#333]">{name.replace("Zillow ", "")}</span> : null}
             </span>
             <span className="text-[18px] text-[#888]">▾</span>
           </button>
@@ -2875,17 +2805,15 @@ export function MarketingView() {
         <button type="button" onClick={() => shift(1)}>›</button>
         <Menu className="ml-auto" label={<span className="border border-[#ccc] bg-white px-2 py-1 text-[12px]">Export All ▾</span>} items={[{ label: "Excel (.csv)", onClick: exportCsv }]} />
       </div>
-      <div className="mb-4 flex gap-3">
-        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">Search ($)</p><p className="text-[22px] text-[#1c93b5]">${report.searchBudget}</p></article>
-        <article className="border border-[#e5e5e5] bg-white px-4 py-3"><p className="text-[12px] text-[#888]">ListCast ($)</p><p className="text-[22px] text-[#1c93b5]">${report.listcastBudget}</p></article>
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
+        <article className="bg-[#1c93b5] px-6 py-8 text-white"><p className="text-[16px]">Search</p><p className="text-[40px] leading-tight">${report.searchBudget.toLocaleString("en-CA")}</p></article>
+        <article className="border border-[#e5e5e5] bg-white px-6 py-8"><p className="text-[16px] text-[#666]">ListCast</p><p className="text-[40px] leading-tight text-[#243238]">${report.listcastBudget.toLocaleString("en-CA")}</p></article>
       </div>
-      <h2 className="mb-2 font-bold">Google Marketing</h2>
-      <p className="mb-3 text-[13px] text-[#555]">Google lead counts for {names[month]} {year}: {report.totalLeads}. Budget on file: ${report.searchBudget.toLocaleString("en-CA")}.</p>
-      <h2 className="mb-2 font-bold">Search Marketing</h2>
-      <div className="grid gap-3 lg:grid-cols-[300px_1fr]">
-        <article className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
+      <h2 className="mb-2 text-[22px] font-semibold">Search Marketing</h2>
+      <div className="grid gap-3 lg:grid-cols-[320px_1fr]">
+        <article className="bg-[#e7f4f8] p-4 text-[13px]">
           <p className="font-semibold">Budget</p>
-          <p className="mt-2 text-[20px] font-semibold text-[#1c93b5]">BUYER ${report.searchBudget.toLocaleString("en-CA")}</p>
+          <p className="mt-2 text-[28px] font-semibold text-[#1c93b5]">BUYER ${report.searchBudget.toLocaleString("en-CA")}</p>
           <p className="mt-2 text-[13px]">ListCast ${report.listcastBudget.toLocaleString("en-CA")}</p>
           <p className="mt-3 text-[13px]">Need to discuss your campaign?</p>
           <button type="button" className="mt-2 border border-[#1c93b5] px-3 py-1 text-[12px] text-[#1c93b5]" onClick={() => void contact()}>Contact Us</button>

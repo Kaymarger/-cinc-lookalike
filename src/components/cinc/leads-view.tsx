@@ -20,7 +20,7 @@ import { nowLabel, uid, useCinc, type Assign } from "./store";
 import { loadOfficePrefs } from "./office-prefs";
 import { Btn, checkCls, Field, inputCls, Menu, ModalFrame, useComposer } from "./ui";
 
-const LEAD_COLUMNS = ["Name/Info", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"];
+const LEAD_COLUMNS = ["Name/Info", "+", "Pipeline", "Registered", "Price/City", "Timeframe", "Last Login", "Last Touch", "Next Reminder", "Activity", "Assigned To"];
 
 type LeadViewSnapshot = { name: string; stage: string; agent: string; type: string; checks: string[]; q: string };
 
@@ -1052,7 +1052,7 @@ export function LeadsView({
                   <th className="border-r border-b border-[#e5e5e5]" />
                   {leadColumns.map((col) => (
                     <th key={col} className={`border-r border-b border-[#e5e5e5] px-1 text-left text-[10px] leading-tight ${col === "Name/Info" ? "min-w-[180px]" : ""}`}>
-                      <button type="button" className="uppercase" onClick={() => { if (sortKey === col && sortMode === "value") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("value"); setSortDir(1); } }}>{col}{sortKey === col && sortMode === "value" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>
+                      {col === "+" ? <span>+</span> : <button type="button" className="uppercase" onClick={() => { if (sortKey === col && sortMode === "value") setSortDir((dir) => (dir === 1 ? -1 : 1)); else { setSortKey(col); setSortMode("value"); setSortDir(1); } }}>{col}{sortKey === col && sortMode === "value" ? (sortDir === 1 ? " ↑" : " ↓") : ""}</button>}
                     </th>
                   ))}
                 </tr>
@@ -1085,6 +1085,15 @@ export function LeadsView({
                         <span className="inline-flex items-center gap-1 rounded bg-[#eef3f6] px-1.5 py-0.5 text-[12px] text-[#243238]" aria-label={`Score ${scoreBadge(row.score)}`}><span className="text-[#e39b2b]">★</span> {scoreBadge(row.score)}</span>
                         <span className={`rounded px-1 text-[12px] ${row.type === "Seller" ? "bg-[#e5f6ea] text-[#2e9e5b]" : "bg-[#eee] text-[#666]"}`}>{row.type}</span>
                       </p>
+                    </td> : null}
+                    {leadColumns.includes("+") ? <td className="px-1 text-center" style={{ order: leadColumns.indexOf("+") + 1 }}>
+                      <button type="button" className="text-[16px] text-[#1c93b5]" aria-label={`Add a label for ${row.name}`} onClick={() => chrome.openModal(
+                        <ApplyLabels
+                          selected={state.labels[row.id] ?? []}
+                          onClose={chrome.closeModal}
+                          onApply={(labels) => { update((current) => ({ ...current, labels: { ...current.labels, [row.id]: labels } })); chrome.closeModal(); }}
+                        />
+                      )}>+</button>
                     </td> : null}
                     {leadColumns.includes("Labels") ? <td className="px-1" style={{ order: leadColumns.indexOf("Labels") + 1 }}>
                       <div className="flex flex-col items-center gap-1">
@@ -1131,21 +1140,19 @@ export function LeadsView({
                       </div>
                     </td> : null}
                     {leadColumns.includes("Registered") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Registered") + 1 }}>{tidyTime(row.registered)}<br />{row.source}</td> : null}
-                    {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br />{row.city && row.city !== "—" ? row.city : "n/a"}</td> : null}
+                    {leadColumns.includes("Price/City") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Price/City") + 1 }}>{listPrice(row.price)}<br /><span title="City">⌂ {row.city && row.city !== "—" ? row.city : "n/a"}</span></td> : null}
                     {leadColumns.includes("Timeframe") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Timeframe") + 1 }}>{row.timeframe}</td> : null}
                     {leadColumns.includes("Last Login") ? <td className="px-2 text-[12px]" style={{ order: leadColumns.indexOf("Last Login") + 1 }}>{row.logins === 0 ? "—" : <>{tidyTime(row.lastLogin)}<br />{row.logins} Total</>}</td> : null}
                     {leadColumns.includes("Last Touch") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Last Touch") + 1 }}>
-                      <span title="Last touch">{row.lastTouch === "—" ? "—" : tidyTime(row.lastTouch)}</span><br />
-                      <span className="text-[#888]">{row.touchCount || 0} touch{(row.touchCount || 0) === 1 ? "" : "es"}</span>
+                      <span className="text-[#2e9e5b]" title="Phone">P</span> <span className="text-[#1c93b5]" title="Text">T</span> <span className="text-[#e39b2b]" title="Email">E</span> {row.lastTouch === "—" ? "—" : tidyTime(row.lastTouch)}<br />
+                      <span className="text-[#888]">{row.touchCount || 0}</span>
                     </td> : null}
                     {leadColumns.includes("Next Reminder") ? <td className={`px-2 text-[12px] ${row.overdue ? "text-[#d9363e]" : ""}`} style={{ order: leadColumns.indexOf("Next Reminder") + 1 }}>
                       <button type="button" className="text-left text-[#1c93b5] underline" onClick={() => openReminder(row)}>{row.nextReminder}</button>
                     </td> : null}
                     {leadColumns.includes("Activity") ? <td className="px-2 text-[12px] leading-5" style={{ order: leadColumns.indexOf("Activity") + 1 }}>
-                      <span className="text-[#2e9e5b]" title="Views">Views {row.views}</span><br />
-                      <span className="text-[#e39b2b]" title="Saved">Saved {row.saved}</span><br />
-                      <span className="text-[#d9363e]" title="Favourites">Fav {row.fav}</span><br />
-                      <span className="text-[#1c93b5]" title="Inquiries">Inq {row.inq}</span>
+                      <span className="text-[#2e9e5b]" title="Views">V {row.views}</span> <span className="text-[#e39b2b]" title="Saved">S {row.saved}</span><br />
+                      <span className="text-[#d9363e]" title="Favourites">F {row.fav}</span> <span className="text-[#1c93b5]" title="Inquiries">I {row.inq}</span>
                     </td> : null}
                     {leadColumns.includes("Assigned To") ? <td className="px-2 text-[13px] leading-6" style={{ order: leadColumns.indexOf("Assigned To") + 1 }}>
                       {(["agent", "partner", "listing"] as const).map((slot) => (
@@ -1221,7 +1228,7 @@ export function LeadsView({
 
 function ValidityIcon({ ok }: { ok: boolean }) {
   if (ok) return <svg viewBox="0 0 16 16" className="inline h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M3 8.5 6.2 12 13 4" /></svg>;
-  return <svg viewBox="0 0 16 16" className="inline h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="4" y="7" width="8" height="6" rx="1" /><path d="M6 7V5a2 2 0 0 1 4 0v2" /></svg>;
+  return <svg viewBox="0 0 16 16" className="inline h-3.5 w-3.5 text-[#e39b2b]" fill="currentColor" aria-label="Needs a check"><path d="M8 1.5 15 14H1L8 1.5zm0 4.2-.7 3.6h1.4L8 5.7zM8 11.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6z" /></svg>;
 }
 
 function RailIcon({ name }: { name: string }) {
@@ -1410,8 +1417,8 @@ function LeadDetail({
               ))}
             </div>
             <LeadSearches leadId={row.id} leadEmail={row.email} />
-            <p className="mt-3 flex justify-center gap-3 text-[13px] text-[#555]">
-              <span title="Views">Views {row.views}</span><span title="Saved">Saved {row.saved}</span><span title="Favourites">Fav {row.fav}</span><span title="Inquiries">Inq {row.inq}</span>
+            <p className="mt-3 flex justify-center gap-4 text-[13px] text-[#555]">
+              <span title="Views">V {row.views}</span><span title="Saved">S {row.saved}</span><span title="Favourites">F {row.fav}</span><span title="Inquiries">I {row.inq}</span><span title="Files">C 0</span>
             </p>
             <div className="mt-2">
               <Menu
@@ -1441,14 +1448,21 @@ function LeadDetail({
             </div>
             {deals.length ? deals.map((deal) => <p key={deal.id} className="text-left text-[12px]">{deal.address}</p>) : <p className="text-left text-[11px] text-[#888]">Track the revenue opportunities associated with this lead.</p>}
             <div className="mt-3 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Communication</div>
-            <div className="grid grid-cols-3 gap-2 bg-[#e7f4f8] p-3 text-[13px]">
-              {[["Last Touch", row.lastTouch], ["Last Login", row.lastLogin], ["Calls", String(calls)], ["Texts", String(texts)], ["Alerts", String(state.alertFreq[row.id] ? 1 : 0)], ["Emails", String(emails)]].map(([label, value]) => (
-                <div key={label}><p className="text-[#666]">{label}</p><p className="text-[20px] font-semibold text-[#243238]">{value}</p></div>
+            <div className="grid grid-cols-2 bg-[#e7f4f8] text-center text-[12px]">
+              <div className="border border-[#d5e8ee] p-2"><p className="text-[14px]">{tidyTime(row.lastTouch)}</p><p>Last Touch</p></div>
+              <div className="border border-[#d5e8ee] p-2"><p className="text-[14px]">{tidyTime(row.lastLogin)}</p><p>Last Login</p></div>
+            </div>
+            <div className="grid grid-cols-4 bg-[#e7f4f8] text-center text-[11px]">
+              {[["Calls", String(calls)], ["Texts", String(texts)], ["Alerts", String(state.alertFreq[row.id] ? 1 : 0)], ["Emails", String(emails)]].map(([label, value]) => (
+                <div key={label} className="border border-[#d5e8ee] p-2"><p className="text-[14px]">{value}</p><p>{label}</p></div>
               ))}
             </div>
             <div className="mt-2 bg-[#a7d3df] px-2 py-1 text-left text-[12px] font-bold">Email Information</div>
-            <div className="grid grid-cols-2 gap-1 bg-[#e7f4f8] p-2 text-left text-[10px]">
-              <p>Email Clicks<br /><b>0</b></p><p>Email Opens<br /><b>0</b></p><p>Alert Opens<br /><b>0</b></p><p>Peak Email Usage<br /><b>—</b></p><p>Common Device<br /><b>—</b></p>
+            <div className="grid grid-cols-3 bg-[#e7f4f8] text-center text-[11px]">
+              <p className="border border-[#d5e8ee] p-2">0%<br />Email Clicks</p><p className="border border-[#d5e8ee] p-2">0%<br />Email Opens</p><p className="border border-[#d5e8ee] p-2">0%<br />Alert Opens</p>
+            </div>
+            <div className="grid grid-cols-2 bg-[#e7f4f8] text-left text-[11px]">
+              <p className="border border-[#d5e8ee] p-2">Peak Email Usage<br /><b>—</b></p><p className="border border-[#d5e8ee] p-2">Common Device<br /><b>—</b></p>
             </div>
             <p className="mt-3 text-left text-[14px] text-[#666]">Registered {tidyTime(row.registered)} ago from {row.source}</p>
           </div>
