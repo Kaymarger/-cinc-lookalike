@@ -713,14 +713,14 @@ export function LeadsView({
     chrome.toast("Restored the selected leads.");
   }
 
-  function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) {
+  function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") {
     if (row.origin === "site" && kind !== "note") {
       appendActivity(row.id, { kind, title, body });
     }
     if (kind === "note") {
       update((current) => ({
         ...current,
-        notes: { ...current.notes, [row.id]: [...(current.notes[row.id] ?? []), { id: uid("note"), body: body || title, at: nowLabel() }] },
+        notes: { ...current.notes, [row.id]: [...(current.notes[row.id] ?? []), { id: uid("note"), body: noteText(body || title), at: nowLabel(), kind: noteKind }] },
       }));
     }
     if (kind === "call" || kind === "text" || kind === "email") {
@@ -1118,7 +1118,7 @@ export function LeadsView({
                         <Menu
                           label={<span className="text-[11px] text-[#1c93b5]">Quick Actions ▾</span>}
                           items={[
-                            { label: "+ Add Note", onClick: () => chrome.openModal(<NoteModal onClose={chrome.closeModal} onSave={(body) => { log(row, "note", "Note added", body); chrome.closeModal(); }} />) },
+                            { label: "+ Add Note", onClick: () => chrome.openModal(<NoteModal onClose={chrome.closeModal} onSave={(body, _pinned, noteKind) => { log(row, "note", "Note added", body, noteKind); chrome.closeModal(); }} />) },
                             { label: "+ New Reminder", onClick: () => chrome.openModal(<ReminderModal leadId={row.id} onClose={chrome.closeModal} />) },
                             { label: "→ Send Text", onClick: () => composer.text(row.phone, (value) => sendLead("sms", row, value)) },
                             { label: "→ Send Email", onClick: () => composer.email(row.email, (sent, value) => sent ? sendLead("email", row, value) : (log(row, "email", "Draft", value.body), true)) },
@@ -1269,7 +1269,7 @@ function LeadDetail({
   rows: Row[];
   expanded: boolean;
   onExpand: () => void;
-  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) => void;
+  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") => void;
   onPipeline: (id: string, stage: string) => void;
   assignChoices: { agents: string[]; partners: string[]; listing: string[] };
   onAssign: (id: string, assign: Assign) => void;
@@ -1299,7 +1299,7 @@ function LeadDetail({
   const next = rows[index + 1];
   const site = leads.find((lead) => lead.id === row.id);
   const crm = CRM_LEADS.find((lead) => lead.id === row.id);
-  const notes = [...(state.notes[row.id] ?? []), ...(site?.activity.filter((item) => item.kind === "note").map((item) => ({ id: item.id, body: item.body || item.title, at: item.at })) ?? [])];
+  const notes = [...(state.notes[row.id] ?? []), ...(site?.activity.filter((item) => item.kind === "note").map((item) => ({ id: item.id, body: item.body || item.title, at: item.at, kind: undefined })) ?? [])];
   const deals = state.deals.filter((deal) => deal.client === row.name);
   const reminders = state.reminders.filter((item) => item.leadId === row.id);
   const appts = state.appointments.filter((item) => item.leadId === row.id);
@@ -1489,7 +1489,7 @@ function LeadDetail({
             <button type="button" aria-label="Next lead" className={next ? "px-1 text-[20px] text-[#1c93b5]" : "px-1 text-[20px] opacity-30"} disabled={!next} onClick={() => next && go(href.lead(next.id, tab))}>›</button>
           </div>
         ) : null}
-        <NoteComposer onSave={(body, pinned) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
+        <NoteComposer onSave={(body, pinned, noteKind) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body, noteKind); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
         <div className="mb-3 flex gap-5 border-b border-[#e5e5e5] bg-white px-3">
           {tabs.map((item) => (
             <a key={item.id} href={href.lead(row.id, item.id)} className={`py-2 text-[13px] ${tab === item.id ? "border-b-2 border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`}>
@@ -1562,7 +1562,7 @@ function LeadDetail({
               <article className="mb-3 rounded-md border border-[#d5e8ee] bg-[#e7f6fb] p-4 text-[15px] shadow-md">
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
-                <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{notes[0].body}</p>
+                <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{noteText(notes[0].body)}</p>
                 <div className="mt-2 flex justify-end gap-3"><button type="button" className="text-[12px] text-[#d9363e]" onClick={() => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).filter((note) => note.id !== notes[0].id) } })); chrome.toast("Note deleted."); }}>Delete</button><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={notes[0].body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === notes[0].id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button></div>
               </article>
             ) : null}
@@ -1573,7 +1573,7 @@ function LeadDetail({
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#1c93b5]" />
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">{friendlyWhen(note.at)} by {CRM_AGENT.name}</p>
-                <p className="mt-1 text-[13px]">{note.body}</p>
+                <p className="mt-1 text-[13px]">{noteText(note.body)}</p>
               </article>
             )) : null}
             {state.calls.filter((call) => {
@@ -1611,9 +1611,10 @@ function LeadDetail({
               <article key={item.id} className={`mb-2 flex border border-[#eee] border-l-4 bg-white p-3 shadow-sm ${item.done ? "border-l-[#2e9e5b] opacity-80" : "border-l-[#e39b2b]"}`}>
                 <div className="flex-1">
                   <p className="text-[11px] font-bold tracking-wide text-[#e39b2b] uppercase">{item.day}</p>
+                  <p className="text-[12px] text-[#1c93b5]">{row.name}</p>
                   <p className="text-[11px] text-[#888]">Assigned to {item.title.match(/\(([^,]+),/)?.[1] || "the agent you chose"}</p>
                   <p className="text-[11px] text-[#888]">Due {item.due.includes("-") && item.due.slice(0, 4) > "2000" ? item.due : item.due}</p>
-                  <p className={`text-[13px] ${item.done ? "text-[#888] line-through" : ""}`}>{item.title.replace(/^(?:Call|Email|Other): /, "").replace(/ \([^)]+\)$/, "")}</p>
+                  <p className={`text-[13px] ${item.done ? "text-[#888] line-through" : ""}`}>{noteText(item.title).replace(/ \([^)]+\)$/, "")}</p>
                   {item.done ? <p className="mt-1 text-[12px] font-semibold text-[#2e9e5b]">Completed</p> : null}
                   <label className="mt-1 flex items-center gap-2 text-[12px]">
                     <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
@@ -1940,7 +1941,7 @@ function Conversation({
   onLog,
 }: {
   row: Row;
-  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string) => void;
+  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
@@ -2103,8 +2104,13 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
   );
 }
 
-function NoteModal({ onClose, onSave, initial = "" }: { onClose: () => void; onSave: (body: string, pinned?: boolean) => void; initial?: string }) {
-  const [body, setBody] = useState(initial);
+function noteText(body: string, people: string[] = []) {
+  const clean = body.replace(/^(?:Call|General|Email|Other):\s+/, "").trim();
+  return people.length ? `${clean} (notify ${people.join(", ")})` : clean;
+}
+
+function NoteModal({ onClose, onSave, initial = "" }: { onClose: () => void; onSave: (body: string, pinned?: boolean, noteKind?: "Call" | "General") => void; initial?: string }) {
+  const [body, setBody] = useState(noteText(initial));
   const [kind, setKind] = useState("Call");
   const [pinned, setPinned] = useState(false);
   return (
@@ -2117,13 +2123,13 @@ function NoteModal({ onClose, onSave, initial = "" }: { onClose: () => void; onS
       </div>
       <div className="mt-3 flex justify-end gap-2">
         <Btn onClick={() => setBody("")}>Clear</Btn>
-        <Btn kind="teal" disabled={!body.trim()} onClick={() => onSave(`${kind}: ${body.trim()}`, pinned)}>Save</Btn>
+        <Btn kind="teal" disabled={!body.trim()} onClick={() => onSave(noteText(body), pinned, kind === "General" ? "General" : "Call")}>Save</Btn>
       </div>
     </ModalFrame>
   );
 }
 
-function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => void }) {
+function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean, noteKind?: "Call" | "General") => void }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [kind, setKind] = useState("Call");
@@ -2148,8 +2154,8 @@ function NoteComposer({ onSave }: { onSave: (body: string, pinned?: boolean) => 
       <p className="text-[11px] text-[#888]">Listing Agents: Casey Archibald · Partner</p>
       <div className="mt-2 flex justify-end gap-2">
         <button type="button" onClick={() => { setBody(""); setPinned(false); setPeople([]); setKind("Call"); }}>Clear</button>
-        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(`${kind}: ${body.trim()}${people.length ? ` (notify ${people.join(", ")})` : ""}`, pinned); setBody(""); setOpen(false); }}>Save & Next</button>
-        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(`${kind}: ${body.trim()}${people.length ? ` (notify ${people.join(", ")})` : ""}`, pinned); setBody(""); setOpen(false); }}>Save</button>
+        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(noteText(body, people), pinned, kind === "General" ? "General" : "Call"); setBody(""); setOpen(false); }}>Save & Next</button>
+        <button type="button" disabled={!body.trim()} className="text-[#1c93b5] disabled:opacity-40" onClick={() => { onSave(noteText(body, people), pinned, kind === "General" ? "General" : "Call"); setBody(""); setOpen(false); }}>Save</button>
       </div>
     </div>
   );
@@ -2339,12 +2345,13 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
           const dueDate = new Date(`${date}T12:00:00`);
           const dueLabel = Number.isNaN(dueDate.getTime()) ? date : dueDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
           const due = anytime ? dueLabel : `${dueLabel} at ${time} ${meridiem}`;
-          const title = name.trim();
+          const title = name.trim().replace(/^(?:Call|Email|Other):\s+/, "");
+          const leadName = lead?.name || CRM_LEADS.find((item) => item.id === leadId)?.name || "";
           update((current) => ({
             ...current,
             reminders: reminderId
-              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title, due, day: kind.toUpperCase() } : item)
-              : [...current.reminders, { id: uid("rem"), leadId, title, due, done: false, day: kind.toUpperCase() }],
+              ? current.reminders.map((item) => item.id === reminderId ? { ...item, title, due, day: kind.toUpperCase(), leadName: leadName || item.leadName } : item)
+              : [...current.reminders, { id: uid("rem"), leadId, title, due, done: false, day: kind.toUpperCase(), leadName }],
           }));
           chrome.toast(reminderId ? "Reminder updated." : "Reminder saved.");
           onClose();

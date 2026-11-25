@@ -117,8 +117,8 @@ export type LandingPage = {
   active: boolean;
 };
 
-export type Note = { id: string; body: string; at: string };
-export type Reminder = { id: string; leadId: string; title: string; due: string; done: boolean; day: string };
+export type Note = { id: string; body: string; at: string; kind?: "Call" | "General" };
+export type Reminder = { id: string; leadId: string; title: string; due: string; done: boolean; day: string; leadName?: string };
 export type Appt = {
   id: string;
   leadId: string;
@@ -454,6 +454,7 @@ const DEFAULT: SpaState = {
       due: "Oct 20, 2026",
       done: false,
       day: "DAY 1 (CALL)",
+      leadName: "Morgan Ellis",
     },
   ],
   appointments: [],
@@ -503,7 +504,9 @@ const DEFAULT: SpaState = {
 function cleanNotes(notes: SpaState["notes"]): SpaState["notes"] {
   const next: SpaState["notes"] = {};
   for (const [id, list] of Object.entries(notes || {})) {
-    next[id] = (list || []).filter((note) => !/QA Test note 1124/i.test(note.body || ""));
+    next[id] = (list || [])
+      .filter((note) => !/QA Test note 1124/i.test(note.body || ""))
+      .map((note) => ({ ...note, body: (note.body || "").replace(/^(?:Call|General|Email|Other):\s+/, "") }));
   }
   return next;
 }

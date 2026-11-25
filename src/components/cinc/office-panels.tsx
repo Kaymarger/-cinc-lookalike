@@ -337,11 +337,15 @@ export function PageEditor({ page }: { page: string }) {
   const [sections, setSections] = useState<EditorSection[]>(() => starterSections(page));
   const [note, setNote] = useState("");
   const [liveCards, setLiveCards] = useState<{ id: string; address: string; price: number; beds: number; baths: number; image: string }[]>([]);
+  const [cardsReady, setCardsReady] = useState(false);
+  const [sectionName, setSectionName] = useState("");
+  const [addingArea, setAddingArea] = useState(false);
+  const [areaName, setAreaName] = useState("");
   useEffect(() => {
     void fetch("/api/listings?preview=1", { cache: "no-store" }).then(async (response) => {
       const data = (await response.json().catch(() => null)) as { properties?: { id: string; address: string; price: number; beds: number; baths: number; image: string }[] } | null;
-      if (data?.properties?.length) setLiveCards(data.properties);
-    }).catch(() => undefined);
+      setLiveCards((data?.properties ?? []).filter((card) => card.address && !/sample|placeholder|preview of a public/i.test(card.address)));
+    }).catch(() => setLiveCards([])).finally(() => setCardsReady(true));
   }, []);
   useEffect(() => {
     let cancelled = false;
@@ -386,8 +390,8 @@ export function PageEditor({ page }: { page: string }) {
         <h1 className="text-[18px] font-semibold">{title}</h1>
         <Btn kind="blue" onClick={savePage}>Save Page</Btn>
       </div>
-      <label className="mt-4 block max-w-lg">Permalink
-        <input className="mt-1 h-8 w-full border border-[#ccc] px-2" value={permalink} onChange={(event) => setPermalink(event.target.value)} />
+      <label className="mt-4 block max-w-lg text-[13px]">Permalink
+        <input className="mt-1 h-8 w-full border border-[#d5e8ee] px-2 font-semibold text-[#1c93b5]" value={permalink} onChange={(event) => setPermalink(event.target.value)} />
       </label>
       <button type="button" className="mt-3 text-[#1c93b5]" onClick={() => setMetaOpen((value) => !value)}>Custom Meta Values</button>
       {metaOpen ? (
@@ -405,19 +409,45 @@ export function PageEditor({ page }: { page: string }) {
             </div>
             <label className="mt-2 block"><input type="checkbox" checked={section.show} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, show: event.target.checked } : item))} /> Show this section on the public page</label>
             {section.name === "Featured Listings" ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {(liveCards.length ? liveCards : []).map((card) => (
-                  <div key={card.id} className="border border-[#eee] p-2">
-                    {card.image ? <img src={card.image} alt="" className="mb-2 h-16 w-full object-cover" /> : <div className="mb-2 h-16 bg-[#e7f5f8]" />}
-                    <p className="font-semibold">{card.address}</p>
-                    <p className="text-[12px] text-[#666]">${card.price.toLocaleString("en-CA")} | {card.beds} bd | {card.baths} ba</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {liveCards.map((card) => (
+                  <div key={card.id} className="border border-[#e5e5e5] bg-white">
+                    {card.image ? <img src={card.image} alt="" className="h-28 w-full object-cover" /> : <div className="grid h-28 place-items-center bg-[#f4f7f8] text-[12px] text-[#888]">No photo</div>}
+                    <div className="p-2">
+                      <p className="font-semibold text-[#243238]">{card.address}</p>
+                      <p className="text-[12px] text-[#666]">{card.price ? `$${Number(card.price).toLocaleString("en-CA")}` : "Price on request"} | {card.beds} bd | {card.baths} ba</p>
+                    </div>
                   </div>
                 ))}
-                {!liveCards.length ? <p className="text-[12px] text-[#888]">Listing cards appear here when the feed has active homes.</p> : null}
+                {cardsReady && !liveCards.length ? (
+                  <div className="col-span-full grid h-36 place-items-center border border-dashed border-[#c8c8c8] bg-[#fafafa] text-center">
+                    <div>
+                      <p className="font-semibold text-[#243238]">No listings in the feed</p>
+                      <p className="mt-1 text-[12px] text-[#777]">Featured cards show here when the CREA feed has active homes.</p>
+                    </div>
+                  </div>
+                ) : null}
+                {!cardsReady ? <p className="col-span-full text-[12px] text-[#888]">Loading listings from the feed…</p> : null}
               </div>
             ) : null}
             {section.name === "Neighborhood Guides" ? (
-              <ul className="mt-2 list-disc pl-5 text-[13px]">{(section.body || "Kitsilano").split(",").map((item) => <li key={item.trim()}>{item.trim()}</li>)}</ul>
+              <div className="mt-2">
+                <ul className="list-disc pl-5 text-[13px]">{section.body.split(",").map((item) => item.trim()).filter(Boolean).map((item) => <li key={item}>{item}</li>)}</ul>
+                {addingArea ? (
+                  <div className="mt-2 flex gap-2">
+                    <input className="h-8 flex-1 border border-[#ccc] px-2" value={areaName} onChange={(event) => setAreaName(event.target.value)} />
+                    <button type="button" className="bg-[#1c93b5] px-3 text-white" onClick={() => {
+                      const name = areaName.trim();
+                      if (!name) return;
+                      setSections((current) => current.map((item) => item.id === section.id ? { ...item, body: [...item.body.split(",").map((part) => part.trim()).filter(Boolean), name].join(", ") } : item));
+                      setAreaName("");
+                      setAddingArea(false);
+                    }}>Add</button>
+                  </div>
+                ) : (
+                  <button type="button" className="mt-2 grid h-16 w-full place-items-center border border-dashed border-[#c8c8c8] text-[13px] text-[#1c93b5]" onClick={() => setAddingArea(true)}>+ Add Neighborhood</button>
+                )}
+              </div>
             ) : null}
             <label className="mt-2 block">Section copy
               <textarea className="mt-1 h-16 w-full border border-[#ccc] p-2" value={section.body} onChange={(event) => setSections((current) => current.map((item) => item.id === section.id ? { ...item, body: event.target.value } : item))} />
@@ -426,11 +456,15 @@ export function PageEditor({ page }: { page: string }) {
         ))}
       </div>
       <div className="mt-4 flex gap-2">
-        <button type="button" className="border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => {
-          const name = window.prompt("Section name", "New section");
-          if (!name) return;
-          setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, body: "", agents: [] }]);
-        }}>Add Section</button>
+        <div className="flex items-center gap-2">
+          <input className="h-8 w-48 border border-[#ccc] px-2" value={sectionName} onChange={(event) => setSectionName(event.target.value)} placeholder="New section" />
+          <button type="button" className="border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => {
+            const name = sectionName.trim();
+            if (!name) return;
+            setSections((current) => [...current, { id: `sec-${Date.now()}`, name, show: true, body: "", agents: [] }]);
+            setSectionName("");
+          }}>+ Add Section</button>
+        </div>
         <Btn kind="blue" onClick={savePage}>Save Page</Btn>
       </div>
       {note ? <p className="mt-2 text-[#1c93b5]">{note}</p> : null}

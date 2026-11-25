@@ -21,7 +21,7 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
   const [message, setMessage] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"Basic" | "Advanced" | "Routing Overview">("Basic");
-  const [weights, setWeights] = useState<Record<string, { weight: string; min: string; max: string; status?: string; include?: string; exclude?: string }>>({});
+  const [weights, setWeights] = useState<Record<string, { weight: string; min: string; max: string; status?: string; reassign?: string; auto?: string; include?: string; exclude?: string }>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -145,19 +145,24 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
           <label className="flex items-center gap-1"><input type="checkbox" /> Normalized Sources</label>
         </div>
         <div className="overflow-auto">
-          <table className="w-full min-w-[720px] text-left text-[12px]">
-            <thead><tr>{["AGENT", "STATUS", "WEIGHT", "LEAD CAP", "MIN", "MAX", "INCLUDED", "EXCLUDED"].map((column) => <th key={column} className="border-b px-2 py-2 whitespace-nowrap">{column}</th>)}</tr></thead>
+          <table className="w-full min-w-[980px] text-left text-[12px]">
+            <thead><tr>{["AGENT", "STATUS", "REASSIGN", "AUTO-REASSIGN", "WEIGHT", "LEAD CAP", "MIN", "MAX", "INCLUDED", "EXCLUDED"].map((column) => <th key={column} className="border-b px-2 py-2 whitespace-nowrap">{column}</th>)}</tr></thead>
             <tbody>
               {roster.map((user) => {
-                const row = weights[user.id] || { weight: "17", min: "0", max: "999999999", status: "Yes", include: "", exclude: "" };
-                const setRow = (key: "weight" | "min" | "max" | "status" | "include" | "exclude", value: string) => setWeights((current) => ({ ...current, [user.id]: { ...row, [key]: value } }));
-                const on = (row.status || "Yes") === "Yes";
+                const row = weights[user.id] || { weight: "17", min: "0", max: "999999999", status: "Yes", reassign: "No", auto: "No", include: "", exclude: "" };
+                const setRow = (key: "weight" | "min" | "max" | "status" | "reassign" | "auto" | "include" | "exclude", value: string) => setWeights((current) => ({ ...current, [user.id]: { ...row, [key]: value } }));
+                const pill = (key: "status" | "reassign" | "auto", fallback: string) => {
+                  const on = (row[key] || fallback) === "Yes";
+                  return (
+                    <button type="button" className={`h-6 rounded-full px-2 text-[11px] font-semibold text-white ${on ? "bg-[#2e9e5b]" : "bg-[#b0b0b0]"}`} onClick={() => setRow(key, on ? "No" : "Yes")}>{on ? "Yes" : "No"}</button>
+                  );
+                };
                 return (
                   <tr key={user.id} className="border-b border-[#f3f3f3]">
                     <td className="px-2 py-2 whitespace-nowrap">{user.name}</td>
-                    <td>
-                      <button type="button" className={`h-6 rounded-full px-2 text-[11px] font-semibold text-white ${on ? "bg-[#2e9e5b]" : "bg-[#b0b0b0]"}`} onClick={() => setRow("status", on ? "No" : "Yes")}>{on ? "Yes" : "No"}</button>
-                    </td>
+                    <td>{pill("status", "Yes")}</td>
+                    <td>{pill("reassign", "No")}</td>
+                    <td>{pill("auto", "No")}</td>
                     <td><input className={inputCls} value={row.weight} onChange={(event) => setRow("weight", event.target.value)} /></td>
                     <td><input className={inputCls} defaultValue="0" /></td>
                     <td><input className={inputCls} value={row.min} onChange={(event) => setRow("min", event.target.value)} /></td>

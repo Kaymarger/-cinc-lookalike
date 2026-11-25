@@ -254,8 +254,8 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
                 <article key={item.id} className="mb-2 flex items-start gap-3 border border-[#eee] bg-white p-3">
                   <button type="button" aria-label="Complete reminder" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[#2e9e5b] text-[#2e9e5b]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) }))}>✓</button>
                   <div className="min-w-0 flex-1">
-                    <a className="font-semibold text-[#1c93b5]" href={href.lead(item.leadId)}>{reminderTitle(item.title)}</a>
-                    <p className="mt-1 inline-block bg-[#eef6f8] px-2 py-0.5 text-[12px] text-[#1c93b5]">{reminderLead(item.leadId, leads)}</p>
+                    <a className="font-semibold text-[#1c93b5]" href={href.lead(item.leadId)}>{reminderTitle(item.title, reminderLead(item.leadId, leads, item.leadName))}</a>
+                    <p className="mt-1 inline-block bg-[#eef6f8] px-2 py-0.5 text-[12px] text-[#1c93b5]">{reminderLead(item.leadId, leads, item.leadName)}</p>
                     <p className="text-[12px] text-[#d9363e]">Overdue: {reminderWhen(item.due)}</p>
                   </div>
                   <Menu label={<span className="px-1 text-[#888]">⋯</span>} items={[{ label: "Open lead", href: href.lead(item.leadId) }, { label: "Complete", onClick: () => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: true } : reminder) })) }]} />
@@ -264,7 +264,12 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
               {!openReminders.length ? <p className="text-[13px] text-[#888]">No reminders for this range.</p> : null}
             </div>
           ) : null}
-          {tab === "Deal Reminders" ? <p className="text-[13px] text-[#555]">You&apos;re all caught up on your Reminders! Keep up the good work.</p> : null}
+          {tab === "Deal Reminders" ? (
+            <div className="grid place-items-center px-4 py-16 text-center">
+              <p className="text-[18px] font-semibold text-[#243238]">You&apos;re all caught up on your Reminders!</p>
+              <p className="mt-1 text-[13px] text-[#666]">Keep up the good work.</p>
+            </div>
+          ) : null}
           {tab === "Trending Leads" ? (
             <div>
               <div className="mb-3 flex gap-2 text-[12px]">
@@ -444,9 +449,9 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
           {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}
         </select>
       </div>
-      <div className="mt-3 flex gap-3">
+      <div className="mt-3 flex gap-4">
         {(["Note", "Text", "Email", "Reminder"] as const).map((label) => (
-          <button key={label} type="button" title={label} className="grid h-12 w-12 place-items-center rounded-full border border-[#d7e8ee] bg-white text-[11px] font-semibold text-[#329bb9]" onClick={() => chrome.openModal(
+          <button key={label} type="button" title={label} className="grid justify-items-center gap-1 text-[11px] font-semibold text-[#329bb9]" onClick={() => chrome.openModal(
             <DealActionModal
               kind={label}
               onClose={chrome.closeModal}
@@ -460,7 +465,10 @@ function DealDetail({ deal, board }: { deal?: Deal; board: "purchases" | "listin
                 setTab(label === "Reminder" ? "Reminders" : "Activity");
               }}
             />
-          )}>{label.slice(0, 1)}</button>
+          )}>
+            <span className="grid h-12 w-12 place-items-center rounded-full border border-[#d7e8ee] bg-white text-[13px]">{label.slice(0, 1)}</span>
+            {label}
+          </button>
         ))}
       </div>
       <div className="mt-4 border border-[#e5e5e5] bg-white">
@@ -838,14 +846,18 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
               <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[12px] text-white" onClick={() => chrome.openModal(<TemplateModal group={group} onClose={chrome.closeModal} />)}>New Template</button>
               <button type="button" className="border border-[#1c93b5] px-2 py-1 text-[12px] text-[#1c93b5]" onClick={() => {
                 if (!picked.length) { chrome.toast("Select at least one template."); return; }
-                const name = window.prompt("Move selected to group", group);
-                if (!name) return;
-                update((current) => ({
-                  ...current,
-                  groups: current.groups.includes(name) ? current.groups : [...current.groups, name],
-                  templates: current.templates.map((item) => picked.includes(item.id) ? { ...item, group: name } : item),
-                }));
-                setPicked([]);
+                chrome.openModal(
+                  <NamePrompt title="Move Selected to Group" label="Group name" onClose={chrome.closeModal} onSave={(name) => {
+                    update((current) => ({
+                      ...current,
+                      groups: current.groups.includes(name) ? current.groups : [...current.groups, name],
+                      templates: current.templates.map((item) => picked.includes(item.id) ? { ...item, group: name } : item),
+                    }));
+                    setPicked([]);
+                    chrome.closeModal();
+                    chrome.toast("Templates moved.");
+                  }} />
+                );
               }}>Move Selected to Group</button>
               <button type="button" title="Copy" className={toolBtn} onClick={() => {
                 if (!picked.length) { chrome.toast("Select at least one template."); return; }
@@ -1788,11 +1800,12 @@ export function LandingView({ category }: { category: "all" | "buyers" | "seller
             <p className="text-center text-[13px] font-bold">{pageStats(page.id).views}</p>
             <p className="text-center text-[13px] font-bold">{pageStats(page.id).conv}%</p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => {
-                const name = window.prompt("Page name", page.name);
-                if (!name) return;
-                update((current) => ({ ...current, landingPages: current.landingPages.map((item) => item.id === page.id ? { ...item, name } : item) }));
-              }}>Edit</button>
+              <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(
+                <NamePrompt title="Edit page" label="Page name" onClose={chrome.closeModal} onSave={(name) => {
+                  update((current) => ({ ...current, landingPages: current.landingPages.map((item) => item.id === page.id ? { ...item, name } : item) }));
+                  chrome.closeModal();
+                }} />
+              )}>Edit</button>
               <button type="button" className="border border-[#d9363e] px-2 py-0.5 text-[12px] text-[#d9363e]" onClick={() => update((current) => ({ ...current, landingPages: current.landingPages.filter((item) => item.id !== page.id) }))}>Remove</button>
             </div>
           </article>
@@ -2134,9 +2147,11 @@ function Card({ title, action, children }: { title: string; action?: React.React
   );
 }
 
-function reminderTitle(title: string) {
-  const parsed = title.match(/^(?:Call|Email|Other): (.*?)(?: — .*)? \([^)]+\)$/);
-  return parsed?.[1] || title;
+function reminderTitle(title: string, leadName = "") {
+  const parsed = title.match(/^(?:Call|Email|Other):\s*(.*?)(?:\s+—\s.*)?(?:\s+\([^)]+\))?$/);
+  const name = (parsed?.[1] || title).replace(/^(?:Call|Email|Other):\s+/, "").trim();
+  if (/^lead$/i.test(name) && leadName) return leadName;
+  return name || leadName || title;
 }
 
 function reminderWhen(due: string) {
@@ -2147,8 +2162,9 @@ function reminderWhen(due: string) {
   return match[4] ? `${label} at ${match[4]} ${match[5]}` : label;
 }
 
-function reminderLead(id: string, leads: { id: string; name: string }[]) {
-  return leads.find((lead) => lead.id === id)?.name || CRM_LEADS.find((lead) => lead.id === id)?.name || "Lead";
+function reminderLead(id: string, leads: { id: string; name: string }[], stored?: string) {
+  const names = [leads.find((lead) => lead.id === id)?.name, CRM_LEADS.find((lead) => lead.id === id)?.name, stored];
+  return names.find((name) => name && !/^lead$/i.test(name.trim()) && name.trim() !== "This lead") || "Open this lead";
 }
 
 function NamePrompt({ title, label, onClose, onSave }: { title: string; label: string; onClose: () => void; onSave: (name: string) => void }) {
@@ -2232,7 +2248,7 @@ function BrandLogo({ name }: { name: string }) {
     "External Email Tracking": { text: "Email Tracking", color: "#333" },
   };
   const mark = marks[name] || { text: name, color: "#333" };
-  return <span className="text-[18px] leading-none font-semibold tracking-tight" style={{ color: mark.color }}>{mark.text}</span>;
+  return <span className="text-[26px] leading-none font-semibold tracking-tight" style={{ color: mark.color }}>{mark.text}</span>;
 }
 
 function IntegrationsTab() {
@@ -2241,22 +2257,18 @@ function IntegrationsTab() {
   return (
     <div>
       {INTEGRATIONS.map((name) => (
-        <section key={name} className="mb-2 border border-[#eee] bg-white shadow-sm">
-          <button type="button" className="flex h-12 w-full items-center justify-between px-4 text-left" onClick={() => setOpen(open === name ? null : name)}>
-            <span className="flex items-center gap-3">
+        <section key={name} className="mb-2 border border-[#d5d5d5] border-t-2 border-t-[#24384a] bg-white">
+          <div className="flex min-h-[64px] items-center gap-3 px-4">
+            <button type="button" className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left" onClick={() => setOpen(open === name ? null : name)}>
               <BrandLogo name={name} />
-              {name.startsWith("Zillow") ? <span className="text-[15px] text-[#333]">{name.replace("Zillow ", "")}</span> : null}
-            </span>
-            <span className="text-[18px] text-[#888]">▾</span>
-          </button>
-          {open === name ? (
-            <div className="px-4 pb-4 text-[13px]">
-              <p className="mb-2 text-[#555]">Connect {name} for this demo account. Nothing is sent to {name}.</p>
-              <Btn kind="teal" onClick={() => update((current) => ({ ...current, integrations: { ...current.integrations, [name]: !current.integrations[name] } }))}>
-                {state.integrations[name] ? "Disconnect" : "Connect"}
-              </Btn>
-            </div>
-          ) : null}
+              {name.startsWith("Zillow") ? <span className="text-[14px] text-[#555]">{name.replace("Zillow ", "")}</span> : null}
+            </button>
+            <button type="button" className="h-8 shrink-0 border border-[#1c93b5] px-3 text-[12px] font-semibold text-[#1c93b5]" onClick={() => update((current) => ({ ...current, integrations: { ...current.integrations, [name]: !current.integrations[name] } }))}>
+              {state.integrations[name] ? "Disconnect" : "Connect"}
+            </button>
+            <button type="button" aria-label={`${open === name ? "Hide" : "Show"} ${name}`} className="px-1 text-[22px] leading-none text-[#9aa0a6]" onClick={() => setOpen(open === name ? null : name)}>⌄</button>
+          </div>
+          {open === name ? <p className="px-4 pb-4 text-[13px] text-[#555]">Connect {name} for this office. Nothing is sent to {name}.</p> : null}
         </section>
       ))}
     </div>
@@ -2781,6 +2793,7 @@ export function CalendarView() {
 export function TasksView() {
   const { state, update } = useCinc();
   const chrome = useChrome();
+  const { leads } = useLeads();
   const taskList = useOfficeList("tasks", "title", ["title", "due", "status", "agent"]);
   const [picked, setPicked] = useState<string[]>([]);
   const arranged = applyOfficeList(state.reminders.map((item) => ({
@@ -2813,7 +2826,8 @@ export function TasksView() {
           <label key={item.id} className="flex items-center gap-2 border-b border-[#eee] py-2 text-[13px]">
             <input type="checkbox" aria-label={`Select ${item.title}`} checked={picked.includes(item.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, item.id] : picked.filter((id) => id !== item.id))} />
             <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
-            <a href={item.leadId ? href.lead(item.leadId) : href.tasks} className="text-[#1c93b5]">{item.title}</a>
+            <a href={item.leadId ? href.lead(item.leadId) : href.tasks} className="text-[#1c93b5]">{reminderTitle(item.title, reminderLead(item.leadId, leads, item.leadName))}</a>
+            <span className="text-[12px] text-[#666]">{reminderLead(item.leadId, leads, item.leadName)}</span>
             <span className="ml-auto text-[12px] text-[#888]">{item.due}</span>
           </label>
         ))}
