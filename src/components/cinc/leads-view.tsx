@@ -424,12 +424,83 @@ function LeadSources() {
   );
 }
 
+function LeadConsent({ onClose, onYes }: { onClose: () => void; onYes: () => void }) {
+  return (
+    <ModalFrame title="Lead Consent Confirmation" onClose={onClose}>
+      <p className="text-[14px] text-[#333]">Has this person agreed to be contacted by the office?</p>
+      <div className="mt-4 flex justify-end gap-2">
+        <Btn onClick={onClose}>No</Btn>
+        <Btn kind="teal" onClick={onYes}>Yes</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function ExportLeadsModal({ count, onClose, onSave }: { count: number; onClose: () => void; onSave: (email: string) => void }) {
+  const [email, setEmail] = useState("");
+  return (
+    <ModalFrame title="Export Leads" onClose={onClose}>
+      <Field label="Send to email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="office@example.com" /></Field>
+      <p className="text-[13px] text-[#555]">{count} total lead{count === 1 ? "" : "s"} to be exported.</p>
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="teal" onClick={() => onSave(email.trim())}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function LeadImport({ onClose }: { onClose: () => void }) {
+  const { add } = useLeads();
+  const chrome = useChrome();
+  const [rows, setRows] = useState<{ name: string; email: string; at: string }[]>([]);
+  return (
+    <div className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-[18px] font-semibold">Lead Imports</h1>
+        <button type="button" className="bg-[#1c93b5] px-3 py-1 text-[13px] text-white" onClick={() => chrome.openModal(
+          <ModalFrame title="New Import" onClose={chrome.closeModal}>
+            <p className="mb-2 text-[13px] text-[#555]">Upload a CSV with name, email, and phone columns. Nothing is emailed.</p>
+            <input type="file" accept=".csv,text/csv" onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+              const body = lines[0]?.toLowerCase().includes("email") ? lines.slice(1) : lines;
+              const added: { name: string; email: string; at: string }[] = [];
+              for (const line of body) {
+                const [name, email, phone] = line.split(",").map((part) => part.trim().replace(/^"|"$/g, ""));
+                if (!name || !email) continue;
+                add({ name, email, phone: phone || "", source: "general", notes: "Imported from a CSV" });
+                added.push({ name, email, at: nowLabel() });
+              }
+              setRows((current) => [...added, ...current]);
+              chrome.closeModal();
+              chrome.toast(added.length ? `Imported ${added.length} lead${added.length === 1 ? "" : "s"}.` : "That file had no name and email rows.");
+            }} />
+            <div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Cancel</Btn></div>
+          </ModalFrame>
+        )}>New Import</button>
+      </div>
+      <table className="w-full bg-white text-left text-[13px]">
+        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">File</th><th>Leads</th><th>When</th></tr></thead>
+        <tbody>
+          {rows.length ? rows.map((row) => (
+            <tr key={`${row.email}-${row.at}`} className="border-t border-[#eee]"><td className="px-3 py-2">{row.name}</td><td>{row.email}</td><td>{row.at}</td></tr>
+          )) : <tr><td className="px-3 py-6 text-[#888]" colSpan={3}>No imports yet.</td></tr>}
+        </tbody>
+      </table>
+      <button type="button" className="mt-3 text-[13px] text-[#1c93b5]" onClick={onClose}>Back to leads</button>
+    </div>
+  );
+}
+
 export function LeadsView({
   mode,
   leadId,
   tab,
 }: {
-  mode: "list" | "export" | "history" | "sources";
+  mode: "list" | "export" | "history" | "sources" | "import" | "labels";
   leadId?: string;
   tab: LeadTab;
 }) {
@@ -443,6 +514,7 @@ export function LeadsView({
   const [customFilter, setCustomFilter] = useState("None");
   const [customQuery, setCustomQuery] = useState("");
   const [view, setView] = useState<"Roomy" | "Default" | "Compact">("Default");
+  const [onlyMine, setOnlyMine] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState("Registered");
@@ -601,6 +673,7 @@ export function LeadsView({
   const filtered = rows.filter((row, index) => {
     const trashed = state.trashed.includes(row.id);
     if (showTrash ? !trashed : trashed) return false;
+    if (onlyMine && office.user && row.assigned.agent !== office.user.name) return false;
     const q = chrome.leadSearch.trim().toLowerCase();
     if (q && !`${row.name} ${row.email} ${row.phone} ${row.city}`.toLowerCase().includes(q)) return false;
     if (cincFilter !== "None" && !applyNamedFilter(row, cincFilter, index)) return false;
@@ -657,8 +730,7 @@ export function LeadsView({
   const dirty = cincFilter !== "None" || customFilter !== "None" || checks.length > 0 || drawerStage !== "Any" || Boolean(chrome.leadSearch);
   const open = rows.find((row) => row.id === leadId);
 
-  useEffect(() => {
-    if (mode !== "export") return;
+  function downloadLeads(email: string) {
     if (office.ready && !office.canExport) {
       chrome.toast("Your permissions do not include exporting leads.");
       return;
@@ -672,10 +744,9 @@ export function LeadsView({
     link.download = "leads.csv";
     link.click();
     URL.revokeObjectURL(url);
-    chrome.toast("Exported the current lead list.");
-    // Export once when this hash is opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+    chrome.toast(email ? `Export saved for ${email}.` : "Exported the current lead list.");
+    window.location.href = href.leads;
+  }
 
   function clearFilters() {
     setCincFilter("None");
@@ -905,11 +976,22 @@ export function LeadsView({
 
   const rowPad = view === "Compact" ? "[&>td]:py-1" : view === "Roomy" ? "[&>td]:py-6" : "[&>td]:py-[22px]";
 
+  if (mode === "import") {
+    return <LeadImport onClose={() => { window.location.href = href.leads; }} />;
+  }
+
   if (mode === "history") {
     return (
-      <div className="p-4">
-        <div className="bg-white p-4">
-          <h2 className="mb-3 text-[15px] text-[#2a9bb8]">Dialer History</h2>
+      <div className="grid min-h-[50vh] place-items-start bg-black/30 p-8">
+        <div className="w-full max-w-3xl bg-white shadow-lg">
+          <div className="flex items-center justify-between bg-[#24384a] px-4 py-3 text-white">
+            <h2 className="text-[16px] font-semibold">Dialer Campaign History</h2>
+            <a href={href.leads} className="text-[20px] text-white" aria-label="Close">×</a>
+          </div>
+          <div className="p-4">
+          <label className="mb-3 block text-[13px]">Agent
+            <select className="mt-1 h-8 border border-[#ccc] px-2"><option>All agents</option><option>Casey Archibald</option><option>Kayla Gerak</option></select>
+          </label>
           <table className="w-full text-left text-[12px]">
             <thead className="text-[10px] tracking-wide text-[#888] uppercase">
               <tr>
@@ -929,12 +1011,12 @@ export function LeadsView({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="py-8 text-center text-[#888]">No dialer history yet. Log a call from a lead to see it here.</td>
+                  <td colSpan={3} className="py-8 text-center text-[#888]">No dialer campaigns yet.</td>
                 </tr>
               )}
             </tbody>
           </table>
-          <a href={href.leads} className="mt-3 inline-block text-[12px] text-[#1c93b5]">Back to leads</a>
+          </div>
         </div>
       </div>
     );
@@ -946,8 +1028,9 @@ export function LeadsView({
     <div className="flex h-full min-h-0 flex-col">
       {!office.ready ? <p className="bg-white px-3 py-2 text-[13px] text-[#666]">Checking your access…</p> : null}
       {mode === "export" ? (
-        <p className="bg-[#e8f6fb] px-4 py-2 text-[12px] text-[#1c93b5]">A CSV of the current list downloaded. <a href={href.leads}>Return to leads</a></p>
+        <ExportLeadsModal count={filtered.length} onClose={() => { window.location.href = href.leads; }} onSave={downloadLeads} />
       ) : null}
+      {mode === "labels" ? <LabelManager onClose={() => { window.location.href = href.leads; }} onChange={() => undefined} /> : null}
       <div className="flex min-h-[41px] flex-wrap items-center gap-2 rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white px-3 py-2 shadow-sm">
         <span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white">
           <input
@@ -995,6 +1078,17 @@ export function LeadsView({
                 onClick: () => applySavedFilter(label),
               }))}
             />
+            <button type="button" title="Saved filters" className="h-[22px] rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]" onClick={() => chrome.openModal(
+              <ModalFrame title="Saved filters" onClose={chrome.closeModal}>
+                {state.customFilters.length ? state.customFilters.map((name) => (
+                  <div key={name} className="mb-2 flex items-center justify-between gap-3 text-[13px]">
+                    <span>{name}</span>
+                    <button type="button" className="text-[#d9363e]" onClick={() => { update((current) => ({ ...current, customFilters: current.customFilters.filter((item) => item !== name) })); if (customFilter === name) setCustomFilter("None"); chrome.toast("Filter deleted."); }}>Delete</button>
+                  </div>
+                )) : <p className="text-[13px] text-[#666]">No saved filters yet.</p>}
+                <div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div>
+              </ModalFrame>
+            )}>Filters</button>
             <button type="button" title="Save filter" className="grid h-[22px] w-[22px] place-items-center rounded-[2px] border border-[#ccc] bg-white text-[#888]" onClick={() => chrome.openModal(
               <NamePrompt title="Save filter" label="Filter name" onClose={chrome.closeModal} onSave={(name) => { saveLeadView(name); chrome.closeModal(); chrome.toast("Filter saved."); }} />
             )}>
@@ -1012,7 +1106,10 @@ export function LeadsView({
             <Menu
               header="View Style"
               label={<span className="inline-flex h-[22px] items-center rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px]">VIEW: {view} ▾</span>}
-              items={["Roomy", "Default", "Compact"].map((label) => ({ label, onClick: () => setView(label as typeof view) }))}
+              items={[
+                ...(["Roomy", "Default", "Compact"] as const).map((label) => ({ label: `${view === label ? "●" : "○"} ${label}`, onClick: () => setView(label) })),
+                { label: `${onlyMine ? "☑" : "☐"} Only My Leads`, onClick: () => { setOnlyMine((value) => !value); setPage(0); } },
+              ]}
             />
             <Menu
               header="Page Size"
@@ -1028,7 +1125,7 @@ export function LeadsView({
         )}
       </div>
       <div className="mt-2 flex items-center justify-end rounded border border-[#e5e5e5] bg-white px-3 py-2 shadow-sm">
-        <button type="button" className="inline-flex h-8 items-center rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
+        <button type="button" className="inline-flex h-8 items-center rounded bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => chrome.openModal(<LeadConsent onClose={chrome.closeModal} onYes={() => chrome.openModal(<AddLeadModal onClose={chrome.closeModal} onSave={(input) => {
           const digits = input.phone.replace(/\D/g, "");
           const existing = leads.find((lead) => lead.email.trim().toLowerCase() === input.email.trim().toLowerCase() || (digits.length >= 10 && lead.phone.replace(/\D/g, "") === digits));
           if (existing && existing.name.trim().toLowerCase() !== input.name.trim().toLowerCase()) {
@@ -1038,7 +1135,7 @@ export function LeadsView({
           add({ ...input, source: "general", notes: "Added by an agent" });
           chrome.closeModal();
           chrome.toast("Lead added.");
-        }} />)}>
+        }} />)} />)}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden><circle cx="6" cy="5" r="2" /><path d="M2 13c.5-2 2-3 4-3s3.5 1 4 3" /><path d="M12 4v4M10 6h4" stroke="white" strokeWidth="1.2" /></svg>
           Add New Lead
         </button>

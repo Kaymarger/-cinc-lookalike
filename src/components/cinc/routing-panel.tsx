@@ -79,7 +79,7 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
         ))}
       </div>
       {tab === "Basic" || tab === "Routing Overview" ? (
-        <div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
           <table className="w-full text-left text-[12px]">
             <thead><tr>{["AGENT", "STATUS", "WEIGHT", "MIN PRICE", "MAX PRICE"].map((column) => <th key={column} className="border-b border-[#eee] py-2">{column}</th>)}</tr></thead>
             <tbody>
@@ -103,11 +103,13 @@ export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidde
               })}
             </tbody>
           </table>
-          <div className="mt-3"><Btn kind="teal" onClick={() => void updateTable()}>Update</Btn></div>
-          <h3 className="mt-4 text-[13px] font-semibold">Loan Officers</h3>
-          <p className="text-[12px] text-[#888]">No loan officers on this office.</p>
-          <h3 className="mt-3 text-[13px] font-semibold">Listing Agents</h3>
-          <p className="text-[12px] text-[#888]">No listing agents on this office.</p>
+          <div>
+            <h3 className="text-[13px] font-semibold">Loan Officers</h3>
+            <p className="text-[12px] text-[#888]">{roster.filter((user) => user.role === "lender").map((user) => user.name).join(", ") || "No loan officers on this office."}</p>
+            <h3 className="mt-3 text-[13px] font-semibold">Listing Agents</h3>
+            <p className="text-[12px] text-[#888]">{roster.filter((user) => user.role === "agent" || user.role === "broker").map((user) => user.name).join(", ") || "No listing agents on this office."}</p>
+            <div className="mt-3"><Btn kind="teal" onClick={() => void updateTable()}>Update</Btn></div>
+          </div>
         </div>
       ) : null}
       {tab !== "Routing Overview" ? <div className="mt-3 space-y-2 text-[13px]">

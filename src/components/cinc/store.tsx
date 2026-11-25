@@ -528,9 +528,15 @@ function load(raw: string | null): SpaState {
       stars: { ...DEFAULT.stars, ...(parsed.stars ?? {}) },
       mail: fresh ? DEFAULT.mail : parsed.mail ?? DEFAULT.mail,
       templates: fresh ? DEFAULT.templates : parsed.templates ?? DEFAULT.templates,
-      groups: fresh ? DEFAULT.groups : parsed.groups ?? DEFAULT.groups,
+      groups: (fresh ? DEFAULT.groups : parsed.groups ?? DEFAULT.groups).filter((name) => !/QA 1125/i.test(name)),
       campaigns: fresh ? DEFAULT.campaigns : parsed.campaigns ?? DEFAULT.campaigns,
-      landingPages: fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages,
+      customFilters: (parsed.customFilters ?? []).filter((name) => !/QA 1125/i.test(name)),
+      pocket: (parsed.pocket ?? []).filter((item) => !/QA 1125/i.test(item.address || "")),
+      landingPages: (() => {
+        const saved = (fresh ? DEFAULT.landingPages : parsed.landingPages ?? DEFAULT.landingPages).filter((page) => !/QA 1125/i.test(page.name || ""));
+        const urls = new Set(saved.map((page) => page.url));
+        return [...saved, ...DEFAULT.landingPages.filter((page) => !urls.has(page.url))];
+      })(),
       notes: cleanNotes(fresh ? DEFAULT.notes : { ...DEFAULT.notes, ...parsed.notes }),
       appointments: (parsed.appointments ?? []).filter((item) => !/qa audit appt/i.test(item.title || "") && !/^QA Test Event$/i.test(item.title || "")),
       deals: parsed.deals ?? [],

@@ -834,10 +834,18 @@ export function InboxView({ folder }: { folder: "inbox" | "sent" | "drafts" | "t
               const count = state.templates.filter((item) => item.group === name).length;
               const on = group === name;
               return (
-                <button key={name} type="button" className={`mb-1 flex h-[30px] w-full items-center gap-2 px-2 text-left text-[13px] ${on ? "bg-[#3a97c4] text-white" : "hover:bg-[#f6f6f6]"}`} onClick={() => setGroup(name)}>
-                  <span className="min-w-0 flex-1 truncate">{name} ({count})</span>
-                  {on ? <span>▸</span> : null}
-                </button>
+                <div key={name} className={`mb-1 flex h-[30px] w-full items-center gap-1 px-2 text-left text-[13px] ${on ? "bg-[#3a97c4] text-white" : "hover:bg-[#f6f6f6]"}`}>
+                  <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={() => setGroup(name)}>{name} ({count})</button>
+                  <button type="button" className="px-1 text-[12px]" aria-label={`Delete ${name}`} onClick={() => {
+                    if (!window.confirm(`Delete the ${name} group? Its templates move to Uncategorized.`)) return;
+                    update((current) => ({
+                      ...current,
+                      groups: current.groups.filter((item) => item !== name),
+                      templates: current.templates.map((item) => item.group === name ? { ...item, group: "Uncategorized" } : item),
+                    }));
+                    if (group === name) setGroup("Uncategorized");
+                  }}>×</button>
+                </div>
               );
             })}
           </aside>
@@ -1059,8 +1067,8 @@ function TemplateModal({ group, onClose, initial }: { group: string; onClose: ()
           update((current) => ({
             ...current,
             templates: initial
-              ? current.templates.map((item) => item.id === initial.id ? { ...item, name: name || item.name, type, body: nextBody, group: chosenGroup, edited: nowLabel() } : item)
-              : [...current.templates, { id: uid("tpl"), group: chosenGroup, name: name || subject || "Untitled", type, createdBy: CRM_AGENT.name, edited: nowLabel(), body: nextBody }],
+              ? current.templates.map((item) => item.id === initial.id ? { ...item, name: name || item.name, type, body: nextBody, group: chosenGroup, edited: officeDate() } : item)
+              : [...current.templates, { id: uid("tpl"), group: chosenGroup, name: name || subject || "Untitled", type, createdBy: CRM_AGENT.name, edited: officeDate(), body: nextBody }],
           }));
           chrome.toast(initial ? "Template updated." : "Template saved.");
           onClose();
@@ -1342,6 +1350,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   const chrome = useChrome();
   const composer = useComposer();
   const [mode, setMode] = useState<"mls" | "pocket">("mls");
+  const [listFocus, setListFocus] = useState<"all" | "soon" | "agent">("all");
   const [office, setOffice] = useState("My Office/Agents Listings");
   const [statusFilter, setStatusFilter] = useState("Any");
   const [bedsFilter, setBedsFilter] = useState("Any");
@@ -1398,16 +1407,17 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
     );
   }
   const query = chrome.leadSearch.trim().toLowerCase();
-  const listings = (mode === "pocket"
-    ? state.pocket.map((item) => ({ ...item, updated: "Just now", image: CRM_PROPERTIES[0].image }))
-    : CRM_PROPERTIES.filter((item) => {
+  const pocketCards = state.pocket.map((item) => ({ ...item, updated: "Just now", image: CRM_PROPERTIES[0].image }));
+  const listings = (mode === "pocket" ? pocketCards : [...CRM_PROPERTIES.filter((item) => {
         if (office === "Featured Listings") return /feature/i.test(item.feature);
         if (office === "Listed in the past 24 hours") return item.status === "Active";
         if (office === "My Listings" || office === "Kayla Gerak") return Number(item.mls.slice(-1)) % 2 === 0;
         if (office === "Casey Archibald") return Number(item.mls.slice(-1)) % 2 === 1;
         return true;
-      })
-  ).filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query))
+      }), ...pocketCards]
+  ).filter((item) => listFocus !== "soon" || /soon|pocket/i.test(`${item.status} ${item.feature} ${item.mls}`))
+    .filter((item) => listFocus !== "agent" || item.mls === "POCKET" || Number(String(item.mls).replace(/\D/g, "").slice(-1)) % 2 === 0)
+    .filter((item) => !query || `${item.address} ${item.mls} ${item.feature}`.toLowerCase().includes(query))
     .filter((item) => statusFilter === "Any" || item.status === statusFilter)
     .filter((item) => bedsFilter === "Any" || item.beds >= Number(bedsFilter))
     .filter((item) => typeFilter === "Any" || item.feature.toLowerCase().includes(typeFilter.toLowerCase()))
@@ -1464,22 +1474,47 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
           );
         })}
       </div>
-      <div className="flex items-center gap-2 bg-white px-4 py-3">
-        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => chrome.toast("Coming soon listings use the same office list.")}>Coming Soon</button>
-        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setOffice("My Listings")}>Agent Listings</button>
-        <button type="button" className="h-8 border border-[#ccc] bg-white px-3 text-[13px]" onClick={() => setStatusFilter("Active")}>Filter Listings</button>
-        <a href={href.addProperty} className="ml-2 grid h-36 w-56 place-items-center border border-dashed border-[#bbb] text-center text-[15px] text-[#888]">+<br />Add Property Listing</a>
+      <div className="flex flex-wrap items-center gap-2 bg-white px-4 py-3">
+        <Menu label={<span className="inline-flex h-8 items-center border border-[#ccc] bg-white px-3 text-[13px]">Coming Soon ▾</span>} items={[
+          { label: "Coming soon only", onClick: () => setListFocus("soon") },
+          { label: "All listings", onClick: () => setListFocus("all") },
+        ]} />
+        <Menu label={<span className="inline-flex h-8 items-center border border-[#ccc] bg-white px-3 text-[13px]">Agent Listings ▾</span>} items={["My Office/Agents Listings", "My Listings", "Kayla Gerak", "Casey Archibald"].map((label) => ({ label, onClick: () => { setOffice(label); setListFocus(label === "My Listings" ? "agent" : "all"); } }))} />
+        <Menu label={<span className="inline-flex h-8 items-center border border-[#ccc] bg-white px-3 text-[13px]">Filter Listings ▾</span>} items={["Any", "Active", "Pending", "Sold"].map((label) => ({ label, onClick: () => setStatusFilter(label) }))} />
+        <span className="text-[12px] text-[#666]">Showing: {listFocus === "soon" ? "Coming soon" : listFocus === "agent" ? "Agent listings" : statusFilter === "Any" ? "All listings" : statusFilter}</span>
+        <button type="button" className="ml-2 grid h-36 w-56 place-items-center border border-dashed border-[#bbb] text-center text-[15px] text-[#888]" onClick={() => chrome.openModal(
+          <ModalFrame title="What type of listing are you adding?" onClose={chrome.closeModal}>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["Add a Current Listing from MLS", href.properties],
+                ["Add a Listing From an Existing Contact", href.leads],
+                ["Add a Property Coming soon", href.addProperty],
+              ].map(([label, dest]) => (
+                <a key={label} href={dest} className="grid h-28 place-items-center border border-dashed border-[#bbb] px-3 text-center text-[13px] text-[#1c93b5]" onClick={chrome.closeModal}>{label}</a>
+              ))}
+            </div>
+          </ModalFrame>
+        )}>+<br />Add Property Listing</button>
       </div>
       <div className="bg-[#f7f7f7] p-4">
         <h2 className="mb-3 text-[13px] font-semibold text-[#666]">Activity</h2>
-        {stageListings.length ? (
+        {visibleListings.length ? (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {stageListings.slice(0, 12).map((item) => (
-              <li key={item.id} className="border border-[#e5e5e5] bg-white p-3 text-[13px]">
-                <img src={item.image} alt="" className="mb-2 h-24 w-full object-cover" />
-                <p className="font-semibold text-[#1c93b5]">{item.address}</p>
-                <p>{item.price}</p>
-                <p className="text-[12px] text-[#666]">{item.beds} bd | {item.baths} ba | {item.status}</p>
+            {visibleListings.slice(0, 12).map((item) => (
+              <li key={item.id}>
+                <button type="button" className="w-full border border-[#e5e5e5] bg-white p-3 text-left text-[13px]" onClick={() => chrome.openModal(
+                  <ModalFrame title={item.address} onClose={chrome.closeModal}>
+                    <img src={item.image} alt="" className="mb-3 h-40 w-full object-cover" />
+                    <p className="text-[16px] font-semibold">{item.price}</p>
+                    <p className="mt-1 text-[13px] text-[#555]">{item.beds} bd | {item.baths} ba | {item.status}</p>
+                    <p className="mt-1 text-[13px]">MLS {item.mls}</p>
+                  </ModalFrame>
+                )}>
+                  <img src={item.image} alt="" className="mb-2 h-24 w-full object-cover" />
+                  <p className="font-semibold text-[#1c93b5]">{item.address}</p>
+                  <p>{item.price}</p>
+                  <p className="text-[12px] text-[#666]">{item.beds} bd | {item.baths} ba | {item.status}</p>
+                </button>
               </li>
             ))}
           </ul>
@@ -1489,7 +1524,7 @@ export function PropertiesView({ sub }: { sub: "list" | "text" | "open" | "virtu
   );
 }
 
-function CampaignModal({ onClose }: { onClose: () => void }) {
+function CampaignModal({ onClose, number }: { onClose: () => void; number: string }) {
   const { update } = useCinc();
   const chrome = useChrome();
   const [name, setName] = useState("");
@@ -1501,7 +1536,7 @@ function CampaignModal({ onClose }: { onClose: () => void }) {
     <ModalFrame title="New Campaign" onClose={onClose}>
       {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <Field label="Campaign name"><input autoFocus className={inputCls} value={name} onChange={(event) => setName(event.target.value)} /></Field>
-      <Field label="Texting number"><input className={inputCls} readOnly value="(604) 363-7858" /></Field>
+      <Field label="Texting number"><input className={inputCls} readOnly value={number} /></Field>
       <Field label="Text response"><textarea className="h-24 w-full border border-[#ccc] p-2 text-[13px]" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Thanks for your interest. Reply STOP to opt out." /></Field>
       <Field label="Property">
         <select className={inputCls} value={property} onChange={(event) => setProperty(event.target.value)}>
@@ -1515,7 +1550,7 @@ function CampaignModal({ onClose }: { onClose: () => void }) {
         <Btn onClick={onClose}>Cancel</Btn>
         <Btn kind="teal" onClick={() => {
           if (!name.trim() || !message.trim()) { setError("Enter a campaign name and a text response."); return; }
-          update((current) => ({ ...current, campaigns: [...current.campaigns, { id: uid("camp"), name: name.trim(), message: message.trim(), active: true, number: "(604) 363-7858", property, code: code.trim() || `TXT${current.campaigns.length + 10}` }] }));
+          update((current) => ({ ...current, campaigns: [...current.campaigns, { id: uid("camp"), name: name.trim(), message: message.trim(), active: true, number, property, code: code.trim() || `TXT${current.campaigns.length + 10}` }] }));
           chrome.toast("Campaign saved.");
           onClose();
         }}>Save</Btn>
@@ -1554,7 +1589,7 @@ function TextResponder() {
             <div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div>
           </ModalFrame>
         )}>Templates</button>
-        <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<CampaignModal onClose={chrome.closeModal} />)}>New Campaign</button>
+        <button type="button" className="h-[22px] bg-[#1c93b5] px-3 text-[12px] text-white" onClick={() => chrome.openModal(<CampaignModal number={line} onClose={chrome.closeModal} />)}>New Campaign</button>
       </div>
       <table className="w-full border border-[#e5e5e5] bg-white text-left text-[12px]">
         <thead>
@@ -1584,7 +1619,7 @@ function TextResponder() {
 function AddPocket() {
   const { update } = useCinc();
   const chrome = useChrome();
-  const [form, setForm] = useState({ address: "", city: "Vancouver", postal: "", price: "", beds: "3", baths: "2", sqft: "1400", lot: "", type: "House", year: "1998", status: "Active", agent: "Kayla Gerak", description: "" });
+  const [form, setForm] = useState({ address: "", city: "", postal: "", price: "", beds: "", baths: "", sqft: "", lot: "", type: "House", year: "", status: "Active", agent: "Kayla Gerak", description: "" });
   const [error, setError] = useState("");
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return (
@@ -2145,6 +2180,11 @@ function Card({ title, action, children }: { title: string; action?: React.React
       </div>
     </section>
   );
+}
+
+function officeDate() {
+  const date = new Date();
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}-${date.getFullYear()}`;
 }
 
 function reminderTitle(title: string, leadName = "") {
@@ -2819,20 +2859,29 @@ export function TasksView() {
   });
   return (
     <div className="p-4">
-      <OfficeListBar query={taskList.query} update={taskList.update} views={taskList.views} saveView={taskList.saveView} filters={[{ id: "status", label: "Status", options: ["Open", "Done"] }]} columns={OFFICE_LISTS.tasks.columns.map((column) => ({ id: column.id, label: column.label }))} sortColumns={sortColumnProps(OFFICE_LISTS.tasks)} toggleSort={taskList.toggleSort} onSelectPage={() => setPicked(reminders.map((item) => item.id))} total={arranged.total} emptyLabel="No reminders match." />
-      {picked.length ? <button type="button" className="mb-2 h-8 bg-[#329bb9] px-3 text-[13px] text-white" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => picked.includes(reminder.id) ? { ...reminder, done: true } : reminder) })); setPicked([]); chrome.toast("Selected reminders completed."); }}>Complete selected</button> : null}
-      <div className="bg-white p-4">
-        {reminders.map((item) => (
-          <label key={item.id} className="flex items-center gap-2 border-b border-[#eee] py-2 text-[13px]">
-            <input type="checkbox" aria-label={`Select ${item.title}`} checked={picked.includes(item.id)} onChange={(event) => setPicked(event.target.checked ? [...picked, item.id] : picked.filter((id) => id !== item.id))} />
-            <input type="checkbox" checked={item.done} onChange={() => { update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) })); chrome.toast(item.done ? "Reminder reopened." : "Reminder completed."); }} />
-            <a href={item.leadId ? href.lead(item.leadId) : href.tasks} className="text-[#1c93b5]">{reminderTitle(item.title, reminderLead(item.leadId, leads, item.leadName))}</a>
-            <span className="text-[12px] text-[#666]">{reminderLead(item.leadId, leads, item.leadName)}</span>
-            <span className="ml-auto text-[12px] text-[#888]">{item.due}</span>
-          </label>
-        ))}
-        {!reminders.length ? <p className="text-[13px] text-[#888]">No reminders match this search and these filters.</p> : null}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <a href={href.launchpad} className="text-[13px] text-[#1c93b5]">Back to Launchpad</a>
+        <span className="text-[16px] font-semibold">To Do</span>
+        <button type="button" className="ml-auto h-8 border border-[#ccc] bg-white px-3 text-[12px]" onClick={() => setPicked([])}>Reset</button>
       </div>
+      <table className="w-full bg-white text-left text-[13px]">
+        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr>{["To Do Item", "Lead", "Due Date", "Actions"].map((column) => <th key={column} className="px-3 py-2">{column}</th>)}</tr></thead>
+        <tbody>
+          {reminders.map((item) => (
+            <tr key={item.id} className="border-t border-[#eee]">
+              <td className="px-3 py-2">{reminderTitle(item.title, reminderLead(item.leadId, leads, item.leadName))}</td>
+              <td><a className="text-[#1c93b5]" href={item.leadId ? href.lead(item.leadId) : href.tasks}>{reminderLead(item.leadId, leads, item.leadName)}</a></td>
+              <td>{item.due}</td>
+              <td className="space-x-2 text-[12px]">
+                <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Edit reminder" onClose={chrome.closeModal}><p className="text-[13px]">{item.title}</p><div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>Edit</button>
+                <button type="button" className="text-[#1c93b5]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))}>{item.done ? "Reopen" : "Mark Complete"}</button>
+                <button type="button" className="text-[#d9363e]" onClick={() => { if (window.confirm("Delete this reminder?")) update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); }}>Delete</button>
+              </td>
+            </tr>
+          ))}
+          {!reminders.length ? <tr><td className="px-3 py-6 text-[#666]" colSpan={4}>No reminders for this range.</td></tr> : null}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -2889,12 +2938,12 @@ export function MarketingView() {
     }
   }
   return (
-    <div className="p-4">
-      <div className="mb-3 flex items-center gap-3">
-        <button type="button" onClick={() => shift(-1)}>‹</button>
-        <span className="font-semibold">{names[month]} {year}</span>
-        <button type="button" onClick={() => shift(1)}>›</button>
-        <Menu className="ml-auto" label={<span className="border border-[#ccc] bg-white px-2 py-1 text-[12px]">Export All ▾</span>} items={[{ label: "Excel (.csv)", onClick: exportCsv }]} />
+    <div className="bg-[#f4f4f4] p-4">
+      <div className="mb-3 flex items-center border border-[#e5e5e5] border-t-4 border-t-[#ddd] bg-white px-4 py-3">
+        <button type="button" className="text-[20px] text-[#666]" onClick={() => shift(-1)} aria-label="Previous month">‹</button>
+        <span className="flex-1 text-center text-[18px] font-semibold">{names[month]} {year}</span>
+        <button type="button" className="text-[20px] text-[#666]" onClick={() => shift(1)} aria-label="Next month">›</button>
+        <Menu className="ml-3" label={<span className="border border-[#ccc] bg-white px-2 py-1 text-[12px]">Export All ▾</span>} items={[{ label: "Excel (.csv)", onClick: exportCsv }]} />
       </div>
       <div className="mb-4 grid gap-3 md:grid-cols-2">
         <article className="bg-[#1c93b5] px-6 py-8 text-white"><p className="text-[16px]">Search</p><p className="text-[40px] leading-tight">${report.searchBudget.toLocaleString("en-CA")}</p></article>
@@ -2908,7 +2957,7 @@ export function MarketingView() {
           <p className="mt-2 text-[13px]">ListCast ${report.listcastBudget.toLocaleString("en-CA")}</p>
           <p className="mt-3 text-[13px]">Need to discuss your campaign?</p>
           <button type="button" className="mt-2 border border-[#1c93b5] px-3 py-1 text-[12px] text-[#1c93b5]" onClick={() => void contact()}>Contact Us</button>
-          <details className="mt-3 text-[12px] leading-5 text-[#666]"><summary>Disclaimer</summary>Reducing a budget does not cancel an active campaign. Contact the office before changing a live budget.</details>
+          <details className="mt-3 text-[12px] leading-5 text-[#666]"><summary>Disclaimer</summary>If you wish to reduce your lead advertising budget, please inform your Client Advisor in the month prior to your upcoming invoice. Google Marketing</details>
           <p className="mt-3 font-semibold">Target Areas <span title="The six areas with the most buyer and seller leads this month." className="text-[12px] text-[#1c93b5]">?</span></p>
           <p className="text-[12px] text-[#666]">top 6 areas for buyer and seller leads</p>
           {(() => {
@@ -2993,7 +3042,50 @@ export function GmailView() {
 }
 
 export function BrokerLaunchpad() {
-  return <LaunchpadView team />;
+  const { leads } = useLeads();
+  const { state } = useCinc();
+  const [range, setRange] = useState("Last 30");
+  const open = state.reminders.filter((item) => !item.done).length;
+  const cities = new Map<string, number>();
+  for (const lead of leads) {
+    const city = lead.propertyAddress?.split(",").pop()?.trim() || "Unknown";
+    cities.set(city, (cities.get(city) || 0) + 1);
+  }
+  const top = [...cities.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return (
+    <div className="bg-[#f4f4f4] p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-3 bg-white px-4 py-3">
+        <p className="text-[14px] text-[#555]">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+        <span className="ml-auto inline-flex h-8 items-center border border-[#ccc] bg-white px-3 text-[13px]">VIEW: All Agents</span>
+        <button type="button" className="h-8 bg-[#1c93b5] px-3 text-[13px] text-white" onClick={() => setRange(range)}>Refresh</button>
+      </div>
+      <p className="mb-3 bg-[#fde7ec] px-4 py-3 text-[14px] text-[#8a2430]">Today your team has {open} reminder{open === 1 ? "" : "s"} due, and {state.appointments.length} task{state.appointments.length === 1 ? "" : "s"} due.</p>
+      <div className="mb-3 flex gap-2">
+        {["Yesterday", "Last 7", "Last 30", "YTD"].map((label) => (
+          <button key={label} type="button" className={`h-8 px-3 text-[13px] ${range === label ? "bg-[#1c93b5] text-white" : "bg-white text-[#333]"}`} onClick={() => setRange(label)}>{label}</button>
+        ))}
+      </div>
+      <div className="grid gap-3 lg:grid-cols-4">
+        {[["Total Leads", leads.length], ["New Leads", leads.filter((lead) => lead.status === "new").length], ["Open Reminders", open], ["Deals", state.deals.length]].map(([label, value]) => (
+          <article key={String(label)} className="bg-white p-4"><p className="text-[13px] text-[#666]">{label}</p><p className="text-[32px] text-[#1c93b5]">{value}</p></article>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <article className="bg-white p-4">
+          <h2 className="mb-2 font-semibold">Top Lead Cities</h2>
+          {top.length ? top.map(([city, count]) => (
+            <p key={city} className="flex justify-between border-b border-[#f3f3f3] py-1 text-[13px]"><span>{city}</span><span>{count}</span></p>
+          )) : <p className="text-[13px] text-[#666]">No lead cities for this range.</p>}
+        </article>
+        <article className="bg-white p-4">
+          <h2 className="mb-2 font-semibold">Pipeline</h2>
+          {["new", "contacted", "showing", "nurture", "closed"].map((status) => (
+            <p key={status} className="flex justify-between border-b border-[#f3f3f3] py-1 text-[13px] capitalize"><span>{status}</span><span>{leads.filter((lead) => lead.status === status).length}</span></p>
+          ))}
+        </article>
+      </div>
+    </div>
+  );
 }
 
 export function ReportsView() {

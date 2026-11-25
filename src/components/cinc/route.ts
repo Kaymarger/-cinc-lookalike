@@ -52,7 +52,9 @@ export const href = {
   plans: `${SPA}#plans`,
   dialer: `${SPA}#dialer`,
   calendar: `${SPA}#calendar`,
-  tasks: `${SPA}#tasks`,
+  tasks: `${SPA}#launchpad/todos`,
+  importLeads: `${SPA}#leads/import`,
+  leadSources: `${SPA}#leads/sources`,
   marketing: `${SPA}#marketing/leadsreport`,
   reports: `${SPA}#reports`,
   publicSite: "/",
@@ -65,7 +67,7 @@ export type LeadTab = "activity" | "info" | "plans" | "appointments" | "conversa
 export type CincRoute =
   | { view: "launchpad" }
   | { view: "callsummary" }
-  | { view: "leads"; mode: "list" | "export" | "history" | "sources"; leadId?: string; tab: LeadTab }
+  | { view: "leads"; mode: "list" | "export" | "history" | "sources" | "import" | "labels"; leadId?: string; tab: LeadTab }
   | { view: "leadsearch"; leadId: string; searchId?: string }
   | { view: "deals"; board: "purchases" | "listings"; dealId?: string }
   | { view: "inbox"; folder: "inbox" | "sent" | "drafts" | "trashed" | "templates" }
@@ -127,10 +129,13 @@ export function parseRoute(pathname: string, hash: string): CincRoute {
   if (!a || a === "launchpad") {
     if (b === "dialersummary" || b === "callsummary") return { view: "callsummary" };
     if (b === "broker") return { view: "broker" };
+    if (b === "todos") return { view: "tasks" };
     return { view: "launchpad" };
   }
   if (a === "leads") {
     if (b === "sources") return { view: "leads", mode: "sources", tab: "activity" };
+    if (b === "import") return { view: "leads", mode: "import", tab: "activity" };
+    if (b === "labels") return { view: "leads", mode: "labels", tab: "activity" };
     if (b === "export") return { view: "leads", mode: "export", tab: "activity" };
     if (b === "dialer-history") return { view: "leads", mode: "history", tab: "activity" };
     if (b === "details" && c && d === "search") return { view: "leadsearch", leadId: decodeURIComponent(c), searchId: parts[4] ? decodeURIComponent(parts[4]) : undefined };
@@ -289,13 +294,27 @@ export function titleOf(route: CincRoute): string {
 export function titleMenu(route: CincRoute): { label: string; href: string }[] {
   switch (route.view) {
     case "launchpad":
-      return [{ label: "Call Summary", href: href.call }];
+      return [
+        { label: "Broker Launchpad", href: href.broker },
+        { label: "Call Summary", href: href.call },
+      ];
+    case "broker":
+      return [
+        { label: "Agent Launchpad", href: href.launchpad },
+        { label: "Call Summary", href: href.call },
+      ];
     case "callsummary":
-      return [{ label: "Agent Launchpad", href: href.launchpad }];
+      return [
+        { label: "Agent Launchpad", href: href.launchpad },
+        { label: "Broker Launchpad", href: href.broker },
+      ];
     case "leads":
       return [
+        { label: "Import Leads", href: href.importLeads },
         { label: "Export Leads", href: href.exportLeads },
         { label: "Dialer History", href: href.dialerHistory },
+        { label: "Edit Lead Sources", href: href.leadSources },
+        { label: "Manage Labels", href: `${SPA}#leads/labels` },
       ];
     case "deals":
     case "inbox":

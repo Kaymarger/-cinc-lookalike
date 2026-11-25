@@ -63,6 +63,7 @@ const NAV: {
     label: "Properties",
     href: href.properties,
     children: [
+      { label: "Properties", href: href.properties },
       { label: "Listings Dashboard", href: href.properties },
       { label: "Text Responder", href: href.textResponder },
       { label: "Upcoming Open Houses", href: href.openHouses },
@@ -75,8 +76,16 @@ const NAV: {
     href: "/dashboard/pages/home",
     children: [
       { label: "Page Editor", href: "/dashboard/spa#website/pages/home" },
+      { label: "Home", href: "/dashboard/spa#website/pages/home" },
+      { label: "About", href: "/dashboard/spa#website/pages/about" },
+      { label: "Branded Site", href: "/dashboard/spa#website/pages/branded" },
+      { label: "Branded About", href: "/dashboard/spa#website/pages/branded-about" },
+      { label: "Add Custom Page", href: "/dashboard/spa#website/pages/custom" },
       { label: "Seller Suite", href: href.seller },
       { label: "Landing Pages", href: href.landing },
+      { label: "Buyers", href: href.landingCat("buyers") },
+      { label: "Sellers", href: href.landingCat("sellers") },
+      { label: "Contact", href: href.landingCat("contact") },
       { label: "Theme Options", href: href.officeTheme },
     ],
   },
@@ -187,11 +196,11 @@ function SubIcon({ label }: { label: string }) {
 function Logo() {
   return (
     <span className="flex items-center gap-2 text-white">
-      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-        <rect width="28" height="28" rx="6" fill="#3aa0b8" />
-        <path d="M7 18V12M12 18V8M17 18V11M22 18H6" stroke="#fff" strokeWidth="1.6" />
+      <svg width="34" height="34" viewBox="0 0 28 28" aria-hidden>
+        <rect width="28" height="28" rx="7" fill="#2f9bb8" />
+        <path d="M6 19V11M11 19V7M16 19V10M22 19H5" stroke="#fff" strokeWidth="2.2" />
       </svg>
-      <span className="text-[22px] leading-none font-light tracking-[0.08em] lowercase">cinc</span>
+      <span className="text-[26px] leading-none font-semibold tracking-tight lowercase">cinc</span>
     </span>
   );
 }
@@ -355,6 +364,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const titleRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [getLeads, setGetLeads] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [rail, setRail] = useState(false);
@@ -403,6 +413,18 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   }, []);
 
   useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setHelpOpen(false);
+      setAccountOpen(false);
+      setGetLeads(false);
+      setTitleOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
     if (!titleOpen) return;
     const close = (event: MouseEvent) => {
       if (!titleRef.current?.contains(event.target as Node)) setTitleOpen(false);
@@ -447,7 +469,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   >
                     <span className="relative grid h-6 w-6 shrink-0 place-items-center">
                       <NavIcon id={item.id} />
-                      {item.id === "leads" || item.id === "comms" ? <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#d9363e]" aria-label="Unread" /> : null}
+                      {item.id === "leads" || item.id === "comms" ? <span className="absolute -right-1 -bottom-1 h-2.5 w-2.5 rounded-full bg-[#d9363e]" aria-label="Unread" /> : null}
                     </span>
                     <span className="text-[13px]">{item.label}</span>
                   </a>
@@ -542,7 +564,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <a href={href.marketing} className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
+              <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => { setHelpOpen(false); setAccountOpen(false); setGetLeads(true); }}>Get Leads</button>
               <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
@@ -552,16 +574,23 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   <svg width="7" height="5" viewBox="0 0 8 6" aria-hidden><path d="M0 0h8L4 6z" fill="#666" /></svg>
                 </button>
                 {accountOpen ? (
-                  <div className="absolute top-9 right-0 z-40 w-48 border border-[#e5e5e5] bg-white py-1 shadow-md" onMouseLeave={() => setAccountOpen(false)}>
-                    <p className="px-3 py-2 text-[13px] text-[#1c93b5]">{office.user?.name || "Account"}</p>
+                  <div className="absolute top-9 right-0 z-40 w-56 border border-[#e5e5e5] bg-white py-1 shadow-md">
+                    <p className="px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">{office.user?.name || "Account"}</p>
+                    <a href={href.publicSite} target="_blank" rel="noreferrer" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
+                    <button type="button" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]" onClick={() => { setAccountOpen(false); setMessage("Referrals are saved with the office. Nothing was sent."); }}>Refer CINC</button>
+                    <button type="button" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]" onClick={() => { setAccountOpen(false); setMessage("Success stories are saved with the office."); }}>Share a Success Story</button>
+                    <a href={href.integrations} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">PROLINC Account</a>
+                    <a href={href.officeDialer} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Telecom Registration</a>
+                    <a href={href.contact} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Contact Us</a>
+                    <a href="/terms" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Terms</a>
+                    <a href="/privacy" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Privacy</a>
                     {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
                       <a href={href.agents} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Agents</a>
                     ) : null}
-                    <a href={href.publicSite} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
                     <form action="/api/agent/logout" method="post">
                       <button type="submit" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]">
-                        Log out
+                        Sign Out
                       </button>
                     </form>
                   </div>
@@ -618,11 +647,31 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
       </div>
       {modal}
       {helpOpen ? (
-        <div className="fixed top-[52px] right-16 z-[70] w-56 border border-[#e5e5e5] bg-white py-1 text-[13px] shadow-lg">
-          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href="https://support.cincpro.com" target="_blank" rel="noreferrer">Help Center</a>
-          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href={href.contact}>Contact Support</a>
-          <a className="block px-3 py-2 hover:bg-[#f6f6f6]" href={href.faq}>What&apos;s New</a>
-          <button type="button" className="block w-full px-3 py-2 text-left hover:bg-[#f6f6f6]" onClick={() => setHelpOpen(false)}>Close</button>
+        <div className="fixed inset-0 z-[70]" onMouseDown={() => setHelpOpen(false)}>
+          <aside className="absolute top-0 right-0 h-full w-[320px] bg-white shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">
+              <h2 className="text-[16px] font-semibold">Resource Center</h2>
+              <button type="button" aria-label="Close" onClick={() => setHelpOpen(false)}>×</button>
+            </div>
+            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href="https://support.cincpro.com" target="_blank" rel="noreferrer">CINC Help Center</a>
+            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.faq}>Product Testing</a>
+            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.contact}>Live Team Events</a>
+            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.faq}>Success Playbook</a>
+            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.contact}>Upcoming Webinars</a>
+          </aside>
+        </div>
+      ) : null}
+      {getLeads ? (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/30 px-4" onMouseDown={() => setGetLeads(false)}>
+          <div className="w-full max-w-md bg-white p-5 shadow-lg" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 className="text-[20px] font-semibold">Want More Leads?</h2>
+            <p className="mt-2 text-[14px] text-[#555]">Tell the office what kind of buyer or seller leads you want. This stays in the office and is not sent as a public form.</p>
+            <textarea className="mt-3 h-24 w-full border border-[#ccc] p-2 text-[14px]" placeholder="Neighbourhoods, price range, buyer or seller" />
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" className="h-9 px-3" onClick={() => setGetLeads(false)}>Cancel</button>
+              <button type="button" className="h-9 bg-[#1c93b5] px-3 text-white" onClick={() => { setGetLeads(false); setMessage("Lead request saved for the office."); }}>Save</button>
+            </div>
+          </div>
         </div>
       ) : null}
       {navOpen ? (

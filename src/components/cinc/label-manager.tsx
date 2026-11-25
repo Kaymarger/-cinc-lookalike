@@ -27,8 +27,12 @@ export function LabelManager({ onClose, onChange }: { onClose: () => void; onCha
       const stored = data?.settings?.labelCatalog ?? [];
       setSettings(data?.settings ?? null);
       if (stored.length) {
-        setRows(stored);
-        setGroup(stored[0].category);
+        const clean = stored.filter((row) => !/^QA( |$)/i.test(row.name) && !/QA 1125/i.test(row.name));
+        setRows(clean);
+        setGroup(clean[0]?.category || stored[0].category);
+        if (clean.length !== stored.length && data?.settings) {
+          void fetch("/api/office/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data.settings, labelCatalog: clean }) });
+        }
       }
     });
   }, []);
@@ -94,9 +98,12 @@ export function LabelManager({ onClose, onChange }: { onClose: () => void; onCha
           </div>
           <div className="grid max-h-64 grid-cols-3 gap-2 overflow-auto">
             {visible.map((row) => (
-              <button key={row.name} type="button" className={`border px-2 py-2 text-left text-[12px] ${picked.includes(row.name) ? "border-[#1c93b5] bg-[#e7f4f8]" : "border-[#eee]"}`} onClick={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])}>
-                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />{row.name}
-              </button>
+              <div key={row.name} className={`flex items-start justify-between gap-1 border px-2 py-2 text-[12px] ${picked.includes(row.name) ? "border-[#1c93b5] bg-[#e7f4f8]" : "border-[#eee]"}`}>
+                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setPicked((current) => current.includes(row.name) ? current.filter((item) => item !== row.name) : [...current, row.name])}>
+                  <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#1c93b5]" />{row.name}
+                </button>
+                <button type="button" className="text-[#d9363e]" aria-label={`Delete ${row.name}`} onClick={() => void persist(rows.filter((item) => !(item.category === row.category && item.name === row.name)), "Label deleted.")}>×</button>
+              </div>
             ))}
           </div>
         </div>
