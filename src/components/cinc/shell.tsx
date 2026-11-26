@@ -364,7 +364,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
   const titleRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [getLeads, setGetLeads] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [rail, setRail] = useState(false);
@@ -417,7 +416,6 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
       if (event.key !== "Escape") return;
       setHelpOpen(false);
       setAccountOpen(false);
-      setGetLeads(false);
       setTitleOpen(false);
     };
     window.addEventListener("keydown", onKey);
@@ -474,7 +472,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                     <span className="text-[13px]">{item.label}</span>
                   </a>
                   {active && kids.length ? (
-                    <div className="bg-[#12161a] py-0.5">
+                    <div className="border-l border-[#3d5160] bg-[#12161a] py-0.5 ml-6">
                       {kids.map((child) => {
                         if (child.group || !child.href) {
                           return <p key={child.label} className="px-5 py-1 text-[11px] font-bold text-[#9fd7ea]">{child.label}</p>;
@@ -564,7 +562,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => { setHelpOpen(false); setAccountOpen(false); setGetLeads(true); }}>Get Leads</button>
+              <a href={process.env.NEXT_PUBLIC_GET_LEADS_URL || "#get-leads"} target="_blank" rel={process.env.NEXT_PUBLIC_GET_LEADS_URL ? "noreferrer" : undefined} className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={(event) => { if (!process.env.NEXT_PUBLIC_GET_LEADS_URL) { event.preventDefault(); setMessage("Get Leads needs NEXT_PUBLIC_GET_LEADS_URL, the Google Form address."); } }}>Get Leads</a>
               <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>
@@ -575,19 +573,21 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                 </button>
                 {accountOpen ? (
                   <div className="absolute top-9 right-0 z-40 w-56 border border-[#e5e5e5] bg-white py-1 shadow-md">
-                    <p className="px-3 py-2 text-[13px] font-semibold text-[#1c93b5]">{office.user?.name || "Account"}</p>
                     <a href={href.publicSite} target="_blank" rel="noreferrer" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Public Website</a>
                     <a href={href.profile} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Profile & Settings</a>
                     <button type="button" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]" onClick={() => { setAccountOpen(false); setMessage("Referrals are saved with the office. Nothing was sent."); }}>Refer CINC</button>
                     <button type="button" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]" onClick={() => { setAccountOpen(false); setMessage("Success stories are saved with the office."); }}>Share a Success Story</button>
                     <a href={href.integrations} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">PROLINC Account</a>
                     <a href={href.officeDialer} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Telecom Registration</a>
-                    <a href={href.contact} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Contact Us</a>
-                    <a href="/terms" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Terms</a>
-                    <a href="/privacy" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Privacy</a>
-                    {office.user && (office.user.role === "admin" || office.user.role === "broker") ? (
-                      <a href={href.agents} className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Agents</a>
-                    ) : null}
+                    <details className="px-3 py-2 text-[13px]">
+                      <summary className="cursor-pointer">Contact Us</summary>
+                      <a className="mt-1 block pl-3 hover:text-[#1c93b5]" href={href.officeBilling}>Tech Support</a>
+                      <a className="block pl-3 hover:text-[#1c93b5]" href={href.profile}>Account Manager</a>
+                      <a className="block pl-3 hover:text-[#1c93b5]" href={href.officeBilling}>Billing Support</a>
+                      <a className="block pl-3 hover:text-[#1c93b5]" href={href.officeBilling}>Renewals/Cancelations</a>
+                    </details>
+                    <a href="/terms" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Terms and Conditions</a>
+                    <a href="/privacy" className="block px-3 py-2 text-[13px] hover:bg-[#f6f6f6]">Privacy Policy</a>
                     <form action="/api/agent/logout" method="post">
                       <button type="submit" className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f6f6f6]">
                         Sign Out
@@ -649,29 +649,23 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
       {helpOpen ? (
         <div className="fixed inset-0 z-[70]" onMouseDown={() => setHelpOpen(false)}>
           <aside className="absolute top-0 right-0 h-full w-[320px] bg-white shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">
-              <h2 className="text-[16px] font-semibold">Resource Center</h2>
-              <button type="button" aria-label="Close" onClick={() => setHelpOpen(false)}>×</button>
+            <div className="flex items-center justify-between bg-[#1c93b5] px-4 py-3 text-white">
+              <h2 className="text-[16px] font-semibold">CINC Resource Center</h2>
+              <button type="button" aria-label="Close" className="text-white" onClick={() => setHelpOpen(false)}>×</button>
             </div>
-            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href="https://support.cincpro.com" target="_blank" rel="noreferrer">CINC Help Center</a>
-            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.faq}>Product Testing</a>
-            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.contact}>Live Team Events</a>
-            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.faq}>Success Playbook</a>
-            <a className="block px-4 py-3 hover:bg-[#f6f6f6]" href={href.contact}>Upcoming Webinars</a>
+            {[
+              ["CINC Help Center", "Search the help articles", "https://support.cincpro.com"],
+              ["CINC Product Testing", "Try what the team is testing", href.faq],
+              ["CINC Live Team Events", "Office hours and training", href.faq],
+              ["CINC Success Playbook", "The steps that work", href.faq],
+              ["CINC Upcoming Webinars", "See the next session", href.faq],
+            ].map(([label, caption, dest]) => (
+              <a key={label} className="flex items-center justify-between border-b border-[#eee] px-4 py-3 hover:bg-[#f6f6f6]" href={dest} target={dest.startsWith("http") ? "_blank" : undefined} rel={dest.startsWith("http") ? "noreferrer" : undefined}>
+                <span><span className="block text-[14px]">{label}</span><span className="block text-[12px] text-[#888]">{caption}</span></span>
+                <span className="text-[#1c93b5]">›</span>
+              </a>
+            ))}
           </aside>
-        </div>
-      ) : null}
-      {getLeads ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/30 px-4" onMouseDown={() => setGetLeads(false)}>
-          <div className="w-full max-w-md bg-white p-5 shadow-lg" onMouseDown={(event) => event.stopPropagation()}>
-            <h2 className="text-[20px] font-semibold">Want More Leads?</h2>
-            <p className="mt-2 text-[14px] text-[#555]">Tell the office what kind of buyer or seller leads you want. This stays in the office and is not sent as a public form.</p>
-            <textarea className="mt-3 h-24 w-full border border-[#ccc] p-2 text-[14px]" placeholder="Neighbourhoods, price range, buyer or seller" />
-            <div className="mt-3 flex justify-end gap-2">
-              <button type="button" className="h-9 px-3" onClick={() => setGetLeads(false)}>Cancel</button>
-              <button type="button" className="h-9 bg-[#1c93b5] px-3 text-white" onClick={() => { setGetLeads(false); setMessage("Lead request saved for the office."); }}>Save</button>
-            </div>
-          </div>
         </div>
       ) : null}
       {navOpen ? (

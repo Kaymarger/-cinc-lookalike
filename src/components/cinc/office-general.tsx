@@ -56,7 +56,7 @@ export function OfficeGeneralSettings() {
         </label>
         <label className="mb-3 grid grid-cols-[180px_1fr] items-center gap-3">
           <span>Auto-Saved Searches</span>
-          <select className={inputCls} value={form.sellerSearches} onChange={(event) => set("sellerSearches", event.target.value as OfficeSettings["sellerSearches"])}><option>Enabled</option><option>Disabled</option></select>
+          <button type="button" className={`h-7 w-12 rounded-full ${form.sellerSearches === "Enabled" ? "bg-[#2e9e5b]" : "bg-[#c5c5c5]"}`} onClick={() => set("sellerSearches", form.sellerSearches === "Enabled" ? "Disabled" : "Enabled")} aria-label="Auto-Saved Searches">{form.sellerSearches === "Enabled" ? "On" : "Off"}</button>
         </label>
       </Box>
       <Box title="CRM Connect" onUpdate={() => void save()}>

@@ -436,8 +436,8 @@ function LeadConsent({ onClose, onYes }: { onClose: () => void; onYes: () => voi
   );
 }
 
-function ExportLeadsModal({ count, onClose, onSave }: { count: number; onClose: () => void; onSave: (email: string) => void }) {
-  const [email, setEmail] = useState("");
+function ExportLeadsModal({ count, email: initialEmail, onClose, onSave }: { count: number; email?: string; onClose: () => void; onSave: (email: string) => void }) {
+  const [email, setEmail] = useState(initialEmail || "");
   return (
     <ModalFrame title="Export Leads" onClose={onClose}>
       <Field label="Send to email"><input className={inputCls} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="office@example.com" /></Field>
@@ -784,14 +784,14 @@ export function LeadsView({
     chrome.toast("Restored the selected leads.");
   }
 
-  function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") {
+  function log(row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General", pinned?: boolean) {
     if (row.origin === "site" && kind !== "note") {
-      appendActivity(row.id, { kind, title, body });
+      appendActivity(row.id, { kind, title, body: visibleActivity(body) });
     }
     if (kind === "note") {
       update((current) => ({
         ...current,
-        notes: { ...current.notes, [row.id]: [...(current.notes[row.id] ?? []), { id: uid("note"), body: noteText(body || title), at: nowLabel(), kind: noteKind }] },
+        notes: { ...current.notes, [row.id]: [...(current.notes[row.id] ?? []), { id: uid("note"), body: noteText(body || title), at: nowLabel(), kind: noteKind, pinned: Boolean(pinned) }] },
       }));
     }
     if (kind === "call" || kind === "text" || kind === "email") {
@@ -990,32 +990,9 @@ export function LeadsView({
           </div>
           <div className="p-4">
           <label className="mb-3 block text-[13px]">Agent
-            <select className="mt-1 h-8 border border-[#ccc] px-2"><option>All agents</option><option>Casey Archibald</option><option>Kayla Gerak</option></select>
+            <select className="mt-1 h-8 w-full border border-[#ccc] px-2"><option>All agents</option><option>Casey Archibald</option><option>Kayla Gerak</option></select>
           </label>
-          <table className="w-full text-left text-[12px]">
-            <thead className="text-[10px] tracking-wide text-[#888] uppercase">
-              <tr>
-                <th className="py-2">Lead</th>
-                <th>Kind</th>
-                <th>When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.calls.length ? (
-                state.calls.map((call) => (
-                  <tr key={call.id} className="border-t border-[#eee]">
-                    <td className="py-2"><a className="text-[#1c93b5]" href={href.lead(call.leadId)}>{call.name}</a></td>
-                    <td>{call.kind}</td>
-                    <td>{call.at}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-[#888]">No dialer campaigns yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <p className="text-[13px] text-[#666]">Choose an agent to review that dialer campaign history.</p>
           </div>
         </div>
       </div>
@@ -1028,7 +1005,7 @@ export function LeadsView({
     <div className="flex h-full min-h-0 flex-col">
       {!office.ready ? <p className="bg-white px-3 py-2 text-[13px] text-[#666]">Checking your access…</p> : null}
       {mode === "export" ? (
-        <ExportLeadsModal count={filtered.length} onClose={() => { window.location.href = href.leads; }} onSave={downloadLeads} />
+        <ExportLeadsModal count={filtered.length} email={office.user?.email} onClose={() => { window.location.href = href.leads; }} onSave={downloadLeads} />
       ) : null}
       {mode === "labels" ? <LabelManager onClose={() => { window.location.href = href.leads; }} onChange={() => undefined} /> : null}
       <div className="flex min-h-[41px] flex-wrap items-center gap-2 rounded border border-[#e5e5e5] border-t-4 border-t-[#cfcfcf] bg-white px-3 py-2 shadow-sm">
@@ -1156,7 +1133,7 @@ export function LeadsView({
               </thead>
               <tbody>
                 {slice.map((row, index) => (
-                  <tr key={row.id} className={`group grid h-[118px] border-b border-[#e5e5e5] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#d5d5d5] ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`} style={{ gridTemplateColumns: `36px minmax(260px, 1.7fr) repeat(${Math.max(leadColumns.length - 1, 1)}, minmax(90px, 1fr))` }}>
+                  <tr key={row.id} className={`group grid border-b border-[#e5e5e5] align-top hover:bg-[#d5eaf2] [&>td]:border-r [&>td]:border-[#d5d5d5] ${view === "Compact" ? "min-h-[52px]" : view === "Roomy" ? "min-h-[148px]" : "min-h-[96px]"} ${index % 2 ? "bg-[#f7f7f7]" : "bg-white"} ${rowPad}`} style={{ gridTemplateColumns: `36px minmax(260px, 1.7fr) repeat(${Math.max(leadColumns.length - 1, 1)}, minmax(90px, 1fr))` }}>
                     <td className="px-2" style={{ order: 0 }}>
                       <input className={checkCls} type="checkbox" checked={selected.includes(row.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id))} />
                     </td>
@@ -1366,7 +1343,7 @@ function LeadDetail({
   rows: Row[];
   expanded: boolean;
   onExpand: () => void;
-  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") => void;
+  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General", pinned?: boolean) => void;
   onPipeline: (id: string, stage: string) => void;
   assignChoices: { agents: string[]; partners: string[]; listing: string[] };
   onAssign: (id: string, assign: Assign) => void;
@@ -1396,7 +1373,7 @@ function LeadDetail({
   const next = rows[index + 1];
   const site = leads.find((lead) => lead.id === row.id);
   const crm = CRM_LEADS.find((lead) => lead.id === row.id);
-  const notes = [...(state.notes[row.id] ?? []), ...(site?.activity.filter((item) => item.kind === "note").map((item) => ({ id: item.id, body: item.body || item.title, at: item.at, kind: undefined })) ?? [])];
+  const notes = [...(state.notes[row.id] ?? []), ...(site?.activity.filter((item) => item.kind === "note").map((item) => ({ id: item.id, body: item.body || item.title, at: item.at, kind: undefined, pinned: false })) ?? [])];
   const deals = state.deals.filter((deal) => deal.client === row.name);
   const reminders = state.reminders.filter((item) => item.leadId === row.id);
   const appts = state.appointments.filter((item) => item.leadId === row.id);
@@ -1586,7 +1563,7 @@ function LeadDetail({
             <button type="button" aria-label="Next lead" className={next ? "px-1 text-[20px] text-[#1c93b5]" : "px-1 text-[20px] opacity-30"} disabled={!next} onClick={() => next && go(href.lead(next.id, tab))}>›</button>
           </div>
         ) : null}
-        <NoteComposer onSave={(body, pinned, noteKind) => { onLog(row, "note", pinned ? "Pinned note" : "Note added", body, noteKind); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
+        <NoteComposer onSave={(body, pinned, noteKind) => { onLog(row, "note", "Note added", body, noteKind, pinned); chrome.toast(pinned ? "Note pinned." : "Note added."); }} />
         <div className="mb-3 flex gap-5 border-b border-[#e5e5e5] bg-white px-3">
           {tabs.map((item) => (
             <a key={item.id} href={href.lead(row.id, item.id)} className={`py-2 text-[13px] ${tab === item.id ? "border-b-2 border-[#329bb9] font-semibold text-[#329bb9]" : "text-[#666]"}`}>
@@ -1655,22 +1632,22 @@ function LeadDetail({
               ) : null}
               <span className="ml-auto text-[12px] text-[#888]">Pinned · {activityChecks.join(", ")}</span>
             </div>
-            {activityChecks.includes("Notes") && notes[0] ? (
+            {activityChecks.includes("Notes") && notes.find((note) => note.pinned) ? (
               <article className="mb-3 rounded-md border border-[#d5e8ee] bg-[#e7f6fb] p-4 text-[15px] shadow-md">
-                <p className="text-[15px] font-semibold">Note added</p>
-                <p className="text-[11px] text-[#888]">edited {friendlyWhen(notes[0].at)} by {CRM_AGENT.name}</p>
-                <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{noteText(notes[0].body)}</p>
-                <div className="mt-2 flex justify-end gap-3"><button type="button" className="text-[12px] text-[#d9363e]" onClick={() => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).filter((note) => note.id !== notes[0].id) } })); chrome.toast("Note deleted."); }}>Delete</button><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={notes[0].body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === notes[0].id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button></div>
+                <p className="text-[15px] font-semibold">Pinned note</p>
+                <p className="text-[11px] text-[#888]">{friendlyWhen(notes.find((note) => note.pinned)!.at)} by {CRM_AGENT.name}</p>
+                <p className="mt-2 bg-[#f3f3f3] p-2 text-[13px]">{noteText(notes.find((note) => note.pinned)!.body)}</p>
+                <div className="mt-2 flex justify-end gap-3"><button type="button" className="text-[12px] text-[#d9363e]" onClick={() => { const pinned = notes.find((note) => note.pinned); if (!pinned) return; update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).filter((note) => note.id !== pinned.id) } })); chrome.toast("Note deleted."); }}>Delete</button><button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => { const pinned = notes.find((note) => note.pinned); if (!pinned) return; chrome.openModal(<NoteModal initial={pinned.body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: current.notes[row.id].map((note) => note.id === pinned.id ? { ...note, body } : note) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />); }}>Edit Note</button></div>
               </article>
             ) : null}
             <p className="my-2 border-t border-dotted border-[#ccc] pt-2 text-[11px] font-semibold text-[#888]">Most Recent</p>
             <div className="ml-2 border-l border-[#ddd] pl-4">
-            {activityChecks.includes("Notes") ? notes.slice(1).map((note) => (
+            {activityChecks.includes("Notes") ? notes.filter((note) => !note.pinned).map((note) => (
               <article key={note.id} className="relative mb-3 rounded border border-[#e5e5e5] bg-white p-4 text-[14px] shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#1c93b5]" />
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">{friendlyWhen(note.at)} by {CRM_AGENT.name}</p>
-                <p className="mt-1 text-[13px]">{noteText(note.body)}</p>
+                <p className="mt-1 text-[13px]">{visibleActivity(noteText(note.body))}</p>
               </article>
             )) : null}
             {state.calls.filter((call) => {
@@ -1689,7 +1666,7 @@ function LeadDetail({
               <article key={item.id} className="relative mb-2 border border-[#e5e5e5] bg-white p-3 shadow-sm">
                 <span className="absolute top-3 -left-[22px] h-2 w-2 rounded-full bg-[#bbb]" />
                 <p className="text-[15px] font-semibold">{item.title}</p>
-                {"body" in item && item.body ? <p className="text-[12px]">{item.body}</p> : null}
+                {"body" in item && item.body ? <p className="text-[12px]">{visibleActivity(item.body)}</p> : null}
                 <p className="text-[11px] text-[#999]">{friendlyWhen(item.at)}{"actor" in item && item.actor ? ` by ${item.actor}` : ""}</p>
               </article>
             )) : null}
@@ -2038,7 +2015,7 @@ function Conversation({
   onLog,
 }: {
   row: Row;
-  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General") => void;
+  onLog: (row: Row, kind: "call" | "text" | "email" | "note", title: string, body?: string, noteKind?: "Call" | "General", pinned?: boolean) => void;
 }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
@@ -2199,6 +2176,15 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
       </div>
     </ModalFrame>
   );
+}
+
+function visibleActivity(body?: string) {
+  return (body || "")
+    .replace(/(?:^|[·\n]\s*)Landing:\s*[^·\n]*/g, "")
+    .replace(/(?:^|[·\n]\s*)Referrer:\s*[^·\n]*/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
+    .trim();
 }
 
 function noteText(body: string, people: string[] = []) {

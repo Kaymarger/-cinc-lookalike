@@ -117,7 +117,7 @@ export type LandingPage = {
   active: boolean;
 };
 
-export type Note = { id: string; body: string; at: string; kind?: "Call" | "General" };
+export type Note = { id: string; body: string; at: string; kind?: "Call" | "General"; pinned?: boolean };
 export type Reminder = { id: string; leadId: string; title: string; due: string; done: boolean; day: string; leadName?: string };
 export type Appt = {
   id: string;

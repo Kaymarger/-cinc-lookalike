@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LeadCaptureForms } from "@/components/lead-capture-forms";
-import { PropertyCard } from "@/components/property-card";
 import { catalogSearch } from "@/lib/catalog";
+import { propertyHref } from "@/lib/listing-url";
+import { formatPrice } from "@/lib/search";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -22,7 +23,11 @@ export default async function StartPage({
   const sent = params.sent === "1" || (Array.isArray(params.sent) && params.sent.includes("1"));
   const errorRaw = params.error;
   const error = Array.isArray(errorRaw) ? errorRaw[0] : errorRaw;
-  const live = await catalogSearch(query ? { q: query } : { sort: "newest" });
+  const live = await catalogSearch(query ? { q: query } : { sort: "newest" }).catch(() => ({
+    properties: [],
+    total: 0,
+    live: false,
+  }));
   const listings = live.properties.slice(0, 6);
   const count = query ? live.total : listings.length;
   const heading = query
@@ -87,8 +92,12 @@ export default async function StartPage({
           </p>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {listings.map((property, index) => (
-              <PropertyCard key={property.id} property={property} priority={index < 2} />
+            {listings.map((property) => (
+              <a key={property.id} href={propertyHref(property)} className="block border border-[#e5e5e5] bg-white p-4 hover:border-[#1976d2]">
+                <p className="text-[20px] text-[#1976d2]">{formatPrice(property.price)}</p>
+                <p className="mt-1 text-[14px] text-[#333]">{property.address}</p>
+                <p className="text-[13px] text-[#555]">{[property.neighborhood, property.city].filter(Boolean).join(", ")}</p>
+              </a>
             ))}
           </div>
         )}

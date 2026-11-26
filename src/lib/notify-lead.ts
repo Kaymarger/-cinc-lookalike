@@ -180,10 +180,7 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
     image: property.images[0],
   }))).html;
   const email = await sendLeadEmail(lead.email, subject, welcome, html);
-  const sms = lead.smsOptIn
-    ? await sendLeadSms(lead.phone, `${SITE.company}: you're signed up for home alerts. Reply STOP to opt out.`)
-    : "skipped";
-  return { email, sms };
+  return { email, sms: "skipped" };
 }
 
 async function recordOfficeAlert(kind: string, title: string, body: string): Promise<void> {

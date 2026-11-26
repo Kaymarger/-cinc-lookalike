@@ -39,6 +39,8 @@ function googleId() {
 
 function conversionLabel() {
   const value =
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL ||
+    process.env.GOOGLE_ADS_LEAD_LABEL ||
     process.env.GOOGLE_ADS_CONVERSION_LABEL ||
     process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL ||
     "";

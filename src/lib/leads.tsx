@@ -11,7 +11,6 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import {
-  attributionSummary,
   readStoredAttribution,
   trackLeadConversion,
   type LeadAttribution,
@@ -364,7 +363,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const buildLead = useCallback((input: CreateLeadInput): Lead => {
     const now = new Date().toISOString();
     const attribution = input.attribution ?? readStoredAttribution();
-    const campaign = attributionSummary(attribution);
     const notes = input.notes ?? "";
     return {
       id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -409,7 +407,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
                       : input.notes?.startsWith("Added by an agent")
                         ? "Added by the office"
                         : "Sent a message",
-          body: [notes, campaign].filter(Boolean).join("\n") || LEAD_SOURCE_LABEL[input.source],
+          body: notes || LEAD_SOURCE_LABEL[input.source],
         },
       ],
     };
@@ -463,7 +461,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           );
         });
       }
-      if (response.ok && data?.ok !== false && data?.persisted && data.lead?.id === lead.id) trackLeadConversion(lead.source);
+      if (response.ok && data?.ok !== false && !data?.existing) trackLeadConversion(lead.source);
       return {
         ok: response.ok && data?.ok !== false,
         persisted: Boolean(data?.persisted),

@@ -176,6 +176,11 @@ export function DialerSettingsPanel() {
     <div className="border border-[#ddd] bg-white p-4 text-[13px]">
       <h1 className="mb-3 text-[18px] font-semibold">Dialer Settings</h1>
       <h2 className="font-bold">Dialer Account Settings</h2>
+      <div className="mt-2 border border-[#e5e5e5] bg-[#f7f7f7] p-3">
+        <p className="text-[12px] uppercase text-[#888]">Dialer plan</p>
+        <p className="text-[22px] font-semibold">$75 for 3 dialers</p>
+        <p className="text-[13px] text-[#555]">{lines.length} dialer{lines.length === 1 ? "" : "s"} in use</p>
+      </div>
       <p className="mt-2">{status}</p>
       <p className="mt-2 text-[13px]">Dialer Account Status: {status.startsWith("Connected") ? "ACTIVE" : "NOT CONNECTED"}</p>
       <button type="button" className="mt-2 border border-[#1c93b5] px-3 py-1 text-[#1c93b5]" onClick={() => setNote("A number request was saved for the office.")}>Request a number</button>
@@ -269,12 +274,10 @@ export function CustomFieldsPanel() {
       <h2 className="mt-4 text-[15px] font-semibold">Active Fields</h2>
       <ul className="mt-2">
         {fields.map((field) => (
-          <li key={field.id} className="flex items-center justify-between border-t border-[#eee] py-2">
-            <span>{field.name} <span className="text-[#888]">({field.type})</span></span>
-            <span className="flex gap-3">
-              <button type="button" className="text-[#1c93b5]" onClick={() => { setEditing(field.id); setName(field.name); setType(field.type); }}>Edit</button>
-              <button type="button" className="text-[#d9363e]" onClick={() => persist(fields.filter((item) => item.id !== field.id), "Custom field deleted.")}>Delete</button>
-            </span>
+          <li key={field.id} className="flex items-center justify-between gap-2 border-t border-[#eee] py-2">
+            <input className={`${inputCls} max-w-[220px]`} value={field.name} onChange={(event) => setFields((current) => current.map((item) => item.id === field.id ? { ...item, name: event.target.value } : item))} onBlur={() => persist(fields, "Custom field updated.")} />
+            <select className={`${inputCls} max-w-[140px]`} value={field.type} onChange={(event) => setFields((current) => current.map((item) => item.id === field.id ? { ...item, type: event.target.value } : item))}><option>Text</option><option>Number</option><option>Date</option><option>True/False</option></select>
+            <button type="button" className="text-[#d9363e]" onClick={() => persist(fields.filter((item) => item.id !== field.id), "Custom field deleted.")}>Delete</button>
           </li>
         ))}
       </ul>

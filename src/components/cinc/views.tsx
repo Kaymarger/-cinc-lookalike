@@ -2030,6 +2030,19 @@ function ProfileTab() {
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-4">
       <Card title="Login Info">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-[#d7e3ea] text-[12px] text-[#5c7c8c]">{profile.photoName ? <img src={profile.photoName} alt="" className="h-full w-full object-cover" /> : "Photo"}</span>
+          <label className="text-[13px] text-[#1c93b5]">
+            Upload photo
+            <input type="file" accept="image/*" className="mt-1 block text-[12px] text-[#333]" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => set("photoName", String(reader.result || ""));
+              reader.readAsDataURL(file);
+            }} />
+          </label>
+        </div>
         <div className="mb-2 flex items-center justify-between text-[13px]"><span>Email</span><span>{profile.email}</span></div>
         <PasswordReset />
         {recoveryUrl ? (
@@ -2203,8 +2216,13 @@ function reminderWhen(due: string) {
 }
 
 function reminderLead(id: string, leads: { id: string; name: string }[], stored?: string) {
-  const names = [leads.find((lead) => lead.id === id)?.name, CRM_LEADS.find((lead) => lead.id === id)?.name, stored];
-  return names.find((name) => name && !/^lead$/i.test(name.trim()) && name.trim() !== "This lead") || "Open this lead";
+  const names = [
+    leads.find((lead) => lead.id === id)?.name,
+    leads.find((lead) => id && (lead.id.endsWith(id) || id.endsWith(lead.id)))?.name,
+    CRM_LEADS.find((lead) => lead.id === id)?.name,
+    stored,
+  ];
+  return names.find((name) => name && !/^(lead|this lead|open this lead)$/i.test(name.trim())) || "";
 }
 
 function NamePrompt({ title, label, onClose, onSave }: { title: string; label: string; onClose: () => void; onSave: (name: string) => void }) {
@@ -2836,6 +2854,9 @@ export function TasksView() {
   const { leads } = useLeads();
   const taskList = useOfficeList("tasks", "title", ["title", "due", "status", "agent"]);
   const [picked, setPicked] = useState<string[]>([]);
+  const [plan, setPlan] = useState("All");
+  const [sort, setSort] = useState("Due date");
+  const [range, setRange] = useState("Any date");
   const arranged = applyOfficeList(state.reminders.map((item) => ({
     name: item.title,
     email: "",
@@ -2859,21 +2880,24 @@ export function TasksView() {
   });
   return (
     <div className="p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <a href={href.launchpad} className="text-[13px] text-[#1c93b5]">Back to Launchpad</a>
-        <span className="text-[16px] font-semibold">To Do</span>
-        <button type="button" className="ml-auto h-8 border border-[#ccc] bg-white px-3 text-[12px]" onClick={() => setPicked([])}>Reset</button>
+        <select className="h-8 border border-[#ccc] bg-white px-2 text-[12px]" value={plan} onChange={(event) => setPlan(event.target.value)} aria-label="Plan"><option>All</option><option>PLAN</option><option>CALL</option><option>EMAIL</option></select>
+        <button type="button" className="h-8 border border-[#ccc] bg-white px-2 text-[12px]" onClick={() => { if (!picked.length) { chrome.toast("Select at least one to-do."); return; } update((current) => ({ ...current, reminders: current.reminders.map((reminder) => picked.includes(reminder.id) ? { ...reminder, done: true } : reminder) })); setPicked([]); chrome.toast("Selected to-dos completed."); }}>Mass Actions</button>
+        <select className="h-8 border border-[#ccc] bg-white px-2 text-[12px]" value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort"><option>Due date</option><option>Title</option></select>
+        <select className="h-8 border border-[#ccc] bg-white px-2 text-[12px]" value={range} onChange={(event) => setRange(event.target.value)} aria-label="Date range"><option>Any date</option><option>Today</option><option>This week</option><option>Overdue</option></select>
+        <button type="button" className="ml-auto h-8 border border-[#ccc] bg-white px-3 text-[12px]" onClick={() => { setPicked([]); setPlan("All"); setSort("Due date"); setRange("Any date"); }}>Reset</button>
       </div>
       <table className="w-full bg-white text-left text-[13px]">
         <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr>{["To Do Item", "Lead", "Due Date", "Actions"].map((column) => <th key={column} className="px-3 py-2">{column}</th>)}</tr></thead>
         <tbody>
-          {reminders.map((item) => (
+          {reminders.filter((item) => plan === "All" || item.day.toUpperCase().includes(plan)).filter((item) => range === "Any date" || (range === "Overdue" ? !item.done : true)).sort((a, b) => sort === "Title" ? a.title.localeCompare(b.title) : a.due.localeCompare(b.due)).map((item) => (
             <tr key={item.id} className="border-t border-[#eee]">
               <td className="px-3 py-2">{reminderTitle(item.title, reminderLead(item.leadId, leads, item.leadName))}</td>
               <td><a className="text-[#1c93b5]" href={item.leadId ? href.lead(item.leadId) : href.tasks}>{reminderLead(item.leadId, leads, item.leadName)}</a></td>
               <td>{item.due}</td>
               <td className="space-x-2 text-[12px]">
-                <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<ModalFrame title="Edit reminder" onClose={chrome.closeModal}><p className="text-[13px]">{item.title}</p><div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Close</Btn></div></ModalFrame>)}>Edit</button>
+                <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<TodoEdit item={item} onClose={chrome.closeModal} />)}>Edit</button>
                 <button type="button" className="text-[#1c93b5]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))}>{item.done ? "Reopen" : "Mark Complete"}</button>
                 <button type="button" className="text-[#d9363e]" onClick={() => { if (window.confirm("Delete this reminder?")) update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); }}>Delete</button>
               </td>
@@ -3041,10 +3065,34 @@ export function GmailView() {
   );
 }
 
+function TodoEdit({ item, onClose }: { item: { id: string; title: string; due: string; leadName?: string }; onClose: () => void }) {
+  const { update } = useCinc();
+  const chrome = useChrome();
+  const [title, setTitle] = useState(item.title);
+  const [due, setDue] = useState(item.due);
+  const [leadName, setLeadName] = useState(item.leadName || "");
+  return (
+    <ModalFrame title="Edit to-do" onClose={onClose}>
+      <Field label="To do"><input className={inputCls} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
+      <Field label="Lead"><input className={inputCls} value={leadName} onChange={(event) => setLeadName(event.target.value)} /></Field>
+      <Field label="Due date"><input className={inputCls} value={due} onChange={(event) => setDue(event.target.value)} /></Field>
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={onClose}>Cancel</Btn>
+        <Btn kind="teal" onClick={() => {
+          update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, title: title.trim() || reminder.title, due: due.trim() || reminder.due, leadName: leadName.trim() || reminder.leadName } : reminder) }));
+          chrome.toast("To-do updated.");
+          onClose();
+        }}>Save</Btn>
+      </div>
+    </ModalFrame>
+  );
+}
+
 export function BrokerLaunchpad() {
   const { leads } = useLeads();
   const { state } = useCinc();
   const [range, setRange] = useState("Last 30");
+  const [board, setBoard] = useState<"Pipeline" | "Activity" | "CINC Extras">("Pipeline");
   const open = state.reminders.filter((item) => !item.done).length;
   const cities = new Map<string, number>();
   for (const lead of leads) {
@@ -3078,12 +3126,36 @@ export function BrokerLaunchpad() {
           )) : <p className="text-[13px] text-[#666]">No lead cities for this range.</p>}
         </article>
         <article className="bg-white p-4">
-          <h2 className="mb-2 font-semibold">Pipeline</h2>
-          {["new", "contacted", "showing", "nurture", "closed"].map((status) => (
-            <p key={status} className="flex justify-between border-b border-[#f3f3f3] py-1 text-[13px] capitalize"><span>{status}</span><span>{leads.filter((lead) => lead.status === status).length}</span></p>
-          ))}
+          <h2 className="mb-2 font-semibold">Lead Trends</h2>
+          <svg viewBox="0 0 120 120" className="mx-auto h-36 w-36" aria-label="Lead city pie">
+            <circle cx="60" cy="60" r="48" fill={top.length ? "#1c93b5" : "#d5e3ea"} />
+            <circle cx="60" cy="60" r="24" fill="#fff" />
+          </svg>
+          <ul className="mt-2 text-[12px]">{top.map(([city, count], index) => <li key={city} className="flex justify-between"><span>{index + 1}. {city}</span><span>{count}</span></li>)}</ul>
         </article>
       </div>
+      <div className="mt-3 bg-white">
+        <div className="flex border-b border-[#e5e5e5] text-[13px]">
+          {(["Pipeline", "Activity", "CINC Extras"] as const).map((label) => (
+            <button key={label} type="button" className={board === label ? "border-b-2 border-[#1c93b5] px-4 py-2 font-semibold text-[#1c93b5]" : "px-4 py-2 text-[#666]"} onClick={() => setBoard(label)}>{label}</button>
+          ))}
+        </div>
+        {board === "Pipeline" ? (
+          <div className="p-4">{["new", "contacted", "showing", "nurture", "closed"].map((status) => (
+            <p key={status} className="flex justify-between border-b border-[#f3f3f3] py-1 text-[13px] capitalize"><span>{status}</span><span>{leads.filter((lead) => lead.status === status).length}</span></p>
+          ))}</div>
+        ) : null}
+        {board === "Activity" ? <p className="p-4 text-[13px] text-[#555]">{state.calls.length} calls logged. {open} reminders still open.</p> : null}
+        {board === "CINC Extras" ? <p className="p-4 text-[13px] text-[#555]">Saved searches and listing alerts stay on each lead. This office does not buy extra CINC lead products from this screen.</p> : null}
+      </div>
+      <table className="mt-3 w-full bg-white text-left text-[13px]">
+        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">Agent</th><th>Leads</th><th>Open reminders</th></tr></thead>
+        <tbody>
+          {["Casey Archibald", "Kayla Gerak"].map((name) => (
+            <tr key={name} className="border-t border-[#eee]"><td className="px-3 py-2">{name}</td><td>{leads.filter((lead) => lead.assignedTo === name).length}</td><td>{state.reminders.filter((item) => !item.done && item.leadName).length}</td></tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
