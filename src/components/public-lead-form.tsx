@@ -56,15 +56,26 @@ export function PublicLeadForm({
   id?: string;
 }) {
   const { capture } = useLeads();
-  const { signUp } = useDemoAuth();
+  const { user, signUp } = useDemoAuth();
   const lock = useRef(false);
   const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [city, setCity] = useState(area);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState("");
   const [nextHref, setNextHref] = useState("/search?sort=newest");
+
+  useEffect(() => {
+    if (!user) return;
+    queueMicrotask(() => {
+      setFullName((current) => current || user.name);
+      setEmail((current) => current || user.email);
+      setPhone((current) => current || user.phone || "");
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!done || intent !== "buyer") return;
@@ -152,24 +163,28 @@ export function PublicLeadForm({
       </div>
       <label className="block text-[14px] font-semibold text-[#1f2930]">
         Full name
-        <input
-          name="name"
-          autoComplete="name"
-          aria-invalid={Boolean(fieldErrors.name)}
-          className="mt-1 h-12 w-full rounded-md border border-[#d5dde3] px-3 text-[16px] outline-none focus:border-[#04427d]"
-        />
+          <input
+            name="name"
+            autoComplete="name"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            aria-invalid={Boolean(fieldErrors.name)}
+            className="mt-1 h-12 w-full rounded-md border border-[#d5dde3] px-3 text-[16px] outline-none focus:border-[#04427d]"
+          />
       </label>
       {fieldErrors.name ? <p className="mt-1 text-[13px] text-[#9b3b3b]">{fieldErrors.name}</p> : null}
       <label htmlFor={`${id}-email`} className="mt-2 block text-[14px] font-semibold text-[#1f2930]">
         Email
       </label>
-      <EmailField
-        id={`${id}-email`}
-        name="email"
-        autoComplete="email"
-        aria-invalid={Boolean(fieldErrors.email)}
-        className="mt-1 h-12 w-full rounded-md border border-[#d5dde3] px-3 text-[16px] outline-none focus:border-[#04427d]"
-      />
+        <EmailField
+          id={`${id}-email`}
+          name="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          aria-invalid={Boolean(fieldErrors.email)}
+          className="mt-1 h-12 w-full rounded-md border border-[#d5dde3] px-3 text-[16px] outline-none focus:border-[#04427d]"
+        />
       {fieldErrors.email ? <p className="mt-1 text-[13px] text-[#9b3b3b]">{fieldErrors.email}</p> : null}
       <label className="mt-2 block text-[14px] font-semibold text-[#1f2930]">
         Phone

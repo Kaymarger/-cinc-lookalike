@@ -127,7 +127,12 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem("gvhs-saved-homes");
+    localStorage.removeItem("gvhs-compare");
+    localStorage.removeItem("gvhs-saved-searches");
+    localStorage.removeItem("gvhs-property-notes");
     setUser(null);
+    window.dispatchEvent(new Event("gvhs-sign-out"));
   }, []);
 
   const value = useMemo(

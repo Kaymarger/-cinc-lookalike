@@ -42,6 +42,29 @@ function priceIcon(price: number, selected: boolean) {
   });
 }
 
+function WheelZoom() {
+  const map = useMap();
+  useEffect(() => {
+    map.scrollWheelZoom.disable();
+    const container = map.getContainer();
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) map.scrollWheelZoom.enable();
+      else map.scrollWheelZoom.disable();
+    };
+    const onClick = () => map.scrollWheelZoom.enable();
+    const onLeave = () => map.scrollWheelZoom.disable();
+    container.addEventListener("wheel", onWheel, { capture: true });
+    container.addEventListener("click", onClick);
+    container.addEventListener("mouseleave", onLeave);
+    return () => {
+      container.removeEventListener("wheel", onWheel, { capture: true });
+      container.removeEventListener("click", onClick);
+      container.removeEventListener("mouseleave", onLeave);
+    };
+  }, [map]);
+  return null;
+}
+
 function FitBounds({
   properties,
   selectedId,
@@ -132,8 +155,9 @@ export function SearchMap({
       center={center}
       zoom={11}
       className="h-full w-full rounded-sm [&_.leaflet-control-attribution]:text-[10px]"
-      scrollWheelZoom
+      scrollWheelZoom={false}
     >
+      <WheelZoom />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

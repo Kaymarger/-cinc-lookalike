@@ -7,8 +7,10 @@ export async function register() {
     const { retireQaOfficeOnce } = await import("./lib/qa-office");
     await retireQaOfficeOnce();
     const { deleteLeadByEmail } = await import("./lib/leads-db");
-    const removed = await deleteLeadByEmail("admin+qalead1127@caseyarchibald.com");
-    if (removed) console.log("[leads] removed QA test lead", removed);
+    for (const email of ["admin+qalead1127@caseyarchibald.com", "admin+qalead1127b@caseyarchibald.com"]) {
+      const removed = await deleteLeadByEmail(email);
+      if (removed) console.log("[leads] removed QA test lead", removed);
+    }
   } catch (error) {
     console.error("[audit] seed failed", error instanceof Error ? error.name : "error");
   }

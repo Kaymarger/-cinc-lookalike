@@ -13,6 +13,7 @@ export default function SavedHomesPage() {
   const { ready, ids, clear, replace } = useSavedHomes();
   const { user } = useDemoAuth();
   const [homes, setHomes] = useState<Property[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     if (!ready || !ids.length) {
@@ -79,13 +80,41 @@ export default function SavedHomesPage() {
           {homes.length > 0 && (
             <button
               type="button"
-              onClick={clear}
+              onClick={() => setConfirmClear(true)}
               className="text-sm font-medium text-[#666] hover:text-[var(--cedar)]"
             >
               Clear all
             </button>
           )}
         </div>
+
+        {confirmClear ? (
+          <div className="mt-6 rounded-2xl border border-[#d7e0e8] bg-white px-4 py-4 text-sm text-[#1f2930]" role="dialog" aria-label="Clear saved homes">
+            <p>Remove every saved home from this account?</p>
+            <div className="mt-3 flex gap-3">
+              <button
+                type="button"
+                className="h-10 bg-[#04427d] px-4 font-semibold text-white"
+                onClick={() => {
+                  clear();
+                  if (user?.email) {
+                    void fetch("/api/account/homes", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: user.email, ids: [] }),
+                    });
+                  }
+                  setConfirmClear(false);
+                }}
+              >
+                Clear all
+              </button>
+              <button type="button" className="h-10 px-3" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {!user && ready && (
           <div className="mt-6 rounded-2xl border border-[#d7e8f6] bg-[#edf5fd] px-4 py-4 text-sm text-[var(--cedar-deep)] sm:px-5">

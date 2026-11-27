@@ -40,7 +40,12 @@ function FactGroup({
   title: string;
   rows: { label: string; value: string }[];
 }) {
-  const visible = rows.filter((row) => row.value.trim());
+  const visible = rows.filter((row) => {
+    const value = row.value.trim();
+    if (!value || value === "—" || value === "-" || value === "0" || value === "0.0" || value === "n/a") return false;
+    if (/year built/i.test(row.label) && Number(value) <= 0) return false;
+    return true;
+  });
   if (visible.length === 0) return null;
   return (
     <div>

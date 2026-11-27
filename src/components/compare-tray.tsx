@@ -2,7 +2,7 @@
 
 import { ListingPhoto } from "@/components/listing-photo";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useCompare } from "@/lib/compare";
 import { formatPrice } from "@/lib/search";
@@ -10,20 +10,36 @@ import { formatPrice } from "@/lib/search";
 export function CompareTray() {
   const { ready, homes, notice, pending, remove, clear, replaceWithPending, max } = useCompare();
   const [collapsed, setCollapsed] = useState(false);
+  const trayRef = useRef<HTMLDivElement>(null);
   const visible = ready && homes.length > 0;
   useEffect(() => {
+    try {
+      if (localStorage.getItem("gvhs-compare-collapsed") === "1") queueMicrotask(() => setCollapsed(true));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
     if (!visible) return;
+    const element = trayRef.current;
+    if (!element) return;
     const previous = document.body.style.paddingBottom;
-    document.body.style.paddingBottom = collapsed ? "72px" : "240px";
+    const apply = () => {
+      document.body.style.paddingBottom = `${element.offsetHeight}px`;
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(element);
     return () => {
+      observer.disconnect();
       document.body.style.paddingBottom = previous;
     };
-  }, [collapsed, visible]);
+  }, [visible, collapsed, homes.length]);
   if (!visible) return null;
   const readyToCompare = homes.length >= 2;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] border-t-4 border-[#1976d2] bg-white shadow-[0_-8px_30px_rgba(4,66,125,0.16)]">
+    <div ref={trayRef} className="fixed inset-x-0 bottom-0 z-[70] border-t-4 border-[#1976d2] bg-white shadow-[0_-8px_30px_rgba(4,66,125,0.16)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-[#1f2930]">
@@ -37,7 +53,15 @@ export function CompareTray() {
                   ? "Open the comparison, or remove a home to choose another."
                   : "Add one more home. You can compare 2 or 3."}
             </p>
-            <button type="button" onClick={() => setCollapsed((value) => !value)} className="text-xs font-semibold text-[#1976d2]">
+            <button
+              type="button"
+              onClick={() => setCollapsed((value) => {
+                const next = !value;
+                try { localStorage.setItem("gvhs-compare-collapsed", next ? "1" : "0"); } catch { /* ignore */ }
+                return next;
+              })}
+              className="text-xs font-semibold text-[#1976d2]"
+            >
               {collapsed ? "Expand" : "Collapse"}
             </button>
           </div>

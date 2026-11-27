@@ -11,6 +11,7 @@ import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { insertSearch } from "@/lib/lead-searches-db";
 import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
 import { publicSavedSearch } from "@/lib/saved-search-alerts";
+import { after } from "next/server";
 import { preferredLeadName, WELCOME_SOURCES } from "@/lib/lead-match";
 import { scheduleMetaLead } from "@/lib/meta-capi-send";
 import { isTestLeadEmail } from "@/lib/test-lead";
@@ -283,8 +284,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const saved = await insertLead({ ...lead, assignedUserId: assignee.userId });
-    const isNew = saved.id === lead.id;
+    const result = await insertLead({ ...lead, assignedUserId: assignee.userId });
+    const saved = result.lead;
+    const followUp = lead.source === "showing_request" || lead.source === "search_alert" || lead.source === "ask_question" || lead.source === "general" || lead.source === "photo_gate";
     const alertLead = {
       ...lead,
       id: saved.id,
@@ -293,13 +295,15 @@ export async function POST(request: Request) {
       phone: lead.phone.trim() || saved.phone || "",
     };
     if (!testLead) {
-      if (isNew) {
+      after(() => {
+        if (!result.created || followUp) {
+          void notifyAssignedAgent(alertLead, { activity: true }).catch(() => undefined);
+          return;
+        }
         void notifyAssignedAgent(alertLead).catch(() => undefined);
         if (WELCOME_SOURCES.has(lead.source)) void sendWelcomeAndAlert(alertLead).catch(() => undefined);
-        scheduleMetaLead(request, { ...alertLead, id: saved.id });
-      } else {
-        void notifyAssignedAgent(alertLead, { activity: true }).catch(() => undefined);
-      }
+      });
+      if (result.created && !followUp) scheduleMetaLead(request, { ...alertLead, id: saved.id });
     }
     if (!testLead && lead.source === "search_alert" && body && typeof body === "object") {
       const search = publicSavedSearch(
