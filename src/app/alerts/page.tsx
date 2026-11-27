@@ -3,11 +3,16 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { PageAssist } from "@/components/page-assist";
-import { AccountSearchList } from "@/components/account-searches";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { savedSearchHref, useSavedSearches } from "@/lib/saved-searches";
 
 export default function AlertsPage() {
+  const { user } = useDemoAuth();
   const { ready, searches, remove, clear } = useSavedSearches();
+  const mine = user
+    ? searches.filter((search) => !search.email || search.email.toLowerCase() === user.email.toLowerCase())
+    : searches;
+  const countLabel = mine.length === 1 ? "1 alert." : `${mine.length} alerts.`;
 
   return (
     <div className="bg-[#f7fafc]">
@@ -21,12 +26,14 @@ export default function AlertsPage() {
         <p className="mt-3 text-[15px] text-[#666]">
           {!ready
             ? "Loading…"
-            : searches.length === 0
+            : mine.length === 0
               ? "Save a search from the results page to get notified when matching homes appear."
-              : `${searches.length} alert${searches.length === 1 ? "" : "s"} on this device.`}
+              : user
+                ? countLabel
+                : `${mine.length} alert${mine.length === 1 ? "" : "s"} on this device.`}
         </p>
 
-        {ready && searches.length === 0 ? (
+        {!ready ? null : mine.length === 0 ? (
           <div className="mt-10 rounded-3xl border border-[#e5eef5] bg-white px-6 py-14 text-center">
             <Bell className="mx-auto size-10 text-[var(--cedar)]" strokeWidth={1.5} />
             <p className="mt-4 text-lg font-semibold text-[#222]">
@@ -44,7 +51,7 @@ export default function AlertsPage() {
           </div>
         ) : (
           <ul className="mt-8 space-y-3">
-            {searches.map((search) => (
+            {mine.map((search) => (
               <li
                 key={search.id}
                 className="flex flex-col gap-3 rounded-2xl border border-[#e5eef5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -79,12 +86,7 @@ export default function AlertsPage() {
           </ul>
         )}
 
-        <AccountSearchList
-          heading="Saved searches from your agent"
-          hideNames={searches.map((search) => search.label.trim().toLowerCase())}
-        />
-
-        {searches.length > 0 && (
+        {mine.length > 0 && (
           <button
             type="button"
             onClick={clear}

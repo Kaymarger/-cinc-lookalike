@@ -6,14 +6,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { pushAccount, readSession } from "@/lib/account-sync";
 import {
   COMPARE_MAX,
   nextCompare,
   type ComparedHome,
 } from "@/lib/compare-state";
+import type { Property } from "@/lib/types";
 
 const STORAGE_KEY = "gvhs-compare";
 
@@ -31,6 +34,45 @@ type Ctx = {
 };
 
 const CompareContext = createContext<Ctx | null>(null);
+
+function propertyToCompared(property: Property): ComparedHome {
+  return {
+    id: property.id,
+    mlsNumber: property.mlsNumber,
+    price: property.price,
+    address: property.address,
+    city: property.city,
+    province: property.province,
+    postalCode: property.postalCode,
+    beds: property.beds,
+    baths: property.baths,
+    sqft: property.sqft,
+    propertyType: property.propertyType,
+    yearBuilt: property.yearBuilt,
+    listedDaysAgo: property.listedDaysAgo,
+    brokerage: property.brokerage,
+    image: property.images?.[0],
+    neighborhood: property.neighborhood,
+  };
+}
+
+async function hydrate(ids: string[], device: ComparedHome[]): Promise<ComparedHome[]> {
+  const byId = new Map(device.map((home) => [home.id, home]));
+  const missing = ids.filter((id) => !byId.has(id));
+  if (missing.length) {
+    try {
+      const response = await fetch(`/api/listings?ids=${encodeURIComponent(missing.join(","))}`);
+      const data = (await response.json()) as { properties?: Property[] };
+      for (const property of data.properties || []) byId.set(property.id, propertyToCompared(property));
+    } catch {
+      /* keep the homes we already have */
+    }
+  }
+  return ids.flatMap((id) => {
+    const home = byId.get(id);
+    return home ? [home] : [];
+  }).slice(0, COMPARE_MAX);
+}
 
 function readHomes(): ComparedHome[] {
   try {
@@ -55,22 +97,83 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState<ComparedHome | null>(null);
+  const emailRef = useRef("");
+  const skipPost = useRef(true);
 
   useEffect(() => {
-    setHomes(readHomes());
-    setReady(true);
+    let cancel = false;
+
+    async function load(email: string, name: string) {
+      emailRef.current = email;
+      const device = readHomes();
+      if (!email) {
+        skipPost.current = true;
+        if (!cancel) {
+          setHomes(device);
+          setReady(true);
+        }
+        return;
+      }
+      if (!cancel) {
+        setHomes([]);
+        setPending(null);
+        setReady(false);
+      }
+      const snapshot = await pushAccount(email, name, {
+        compare: device.map((home) => home.id),
+        compareMode: "merge",
+      });
+      if (cancel || emailRef.current !== email) return;
+      const next = await hydrate(snapshot?.compare ?? device.map((home) => home.id), device);
+      if (cancel || emailRef.current !== email) return;
+      skipPost.current = true;
+      setHomes(next);
+      setReady(true);
+    }
+
+    const session = readSession();
+    void load(session?.email || "", session?.name || "");
+
+    const onSignIn = (event: Event) => {
+      const detail = (event as CustomEvent<{ email?: string; name?: string }>).detail;
+      void load((detail?.email || "").trim().toLowerCase(), detail?.name || "");
+    };
     const onSignOut = () => {
+      emailRef.current = "";
+      skipPost.current = true;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
       setHomes([]);
       setPending(null);
       setNotice("");
+      setReady(true);
     };
+    window.addEventListener("gvhs-sign-in", onSignIn);
     window.addEventListener("gvhs-sign-out", onSignOut);
-    return () => window.removeEventListener("gvhs-sign-out", onSignOut);
+    return () => {
+      cancel = true;
+      window.removeEventListener("gvhs-sign-in", onSignIn);
+      window.removeEventListener("gvhs-sign-out", onSignOut);
+    };
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ homes }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ homes }));
+    } catch {
+      /* ignore */
+    }
+    if (skipPost.current) {
+      skipPost.current = false;
+      return;
+    }
+    const email = emailRef.current;
+    if (!email) return;
+    void pushAccount(email, "", { compare: homes.map((home) => home.id), compareMode: "replace" });
   }, [homes, ready]);
 
   const isCompared = useCallback((id: string) => homes.some((home) => home.id === id), [homes]);
