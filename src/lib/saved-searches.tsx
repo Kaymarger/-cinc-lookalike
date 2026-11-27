@@ -23,14 +23,16 @@ export type SavedSearch = {
   filters: SearchFilters;
   email: string;
   createdAt: string;
+  frequency: string;
 };
 
 type Ctx = {
   ready: boolean;
   searches: SavedSearch[];
-  add: (input: { label: string; filters: SearchFilters; email: string }) => void;
+  add: (input: { label: string; filters: SearchFilters; email: string; frequency?: string }) => void;
   remove: (id: string) => void;
   clear: () => void;
+  setFrequency: (id: string, frequency: string) => void;
 };
 
 const SavedSearchesContext = createContext<Ctx | null>(null);
@@ -40,7 +42,20 @@ function read(): SavedSearch[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as SavedSearch[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Partial<SavedSearch>;
+      if (typeof row.id !== "string" || typeof row.label !== "string") return [];
+      return [{
+        id: row.id,
+        label: row.label,
+        filters: row.filters || {},
+        email: row.email || "",
+        createdAt: row.createdAt || new Date().toISOString(),
+        frequency: row.frequency || "Daily (Best for default search)",
+      }];
+    });
   } catch {
     return [];
   }
@@ -53,6 +68,7 @@ function fromAccount(snapshot: AccountSnapshot | null): SavedSearch[] {
     filters: search.filters || {},
     email: search.email,
     createdAt: search.createdAt,
+    frequency: search.frequency || "Daily (Best for default search)",
   }));
 }
 
@@ -147,13 +163,14 @@ export function SavedSearchesProvider({ children }: { children: ReactNode }) {
     }
   }, [searches, ready]);
 
-  const add = useCallback((input: { label: string; filters: SearchFilters; email: string }) => {
+  const add = useCallback((input: { label: string; filters: SearchFilters; email: string; frequency?: string }) => {
     const entry: SavedSearch = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       label: input.label,
       filters: input.filters,
       email: input.email,
       createdAt: new Date().toISOString(),
+      frequency: input.frequency || "Daily (Best for default search)",
     };
     const owner = emailRef.current;
     if (owner && input.email.trim() && input.email.trim().toLowerCase() !== owner) return;
@@ -178,6 +195,17 @@ export function SavedSearchesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setFrequency = useCallback((id: string, frequency: string) => {
+    setSearches((prev) => prev.map((search) => (search.id === id ? { ...search, frequency } : search)));
+    const owner = emailRef.current;
+    if (!owner) return;
+    void fetch("/api/account/searches", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: owner, id, frequency }),
+    });
+  }, []);
+
   const clear = useCallback(() => {
     const owner = emailRef.current;
     setSearches((current) => {
@@ -195,8 +223,8 @@ export function SavedSearchesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, searches, add, remove, clear }),
-    [ready, searches, add, remove, clear]
+    () => ({ ready, searches, add, remove, clear, setFrequency }),
+    [ready, searches, add, remove, clear, setFrequency]
   );
 
   return <SavedSearchesContext.Provider value={value}>{children}</SavedSearchesContext.Provider>;
