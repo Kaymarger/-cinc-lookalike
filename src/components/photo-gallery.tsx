@@ -173,6 +173,7 @@ export function PhotoGallery({
                 width={960}
                 height={720}
                 priority={i === 0}
+                variant={i === 0 ? "responsive" : "card"}
                 className="absolute inset-0 h-full w-full object-cover"
               />
               {i === 0 && virtualTour && (
@@ -209,6 +210,7 @@ export function PhotoGallery({
             width={1200}
             height={800}
             priority
+            variant="responsive"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
           />
           {virtualTour && (
@@ -234,6 +236,7 @@ export function PhotoGallery({
               alt={`${alt} photo ${i + 2}`}
               width={640}
               height={480}
+              variant="card"
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
             />
           </button>
@@ -323,7 +326,7 @@ export function PhotoGallery({
                     : "border-transparent opacity-70 hover:opacity-100"
                 )}
               >
-                <ListingPhoto src={src} alt="" width={96} height={64} className="absolute inset-0 h-full w-full object-cover" />
+                <ListingPhoto src={src} alt="" width={96} height={64} variant="card" className="absolute inset-0 h-full w-full object-cover" />
               </button>
             ))}
           </div>

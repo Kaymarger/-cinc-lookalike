@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/agent", "/dashboard", "/api"],
+      disallow: ["/agent", "/dashboard", "/api", "/email-preview", "/login"],
     },
     sitemap: "https://vancouverpropertysearch.ca/sitemap.xml",
     host: "https://vancouverpropertysearch.ca",

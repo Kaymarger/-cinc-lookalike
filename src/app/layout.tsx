@@ -16,6 +16,7 @@ const lato = Lato({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+  preload: true,
 });
 
 const roboto = Roboto({
@@ -23,6 +24,7 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+  preload: false,
 });
 
 const workSans = Work_Sans({
@@ -30,6 +32,7 @@ const workSans = Work_Sans({
   subsets: ["latin"],
   weight: ["400", "600"],
   display: "swap",
+  preload: false,
 });
 
 export const viewport = {
@@ -39,13 +42,26 @@ export const viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vancouverpropertysearch.ca"),
-  alternates: { canonical: "/" },
   title: {
     default: "Greater Vancouver Area Home Search",
     template: "%s · Greater Vancouver Area Home Search",
   },
   description:
     "Search British Columbia homes for sale with Archibald Real Estate Group. Listing data is supplied through REALTOR.ca DDF.",
+  openGraph: {
+    title: "Greater Vancouver Area Home Search",
+    description:
+      "Search British Columbia homes for sale with Casey Archibald at Archibald Real Estate Group.",
+    url: "https://vancouverpropertysearch.ca",
+    siteName: "Greater Vancouver Area Home Search",
+    locale: "en_CA",
+    type: "website",
+    images: [{ url: "/brand/hero.jpg", alt: "Greater Vancouver skyline" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/brand/hero.jpg"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

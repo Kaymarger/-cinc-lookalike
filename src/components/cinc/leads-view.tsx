@@ -8,6 +8,7 @@ import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/l
 import type { OfficeSettings } from "@/lib/office-settings";
 import { leadVisibleTo } from "@/lib/office-access";
 import { accountVerified, leadSide, validEmail } from "@/lib/lead-signals";
+import { officeLeadSource } from "@/lib/lead-intake";
 import { LEAD_SOURCE_LABEL, useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
 import { LeadSearches } from "./lead-searches";
@@ -212,18 +213,6 @@ function scoreBadge(score: number) {
   return score <= 5 ? Math.round(score * 20) : Math.round(score);
 }
 
-const SOURCE: Record<string, string> = {
-  showing_request: "Showing Request",
-  ask_question: "Property Inquiry",
-  registration: "IDX Registration",
-  photo_gate: "Photo Gate",
-  search_alert: "Search Alert",
-  general: "Website",
-  buyer_signup: "Buyer Signup",
-  seller_signup: "Seller Signup",
-  home_valuation: "Home Valuation",
-};
-
 const CRM_PIPE: Record<string, string> = {
   New: "New Lead",
   Attempted: "Attempted Contact",
@@ -258,7 +247,12 @@ function siteRow(lead: Lead): Row {
     registeredAt: new Date(lead.createdAt).getTime() || 0,
     source: lead.notes.startsWith("Added by an agent")
       ? "—"
-      : [SOURCE[lead.source] ?? "—", lead.attribution?.device === "mobile" ? "Mobile" : lead.attribution?.device === "desktop" ? "Desktop" : "", lead.attribution?.firstTimeBuyer ? "First-time buyer" : "", lead.attribution?.preApproved ? "Pre-approved" : "", lead.attribution?.utmSource].filter(Boolean).join(" · ") || "—",
+      : [
+          officeLeadSource(lead.source, lead.attribution),
+          lead.attribution?.device === "mobile" ? "Mobile" : lead.attribution?.device === "desktop" ? "Desktop" : "",
+          lead.attribution?.firstTimeBuyer ? "First-time buyer" : "",
+          lead.attribution?.preApproved ? "Pre-approved" : "",
+        ].filter(Boolean).join(" · ") || "—",
     price: lead.propertyAddress ? "Inquiry" : "$ n/a",
     city: lead.searchLabel || (lead.propertyAddress ? "Inquiry" : "—"),
     timeframe: lead.attribution?.timeframe || "—",

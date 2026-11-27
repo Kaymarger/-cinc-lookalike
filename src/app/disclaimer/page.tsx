@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DDF_DISCLAIMER } from "@/components/ddf-attribution";
 import { PageAssist } from "@/components/page-assist";
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default function DisclaimerPage() {
             page may not be reproduced without the express written consent of
             the Real Estate Board of Greater Vancouver.
           </p>
+          <p>{DDF_DISCLAIMER}</p>
           <p>
             Confirm price, status, and availability with Archibald Real Estate
             Group before you rely on a listing. This site is not a substitute

@@ -162,6 +162,17 @@ function htmlRedirect(request: Request, params: Record<string, string>, hash = "
   return Response.redirect(url, 303);
 }
 
+function cookieAttribution(request: Request) {
+  const header = request.headers.get("cookie") || "";
+  const match = header.match(/(?:^|;\s*)gvhs_attr=([^;]*)/);
+  if (!match?.[1]) return {};
+  try {
+    return sanitizeAttribution(JSON.parse(decodeURIComponent(match[1])));
+  } catch {
+    return {};
+  }
+}
+
 function attributionFromReferer(request: Request) {
   const referer = request.headers.get("referer");
   if (!referer) return undefined;
@@ -174,8 +185,11 @@ function attributionFromReferer(request: Request) {
       utmTerm: url.searchParams.get("utm_term") ?? undefined,
       utmContent: url.searchParams.get("utm_content") ?? undefined,
       gclid: url.searchParams.get("gclid") ?? undefined,
+      gbraid: url.searchParams.get("gbraid") ?? undefined,
+      wbraid: url.searchParams.get("wbraid") ?? undefined,
       fbclid: url.searchParams.get("fbclid") ?? undefined,
       landingPath: `${url.pathname}${url.search}`,
+      landingUrl: url.href,
     });
   } catch {
     return undefined;
@@ -243,7 +257,15 @@ export async function POST(request: Request) {
 
   const testLead = isTestLeadEmail(parsed.lead.email);
   const assignee = testLead ? { name: "Unassigned", userId: null } : await resolveNewLeadAssignee();
-  const lead = { ...parsed.lead, assignedTo: assignee.name };
+  const lead = {
+    ...parsed.lead,
+    assignedTo: assignee.name,
+    attribution: sanitizeAttribution({
+      ...attributionFromReferer(request),
+      ...cookieAttribution(request),
+      ...parsed.lead.attribution,
+    }),
+  };
   const alerts = testLead
     ? { email: "skipped" as const, sms: "skipped" as const }
     : { email: "queued" as const, sms: "queued" as const };

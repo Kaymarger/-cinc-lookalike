@@ -1,5 +1,5 @@
 export const DDF_DISCLAIMER =
-  "The trademarks REALTOR®, REALTORS®, and the REALTOR® logo are controlled by The Canadian Real Estate Association (CREA) and identify real estate professionals who are members of CREA. The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by CREA and identify the quality of services provided by real estate professionals who are members of CREA. Used under license.";
+  "Listing information is supplied in part by CREA through the Data Distribution Facility (DDF). The trademarks REALTOR®, REALTORS®, and the REALTOR® logo are controlled by The Canadian Real Estate Association (CREA) and identify real estate professionals who are members of CREA. The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by CREA and identify the quality of services provided by real estate professionals who are members of CREA. Used under license.";
 
 export function RealtorBadge({ href }: { href: string }) {
   const url = href.startsWith("http") ? href : "https://www.realtor.ca/";

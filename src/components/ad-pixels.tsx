@@ -1,70 +1,78 @@
 import Script from "next/script";
 import { MetaPixelGate } from "@/components/meta-pixel-gate";
 import { googleAdsId, googleAdsLeadLabel } from "@/lib/google-ads";
+import { metaPixelId } from "@/lib/meta-pixel";
 
 const ATTRIBUTION_BOOTSTRAP = `
-try {
-  var params = new URLSearchParams(location.search);
-  var keys = ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","utm_id","ad","gclid","fbclid"];
-  var found = {};
-  for (var i = 0; i < keys.length; i++) {
-    var value = params.get(keys[i]);
-    if (value) found[keys[i]] = value.slice(0, 300);
-  }
-  var raw = sessionStorage.getItem("gvhs-attribution");
-  var prev = raw ? JSON.parse(raw) : {};
-  var hasCampaign = Object.keys(found).length > 0;
-  var next = {
-    utmSource: hasCampaign ? (found.utm_source || "") : (prev.utmSource || ""),
-    utmMedium: hasCampaign ? (found.utm_medium || "") : (prev.utmMedium || ""),
-    utmCampaign: hasCampaign ? (found.utm_campaign || "") : (prev.utmCampaign || ""),
-    utmTerm: hasCampaign ? (found.utm_term || "") : (prev.utmTerm || ""),
-    utmContent: hasCampaign ? (found.utm_content || found.ad || found.utm_id || "") : (prev.utmContent || ""),
-    gclid: hasCampaign ? (found.gclid || "") : (prev.gclid || ""),
-    fbclid: hasCampaign ? (found.fbclid || "") : (prev.fbclid || ""),
-    landingPath: hasCampaign ? (location.pathname + location.search) : (prev.landingPath || location.pathname + location.search),
-    referrer: prev.referrer || document.referrer || ""
-  };
-  sessionStorage.setItem("gvhs-attribution", JSON.stringify(next));
-} catch (e) {}
+function gvhsCaptureAds() {
+  try {
+    var params = new URLSearchParams(location.search);
+    var keys = ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","gbraid","wbraid","fbclid"];
+    var found = {};
+    for (var i = 0; i < keys.length; i++) {
+      var value = params.get(keys[i]);
+      if (value) found[keys[i]] = value.slice(0, 300);
+    }
+    var prev = {};
+    try { prev = JSON.parse(sessionStorage.getItem("gvhs-attribution") || "{}"); } catch (e) {}
+    var adClick = found.gclid || found.gbraid || found.wbraid || found.fbclid || found.utm_source;
+    var consentAll = false;
+    try { consentAll = localStorage.getItem("gvhs-cookies") === "all"; } catch (e) {}
+    function cookie(name) {
+      var match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+    var next = {
+      utmSource: found.utm_source || prev.utmSource || "",
+      utmMedium: found.utm_medium || prev.utmMedium || "",
+      utmCampaign: found.utm_campaign || prev.utmCampaign || "",
+      utmTerm: found.utm_term || prev.utmTerm || "",
+      utmContent: found.utm_content || prev.utmContent || "",
+      gclid: found.gclid || prev.gclid || "",
+      gbraid: found.gbraid || prev.gbraid || "",
+      wbraid: found.wbraid || prev.wbraid || "",
+      fbclid: found.fbclid || prev.fbclid || "",
+      fbc: consentAll ? (cookie("_fbc") || prev.fbc || "") : (prev.fbc || ""),
+      fbp: consentAll ? (cookie("_fbp") || prev.fbp || "") : (prev.fbp || ""),
+      landingPath: adClick ? (location.pathname + location.search).slice(0, 500) : (prev.landingPath || (location.pathname + location.search).slice(0, 500)),
+      landingUrl: adClick ? location.href.slice(0, 500) : (prev.landingUrl || location.href.slice(0, 500)),
+      referrer: prev.referrer || document.referrer || "",
+      device: window.matchMedia && window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop"
+    };
+    sessionStorage.setItem("gvhs-attribution", JSON.stringify(next));
+    document.cookie = "gvhs_attr=" + encodeURIComponent(JSON.stringify(next)) + ";path=/;max-age=7776000;samesite=lax";
+  } catch (e) {}
+}
+window.__gvhsCaptureAds = gvhsCaptureAds;
+gvhsCaptureAds();
 `;
 
 function ga4Id() {
   const value = process.env.GA4_ID || process.env.NEXT_PUBLIC_GA4_ID || "";
   return /^G-[A-Z0-9]{4,20}$/.test(value.trim()) ? value.trim() : "";
 }
-function googleId() {
-  return googleAdsId();
-}
 
-function conversionLabel() {
-  return googleAdsLeadLabel();
-}
-
-/** Stores ad click parameters and loads Meta / Google tags only when IDs are set. */
+/** Stores ad click parameters and loads Meta / Google tags. Google uses Consent Mode. Meta waits for Accept. */
 export function AdPixels() {
-  const google = googleId();
+  const google = googleAdsId();
   const ga4 = ga4Id();
-  const label = conversionLabel();
+  const label = googleAdsLeadLabel();
+  const meta = metaPixelId();
   const tagId = google || ga4;
-  const config = JSON.stringify({ google, ga4, label });
+  const config = JSON.stringify({ google, ga4, label, meta });
+  const consentAndConfig = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;var adsChoice="denied";try{if(localStorage.getItem("gvhs-cookies")==="all")adsChoice="granted";}catch(e){}gtag("consent","default",{ad_storage:adsChoice,ad_user_data:adsChoice,ad_personalization:adsChoice,analytics_storage:adsChoice});gtag("js",new Date());${ga4 ? `gtag("config",${JSON.stringify(ga4)});` : ""}${google ? `gtag("config",${JSON.stringify(google)},{allow_enhanced_conversions:true});` : ""}`;
 
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: ATTRIBUTION_BOOTSTRAP }} />
       <script dangerouslySetInnerHTML={{ __html: `window.__gvhsAds=${config};` }} />
-      <MetaPixelGate />
       {tagId ? (
         <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${tagId}`}
-            strategy="afterInteractive"
-          />
-          <Script id="google-tags" strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());${ga4 ? `gtag('config',${JSON.stringify(ga4)});` : ""}${google ? `gtag('config',${JSON.stringify(google)});` : ""}`}
-          </Script>
+          <script dangerouslySetInnerHTML={{ __html: consentAndConfig }} />
+          <Script src={`https://www.googletagmanager.com/gtag/js?id=${tagId}`} strategy="afterInteractive" />
         </>
       ) : null}
+      <MetaPixelGate />
     </>
   );
 }

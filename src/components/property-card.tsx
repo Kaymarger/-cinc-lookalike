@@ -59,6 +59,7 @@ export function PropertyCard({
               height={400}
               className="property-image absolute inset-0 h-full w-full object-cover"
               priority={priority}
+              variant="card"
             />
           ) : (
             <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>

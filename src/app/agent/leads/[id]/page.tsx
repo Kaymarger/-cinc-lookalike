@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 import { Mail, MessageSquare, Phone, PhoneCall, Star } from "lucide-react";
 import { CRM_LEADS, getCrmLead, type CrmPipeline } from "@/lib/cinc-crm";
 import { useCrmOverlay } from "@/lib/crm-overlay";
+import { attributionSummary, officeLeadSource } from "@/lib/lead-intake";
 import {
-  LEAD_SOURCE_LABEL,
   useLeads,
   type Lead,
   type LeadActivity,
@@ -150,12 +150,13 @@ function SiteLead({ lead }: { lead: Lead }) {
       calls={calls}
       texts={texts}
       emails={emails}
-      registered={`${formatWhen(lead.createdAt)} · ${lead.source === "registration" ? "IDX Registration" : LEAD_SOURCE_LABEL[lead.source]}`}
+      registered={`${formatWhen(lead.createdAt)} · ${officeLeadSource(lead.source, lead.attribution)}`}
       activity={lead.activity.map(toTimeline)}
       onNote={(text) => appendNote(lead.id, text)}
       onLog={log}
       info={[
-        ["Source", lead.source === "registration" ? "IDX Registration" : LEAD_SOURCE_LABEL[lead.source]],
+        ["Source", officeLeadSource(lead.source, lead.attribution)],
+        ["Ad click", attributionSummary(lead.attribution) || "—"],
         ["Score", String(lead.score ?? 0)],
         ["Saved searches", lead.savedSearches.join(", ") || "None yet"],
         ["Viewed properties", lead.viewedProperties.join(", ") || "None yet"],

@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 const PAGES = [
   "",
   "/search",
+  "/start",
   "/featured",
   "/about",
   "/contact",
