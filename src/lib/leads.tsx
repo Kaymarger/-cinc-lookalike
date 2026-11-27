@@ -16,6 +16,7 @@ import {
   type LeadAttribution,
   type LeadIntent,
 } from "@/lib/lead-intake";
+import { sameMailbox } from "@/lib/lead-match";
 import type { SearchFilters } from "@/lib/types";
 
 const STORAGE_KEY = "gvhs-leads";
@@ -481,7 +482,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   function sameContact(left: Lead, right: Lead) {
     const email = right.email.trim().toLowerCase();
     const phone = right.phone.replace(/\D/g, "");
-    if (email && left.email.trim().toLowerCase() === email) return true;
+    if (email && (left.email.trim().toLowerCase() === email || sameMailbox(left.email, email))) return true;
     const leftPhone = left.phone.replace(/\D/g, "");
     return phone.length >= 10 && leftPhone === phone;
   }

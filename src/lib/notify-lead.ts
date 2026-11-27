@@ -28,10 +28,22 @@ function siteOrigin() {
   return "https://vancouverpropertysearch.ca";
 }
 
-function leadText(lead: SanitizedLead): string {
+function activityLabel(lead: SanitizedLead): string {
+  if (lead.source === "showing_request") return "Showing request";
+  if (lead.source === "search_alert") return "Saved search";
+  if (lead.source === "ask_question") return "Question";
+  if (lead.source === "home_valuation") return "Home valuation";
+  if (lead.source === "buyer_signup" || lead.source === "registration") return "Buyer signup";
+  if (lead.source === "seller_signup") return "Seller signup";
+  return "General inquiry";
+}
+
+function leadText(lead: SanitizedLead, activity = false): string {
   const campaign = attributionSummary(lead.attribution);
   return [
-    `New ${INTENT_LABEL[lead.intent]} for ${lead.assignedTo}`,
+    activity
+      ? `Activity: ${activityLabel(lead)} from ${lead.name}`
+      : `New ${INTENT_LABEL[lead.intent]} for ${lead.assignedTo}`,
     `Name: ${lead.name}`,
     `Email: ${lead.email}`,
     `Phone: ${lead.phone || "—"}`,
@@ -188,9 +200,24 @@ export async function listOfficeAlerts(limit = 30): Promise<{ id: string; kind: 
   }));
 }
 
-export async function notifyAssignedAgent(lead: SanitizedLead): Promise<AlertReport> {
+export async function notifyAssignedAgent(
+  lead: SanitizedLead,
+  options?: { activity?: boolean }
+): Promise<AlertReport> {
   if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
-  const email = await sendEmail(lead);
-  await recordOfficeAlert("New Leads", `New lead: ${lead.name}`, leadText(lead)).catch(() => undefined);
+  const email = options?.activity
+    ? await sendActivityEmail(lead)
+    : await sendEmail(lead);
+  const title = options?.activity
+    ? `Activity: ${activityLabel(lead)} from ${lead.name}`
+    : `New lead: ${lead.name}`;
+  await recordOfficeAlert(options?.activity ? "Lead activity" : "New Leads", title, leadText(lead, Boolean(options?.activity))).catch(() => undefined);
   return { email, sms: "skipped" };
+}
+
+async function sendActivityEmail(lead: SanitizedLead): Promise<AlertChannel> {
+  const to = process.env.AGENT_ALERT_EMAIL?.trim();
+  if (!to) return "skipped";
+  const alert = agentAlertEmail(lead, { activity: true });
+  return sendLeadEmail(to, alert.subject, alert.text, alert.html);
 }

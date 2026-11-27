@@ -11,6 +11,7 @@ import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { insertSearch } from "@/lib/lead-searches-db";
 import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
 import { publicSavedSearch } from "@/lib/saved-search-alerts";
+import { preferredLeadName, WELCOME_SOURCES } from "@/lib/lead-match";
 import { scheduleMetaLead } from "@/lib/meta-capi-send";
 import { isTestLeadEmail } from "@/lib/test-lead";
 import { currentActor } from "@/lib/office-actor";
@@ -270,11 +271,6 @@ export async function POST(request: Request) {
   const alerts = testLead
     ? { email: "skipped" as const, sms: "skipped" as const }
     : { email: "queued" as const, sms: "queued" as const };
-  if (!testLead) {
-    void notifyAssignedAgent(lead).catch(() => undefined);
-    void sendWelcomeAndAlert(lead).catch(() => undefined);
-  }
-
   if (!leadsDatabaseConfigured()) {
     if (html) return htmlRedirect(request, { sent: "1" }, formHash);
     return Response.json({
@@ -288,8 +284,22 @@ export async function POST(request: Request) {
 
   try {
     const saved = await insertLead({ ...lead, assignedUserId: assignee.userId });
-    if (!testLead && saved.id === lead.id) {
-      scheduleMetaLead(request, { ...lead, id: saved.id });
+    const isNew = saved.id === lead.id;
+    const alertLead = {
+      ...lead,
+      id: saved.id,
+      name: preferredLeadName(saved.name, lead.name, saved.email || lead.email),
+      email: saved.email || lead.email,
+      phone: lead.phone.trim() || saved.phone || "",
+    };
+    if (!testLead) {
+      if (isNew) {
+        void notifyAssignedAgent(alertLead).catch(() => undefined);
+        if (WELCOME_SOURCES.has(lead.source)) void sendWelcomeAndAlert(alertLead).catch(() => undefined);
+        scheduleMetaLead(request, { ...alertLead, id: saved.id });
+      } else {
+        void notifyAssignedAgent(alertLead, { activity: true }).catch(() => undefined);
+      }
     }
     if (!testLead && lead.source === "search_alert" && body && typeof body === "object") {
       const search = publicSavedSearch(

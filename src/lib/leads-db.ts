@@ -5,6 +5,7 @@ import {
   type LeadIntent,
   type SanitizedLead,
 } from "@/lib/lead-intake";
+import { mailboxKey, preferredLeadName } from "@/lib/lead-match";
 import type { OfficeRole } from "@/lib/office-access";
 import { seesAllLeads } from "@/lib/office-access";
 
@@ -427,9 +428,15 @@ export async function insertLead(
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
   const phoneDigits = lead.phone.replace(/\D/g, "");
+  const email = lead.email.trim().toLowerCase();
+  const mailbox = mailboxKey(email);
   const existing = await sql<LeadRow[]>`
     SELECT * FROM captured_leads
-    WHERE lower(email) = ${lead.email.toLowerCase()}
+    WHERE lower(email) = ${email}
+       OR (
+         split_part(lower(email), '@', 2) = split_part(${mailbox}, '@', 2)
+         AND regexp_replace(split_part(lower(email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
+       )
        OR (
          ${phoneDigits} <> ''
          AND length(${phoneDigits}) >= 10
@@ -449,6 +456,7 @@ export async function insertLead(
     ].filter(Boolean).join(" · ");
     const rows = await sql<LeadRow[]>`
       UPDATE captured_leads SET
+        name = ${preferredLeadName(prior.name, lead.name, email)},
         phone = CASE WHEN btrim(phone) = '' THEN ${lead.phone} ELSE phone END,
         search_label = CASE WHEN search_label IS NULL OR btrim(search_label) = '' THEN ${lead.searchLabel ?? ""} ELSE search_label END,
         property_address = CASE WHEN property_address IS NULL OR btrim(property_address) = '' THEN ${lead.propertyAddress ?? ""} ELSE property_address END,
@@ -514,9 +522,23 @@ export async function deleteLeadByEmail(email: string): Promise<number> {
   const sql = await ready();
   if (!sql) return 0;
   const normalized = email.trim().toLowerCase();
-  await sql`DELETE FROM lead_saved_searches WHERE lower(lead_email) = ${normalized}`;
+  const mailbox = mailboxKey(normalized);
+  await sql`
+    DELETE FROM lead_saved_searches
+    WHERE lower(lead_email) = ${normalized}
+       OR (
+         split_part(lower(lead_email), '@', 2) = split_part(${mailbox}, '@', 2)
+         AND regexp_replace(split_part(lower(lead_email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
+       )
+  `;
   const rows = await sql<{ id: string }[]>`
-    DELETE FROM captured_leads WHERE lower(email) = ${normalized} RETURNING id
+    DELETE FROM captured_leads
+    WHERE lower(email) = ${normalized}
+       OR (
+         split_part(lower(email), '@', 2) = split_part(${mailbox}, '@', 2)
+         AND regexp_replace(split_part(lower(email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
+       )
+    RETURNING id
   `;
   return rows.length;
 }
