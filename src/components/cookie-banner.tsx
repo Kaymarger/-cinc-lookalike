@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ADS_CONSENT_KEY, writeConsentCookie } from "@/lib/ads-consent";
 
 const KEY = ADS_CONSENT_KEY;
 
-type Choice = "all" | "essential";
+type Choice = "all" | "opt-out";
 
 function remember(choice: Choice) {
   try {
@@ -18,6 +17,7 @@ function remember(choice: Choice) {
   writeConsentCookie(choice);
   const granted = choice === "all";
   const state = granted ? "granted" : "denied";
+  (window as Window & { __gvhsAdsOptOut?: boolean }).__gvhsAdsOptOut = !granted;
   const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
   if (typeof gtag === "function") {
     gtag("consent", "update", {
@@ -27,14 +27,21 @@ function remember(choice: Choice) {
       analytics_storage: state,
     });
   }
+  const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq;
+  if (!granted && typeof fbq === "function") {
+    try {
+      fbq("consent", "revoke");
+    } catch {
+      /* ignore */
+    }
+    (window as Window & { fbq?: (...args: unknown[]) => void }).fbq = () => undefined;
+  }
   const capture = (window as Window & { __gvhsCaptureAds?: () => void }).__gvhsCaptureAds;
   if (granted && typeof capture === "function") capture();
   window.dispatchEvent(new Event("gvhs-consent"));
 }
 
 export function CookieBanner() {
-  const pathname = usePathname() || "/";
-  const inFlow = pathname === "/start" || pathname.startsWith("/lp/");
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -52,31 +59,28 @@ export function CookieBanner() {
   return (
     <div
       id="cookie-banner"
-      className={
-        inFlow
-          ? "bg-[#1f2930] px-4 py-3 text-[13px] leading-snug text-white"
-          : "fixed inset-x-0 bottom-0 z-[80] bg-[#1f2930] px-4 py-3 text-[13px] leading-snug text-white"
-      }
+      className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#e6ebef] bg-white px-3 py-2 text-[13px] leading-snug text-[#1f2930] shadow-[0_-1px_4px_rgba(0,0,0,0.06)]"
     >
-      <div className="mx-auto flex max-w-[1170px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-[1170px] flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p>
-          Advertising cookies stay off until you accept.{" "}
-          <Link href="/privacy" className="!text-white underline">
-            Privacy
+          We use cookies to improve your experience and measure our ads. See our{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Policy
           </Link>
           .
         </p>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              remember("essential");
+        <div className="flex items-center gap-4">
+          <a
+            href="#opt-out"
+            onClick={(event) => {
+              event.preventDefault();
+              remember("opt-out");
               setShow(false);
             }}
-            className="h-10 border border-white/40 px-4 text-sm font-semibold text-white"
+            className="underline"
           >
-            Essential only
-          </button>
+            Opt out
+          </a>
           <button
             type="button"
             id="accept-cookie-notification"
@@ -84,9 +88,9 @@ export function CookieBanner() {
               remember("all");
               setShow(false);
             }}
-            className="h-10 bg-white px-4 text-sm font-semibold text-[#1f2930]"
+            className="h-8 bg-[#04427d] px-3 text-[13px] font-semibold text-white"
           >
-            Accept
+            OK
           </button>
         </div>
       </div>

@@ -90,7 +90,8 @@ test("names, empty contact fields, and consent follow the same rules", () => {
   assert.equal(lead.user_data.em, undefined);
   assert.equal(lead.user_data.ph, undefined);
   assert.equal(buildMetaLeadEvent({ eventId: "", sourceUrl: "https://vancouverpropertysearch.ca/start" }), null);
-  assert.equal(consentGrantedFromHeader(null), false);
+  assert.equal(consentGrantedFromHeader(null), true);
   assert.equal(consentGrantedFromHeader("gvhs-cookies=essential"), false);
+  assert.equal(consentGrantedFromHeader("gvhs-cookies=opt-out"), false);
   assert.equal(consentGrantedFromHeader("other=1; gvhs-cookies=all"), true);
 });

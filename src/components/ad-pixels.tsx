@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { MetaPixelGate } from "@/components/meta-pixel-gate";
+import { ADS_CONSENT_REQUIRED } from "@/lib/ads-consent";
 import { googleAdsId, googleAdsLeadLabel } from "@/lib/google-ads";
 import { metaPixelId } from "@/lib/meta-pixel";
 
@@ -16,9 +17,16 @@ function gvhsCaptureAds() {
     var prev = {};
     try { prev = JSON.parse(sessionStorage.getItem("gvhs-attribution") || "{}"); } catch (e) {}
     var adClick = found.gclid || found.gbraid || found.wbraid || found.fbclid || found.utm_source;
-    var consentAll = false;
-    try { consentAll = localStorage.getItem("gvhs-cookies") === "all"; } catch (e) {}
-    if (consentAll && document.cookie.indexOf("gvhs-cookies=") === -1) {
+    var stored = "";
+    try { stored = localStorage.getItem("gvhs-cookies") || ""; } catch (e) {}
+    var optedOut = stored === "essential" || stored === "opt-out" || document.cookie.indexOf("gvhs-cookies=essential") !== -1 || document.cookie.indexOf("gvhs-cookies=opt-out") !== -1;
+    var consentRequired = ${ADS_CONSENT_REQUIRED ? "true" : "false"};
+    var trackAds = !optedOut && (!consentRequired || stored === "all");
+    window.__gvhsAdsOptOut = !trackAds;
+    if (optedOut && document.cookie.indexOf("gvhs-cookies=") === -1) {
+      document.cookie = "gvhs-cookies=opt-out;path=/;max-age=31536000;samesite=lax";
+    }
+    if (stored === "all" && document.cookie.indexOf("gvhs-cookies=") === -1) {
       document.cookie = "gvhs-cookies=all;path=/;max-age=31536000;samesite=lax";
     }
     function cookie(name) {
@@ -35,8 +43,8 @@ function gvhsCaptureAds() {
       gbraid: found.gbraid || prev.gbraid || "",
       wbraid: found.wbraid || prev.wbraid || "",
       fbclid: found.fbclid || prev.fbclid || "",
-      fbc: consentAll ? (cookie("_fbc") || prev.fbc || "") : (prev.fbc || ""),
-      fbp: consentAll ? (cookie("_fbp") || prev.fbp || "") : (prev.fbp || ""),
+      fbc: trackAds ? (cookie("_fbc") || prev.fbc || "") : "",
+      fbp: trackAds ? (cookie("_fbp") || prev.fbp || "") : "",
       landingPath: adClick ? (location.pathname + location.search).slice(0, 500) : (prev.landingPath || (location.pathname + location.search).slice(0, 500)),
       landingUrl: adClick ? location.href.slice(0, 500) : (prev.landingUrl || location.href.slice(0, 500)),
       referrer: prev.referrer || document.referrer || "",
@@ -55,7 +63,7 @@ function ga4Id() {
   return /^G-[A-Z0-9]{4,20}$/.test(value.trim()) ? value.trim() : "";
 }
 
-/** Stores ad click parameters and loads Meta / Google tags. Google uses Consent Mode. Meta waits for Accept. */
+/** Stores ad click parameters and loads Meta / Google tags. Opt-out turns both off. */
 export function AdPixels() {
   const google = googleAdsId();
   const ga4 = ga4Id();
@@ -63,7 +71,7 @@ export function AdPixels() {
   const meta = metaPixelId();
   const tagId = google || ga4;
   const config = JSON.stringify({ google, ga4, label, meta });
-  const consentAndConfig = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;var adsChoice="denied";try{if(localStorage.getItem("gvhs-cookies")==="all")adsChoice="granted";}catch(e){}gtag("consent","default",{ad_storage:adsChoice,ad_user_data:adsChoice,ad_personalization:adsChoice,analytics_storage:adsChoice});gtag("js",new Date());${ga4 ? `gtag("config",${JSON.stringify(ga4)});` : ""}${google ? `gtag("config",${JSON.stringify(google)},{allow_enhanced_conversions:true});` : ""}`;
+  const consentAndConfig = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;var adsChoice=window.__gvhsAdsOptOut?"denied":"granted";gtag("consent","default",{ad_storage:adsChoice,ad_user_data:adsChoice,ad_personalization:adsChoice,analytics_storage:adsChoice});gtag("js",new Date());${ga4 ? `gtag("config",${JSON.stringify(ga4)});` : ""}${google ? `gtag("config",${JSON.stringify(google)},{allow_enhanced_conversions:true});` : ""}`;
 
   return (
     <>
