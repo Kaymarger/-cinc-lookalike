@@ -5,18 +5,32 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { EmailField } from "@/components/email-field";
 import { LEAD_CONSENT_TEXT } from "@/lib/lead-intake";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads } from "@/lib/leads";
 import type { Property } from "@/lib/types";
 import { fullAddress } from "@/lib/search";
 
 export function PropertyInquirySidebar({ property }: { property: Property }) {
   const { capture } = useLeads();
+  const { user } = useDemoAuth();
   const [sent, setSent] = useState(false);
   const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const defaultMessage = `I'm interested in ${fullAddress(property)}.`;
   const [message, setMessage] = useState(defaultMessage);
+
+  useEffect(() => {
+    if (!user) return;
+    queueMicrotask(() => {
+      setFullName((current) => current || user.name);
+      setEmail((current) => current || user.email);
+      setPhone((current) => current || user.phone || "");
+    });
+  }, [user]);
 
   useEffect(() => {
     function onAsk(event: Event) {
@@ -95,6 +109,8 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
         <input
           name="FullName"
           required
+          value={fullName}
+          onChange={(event) => setFullName(event.target.value)}
           placeholder="Full Name"
           aria-label="Full Name"
           className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
@@ -102,6 +118,8 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
         <EmailField
           name="Email"
           required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           placeholder="Email Address"
           aria-label="Email Address"
           className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"
@@ -110,6 +128,8 @@ export function PropertyInquirySidebar({ property }: { property: Property }) {
           name="Phone"
           type="tel"
           required
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
           placeholder="Phone Number"
           aria-label="Phone Number"
           className="h-11 w-full border border-[#ddd] px-3 text-sm outline-none focus:border-[var(--cedar)]"

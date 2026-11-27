@@ -43,6 +43,9 @@ export function SavedHomesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIds(readIds());
     setReady(true);
+    const onSignOut = () => setIds([]);
+    window.addEventListener("gvhs-sign-out", onSignOut);
+    return () => window.removeEventListener("gvhs-sign-out", onSignOut);
   }, []);
 
   useEffect(() => {

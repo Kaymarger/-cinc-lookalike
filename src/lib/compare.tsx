@@ -59,6 +59,13 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setHomes(readHomes());
     setReady(true);
+    const onSignOut = () => {
+      setHomes([]);
+      setPending(null);
+      setNotice("");
+    };
+    window.addEventListener("gvhs-sign-out", onSignOut);
+    return () => window.removeEventListener("gvhs-sign-out", onSignOut);
   }, []);
 
   useEffect(() => {

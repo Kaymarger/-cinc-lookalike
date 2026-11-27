@@ -424,7 +424,7 @@ export function rowToStoredLead(row: LeadRow): StoredLead {
 
 export async function insertLead(
   lead: SanitizedLead & { assignedUserId?: string | null }
-): Promise<StoredLead> {
+): Promise<{ lead: StoredLead; created: boolean }> {
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
   const phoneDigits = lead.phone.replace(/\D/g, "");
@@ -466,7 +466,7 @@ export async function insertLead(
       RETURNING *
     `;
     if (!rows[0]) throw new Error("lead_update_failed");
-    return rowToStoredLead(rows[0]);
+    return { lead: rowToStoredLead(rows[0]), created: false };
   }
   const rows = await sql<LeadRow[]>`
     INSERT INTO captured_leads (
@@ -497,10 +497,13 @@ export async function insertLead(
       ${lead.createdAt},
       ${lead.createdAt}
     )
-    ON CONFLICT (id) DO UPDATE SET updated_at = captured_leads.updated_at
+    ON CONFLICT (id) DO NOTHING
     RETURNING *
   `;
-  return rowToStoredLead(rows[0]);
+  if (rows[0]) return { lead: rowToStoredLead(rows[0]), created: true };
+  const again = await sql<LeadRow[]>`SELECT * FROM captured_leads WHERE id = ${lead.id} LIMIT 1`;
+  if (!again[0]) throw new Error("lead_insert_failed");
+  return { lead: rowToStoredLead(again[0]), created: false };
 }
 
 export type LeadScope = {
@@ -522,23 +525,9 @@ export async function deleteLeadByEmail(email: string): Promise<number> {
   const sql = await ready();
   if (!sql) return 0;
   const normalized = email.trim().toLowerCase();
-  const mailbox = mailboxKey(normalized);
-  await sql`
-    DELETE FROM lead_saved_searches
-    WHERE lower(lead_email) = ${normalized}
-       OR (
-         split_part(lower(lead_email), '@', 2) = split_part(${mailbox}, '@', 2)
-         AND regexp_replace(split_part(lower(lead_email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
-       )
-  `;
+  await sql`DELETE FROM lead_saved_searches WHERE lower(lead_email) = ${normalized}`;
   const rows = await sql<{ id: string }[]>`
-    DELETE FROM captured_leads
-    WHERE lower(email) = ${normalized}
-       OR (
-         split_part(lower(email), '@', 2) = split_part(${mailbox}, '@', 2)
-         AND regexp_replace(split_part(lower(email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
-       )
-    RETURNING id
+    DELETE FROM captured_leads WHERE lower(email) = ${normalized} RETURNING id
   `;
   return rows.length;
 }

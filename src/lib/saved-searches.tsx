@@ -65,6 +65,9 @@ export function SavedSearchesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSearches(read());
     setReady(true);
+    const onSignOut = () => setSearches([]);
+    window.addEventListener("gvhs-sign-out", onSignOut);
+    return () => window.removeEventListener("gvhs-sign-out", onSignOut);
   }, []);
 
   useEffect(() => {
