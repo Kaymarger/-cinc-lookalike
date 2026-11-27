@@ -61,7 +61,11 @@ const FEATURES: { label: string; rest: string; path: string; link: string }[] = 
 function button(href: string, label: string): string {
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
-  return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="50%" strokecolor="${NAVY}" fillcolor="${NAVY}"><w:anchorlock/><center style="color:#ffffff;font-family:${FONT};font-size:16px;font-weight:600;">${safeLabel}</center></v:roundrect><![endif]--><!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr><td align="center" bgcolor="${NAVY}" style="border-radius:999px;"><a href="${safeHref}" style="display:inline-block;padding:16px 32px;font-family:${FONT};font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:999px;">${safeLabel}</a></td></tr></table><!--<![endif]-->`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="btn"><tr><td align="center" bgcolor="${NAVY}" height="48" style="height:48px;border-radius:8px;"><a href="${safeHref}" style="display:block;padding:14px 16px;font-family:${FONT};font-size:16px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;-webkit-text-size-adjust:100%;">${safeLabel}</a></td></tr></table>`;
+}
+
+function para(text: string, extra = ""): string {
+  return `<p class="copy" style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:400;color:#1a1a1a;-webkit-text-size-adjust:100%;${extra}">${text}</p>`;
 }
 
 export function registrationWelcome(
@@ -135,7 +139,7 @@ export function registrationWelcome(
         ? `<tr><td style="padding:0;"><a href="${escapeHtml(href)}"><img src="${escapeHtml(image)}" alt="" width="552" style="display:block;width:100%;max-width:100%;height:auto;border:0;" /></a></td></tr>`
         : "";
       const facts = [home.beds ? `${home.beds} bd` : "", home.baths ? `${home.baths} ba` : "", home.sqft ? `${home.sqft.toLocaleString("en-CA")} sqft` : ""].filter(Boolean).join(" · ");
-      return `<tr><td class="card-gap" style="padding:0 0 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e7e7;border-radius:12px;">${photoRow}<tr><td style="padding:20px;font-family:${FONT};"><p style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:#1a1a1a;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:8px 0 0;font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(home.address)}</p><p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(home.city)}</p>${facts ? `<p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#1a1a1a;">${escapeHtml(facts)}</p>` : ""}<p style="margin:16px 0 0;">${button(href, "View home")}</p></td></tr></table></td></tr>`;
+      return `<tr><td style="padding:0 0 24px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #ececec;border-radius:8px;">${photoRow}<tr><td style="padding:16px;font-family:${FONT};"><p style="margin:0;font-family:${FONT};font-size:22px;line-height:1.3;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:8px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:400;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(home.address)}</p><p style="margin:4px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#4a4a4a;-webkit-text-size-adjust:100%;">${escapeHtml(home.city)}</p>${facts ? `<p style="margin:4px 0 0;font-family:${FONT};font-size:14px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">${escapeHtml(facts)}</p>` : ""}<p style="margin:16px 0 0;">${button(href, "View home")}</p></td></tr></table></td></tr>`;
     })
     .join("");
 
@@ -147,68 +151,67 @@ export function registrationWelcome(
 <meta name="x-apple-disable-message-reformatting" />
 <title>${escapeHtml(subject)}</title>
 <style>
-  body, table, td, p, a { font-family: ${FONT}; }
+  html, body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
   @media only screen and (max-width: 600px) {
-    .container { width: 100% !important; }
-    .outer { padding: 12px 0 !important; }
-    .px { padding-left: 24px !important; padding-right: 24px !important; }
-    .btn a { display: block !important; text-align: center !important; }
+    .frame, .outer { background: #ffffff !important; padding: 0 !important; }
+    .container { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
+    h1 { font-size: 26px !important; }
+    .copy, p.copy { font-size: 17px !important; line-height: 1.65 !important; }
+    .btn a { display: block !important; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#f5f5f5;">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f5f5;">${escapeHtml(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
-<tr><td align="center" class="outer" style="padding:32px 16px;">
-<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:16px;">
-<tr><td class="px" style="padding:32px 24px 8px;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="180" style="display:block;width:180px;max-width:70%;height:auto;border:0;" /></td></tr>
-<tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};color:#1a1a1a;">
-<h1 style="margin:0;font-family:${FONT};font-size:28px;line-height:1.3;font-weight:600;color:#1a1a1a;">Hi ${escapeHtml(first)},</h1>
+<body style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">${escapeHtml(preheader)}</div>
+<table role="presentation" class="frame" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f6;">
+<tr><td align="center" class="outer" style="padding:40px 16px;background:#f6f6f6;">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;">
+<tr><td style="padding:36px 24px 0;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="168" height="39" style="display:block;width:168px;max-width:60%;height:auto;border:0;" /></td></tr>
+<tr><td style="padding:32px 24px 0;background:#ffffff;">
+<h1 style="margin:0 0 20px;font-family:${FONT};font-size:28px;line-height:1.3;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">Hi ${escapeHtml(first)},</h1>
+${para("Thanks for connecting with us!")}
+${para("Your home search portal is ready to explore.")}
+${para("Here are some key features to help you with your search:", "margin-bottom:0;")}
 </td></tr>
-<tr><td class="px" style="padding:16px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
-<p style="margin:0;">Thanks for connecting with us! Your home search portal is ready to explore. Here are some key features to help you with your search:</p>
-</td></tr>
-<tr><td class="px" style="padding:24px 24px 8px;">
+<tr><td style="padding:28px 24px 0;background:#ffffff;">
 ${button(block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref, block.ctaLabel)}
 </td></tr>
-<tr><td class="px" style="padding:8px 24px 0;font-family:${FONT};color:#1a1a1a;">
-${FEATURES.map((item) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="padding:0 0 18px;border-bottom:1px solid #eeeeee;font-family:${FONT};">
-<p style="margin:0;font-size:16px;line-height:1.6;font-weight:700;color:#1a1a1a;">${escapeHtml(item.label)}</p>
-<p style="margin:4px 0 0;font-size:16px;line-height:1.6;color:#3a3a3a;">${escapeHtml(item.rest)}</p>
-<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="${escapeHtml(origin + item.path)}" style="color:${NAVY};text-decoration:underline;">${escapeHtml(item.link)}</a></p>
+<tr><td style="padding:36px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
+<tr><td style="padding:32px 24px 12px;background:#ffffff;">
+${FEATURES.map((item) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 0 20px;font-family:${FONT};">
+<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(item.label)}</p>
+<p class="copy" style="margin:6px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:400;color:#4a4a4a;-webkit-text-size-adjust:100%;">${escapeHtml(item.rest)}</p>
+<p style="margin:8px 0 0;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(origin + item.path)}" style="font-family:${FONT};font-size:14px;line-height:1.65;color:${NAVY};text-decoration:underline;-webkit-text-size-adjust:100%;">${escapeHtml(item.link)}</a></p>
 </td></tr></table>`).join("")}
 </td></tr>
-<tr><td class="px" style="padding:4px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
-<p style="margin:0;">We'll send you new listings as they come up that match your search, and someone from our team will reach out soon to learn more about what you're looking for.</p>
-<p style="margin:20px 0 0;">Happy house hunting!</p>
-<p style="margin:20px 0 0;">Talk soon</p>
-<p style="margin:4px 0 0;font-weight:600;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
+<tr><td style="padding:16px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
+<tr><td style="padding:32px 24px 36px;background:#ffffff;">
+${para("We'll send you new listings as they come up that match your search, and someone from our team will reach out soon to learn more about what you're looking for.")}
+${para("Happy house hunting!")}
+${para("Talk soon")}
+<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
 </td></tr>
-${cards.length ? `<tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};">
-<h2 style="margin:0 0 8px;font-family:${FONT};font-size:20px;line-height:1.4;font-weight:600;color:#1a1a1a;">${escapeHtml(block.heading)}</h2>
-${block.summary ? `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(block.summary)} · <a href="${escapeHtml(block.editHref.startsWith("http") ? block.editHref : origin + block.editHref)}" style="color:${NAVY};text-decoration:underline;">Edit search</a></p>` : ""}
+${cards.length ? `<tr><td style="padding:0 24px;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
+<tr><td style="padding:32px 24px 12px;background:#ffffff;">
+<h2 style="margin:0 0 12px;font-family:${FONT};font-size:20px;line-height:1.35;font-weight:600;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(block.heading)}</h2>
+${block.summary ? `<p class="copy" style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(block.summary)}</p><p style="margin:0 0 24px;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(block.editHref.startsWith("http") ? block.editHref : origin + block.editHref)}" style="font-family:${FONT};font-size:14px;line-height:1.65;color:${NAVY};text-decoration:underline;">Edit search</a></p>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${cardHtml}</table>
 </td></tr>` : ""}
-<tr><td class="px" style="padding:12px 24px 32px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #e7e7e7;border-radius:12px;">
-<tr>
-<td class="px" width="88" valign="top" style="padding:24px 0 24px 24px;"><img src="${escapeHtml(photo)}" alt="${escapeHtml(SITE.agent)}" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:32px;" /></td>
-<td valign="middle" style="padding:24px 24px 24px 16px;font-family:${FONT};color:#1a1a1a;">
-<p style="margin:0;font-size:16px;line-height:1.6;font-weight:600;">${escapeHtml(SITE.agent)}</p>
-<p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(SITE.company)}</p>
-<p style="margin:0;font-size:15px;line-height:1.6;color:#5f6770;">RE/MAX Crest Realty</p>
-<p style="margin:8px 0 0;font-size:15px;line-height:1.6;">${escapeHtml(SITE.addressLine)}<br />${escapeHtml(SITE.cityLine)}</p>
-<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="tel:${escapeHtml(SITE.phoneTel)}" style="color:${NAVY};text-decoration:none;">${escapeHtml(SITE.phoneDisplay)}</a></p>
-<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="${escapeHtml(contact)}" style="color:${NAVY};font-weight:600;text-decoration:underline;">Contact Casey</a></p>
-</td>
-</tr>
-</table>
+<tr><td style="padding:8px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
+<tr><td style="padding:32px 24px 8px;background:#ffffff;">
+<img src="${escapeHtml(photo)}" alt="${escapeHtml(SITE.agent)}" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:32px;" />
+<p style="margin:16px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.agent)}</p>
+<p class="copy" style="margin:4px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#4a4a4a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.company)}</p>
+<p class="copy" style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;color:#4a4a4a;-webkit-text-size-adjust:100%;">RE/MAX Crest Realty</p>
+<p class="copy" style="margin:12px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.addressLine)}<br />${escapeHtml(SITE.cityLine)}</p>
+<p style="margin:12px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="tel:${escapeHtml(SITE.phoneTel)}" style="font-family:${FONT};font-size:16px;line-height:1.65;color:${NAVY};text-decoration:none;">${escapeHtml(SITE.phoneDisplay)}</a></p>
+<p style="margin:8px 0 0;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(contact)}" style="font-family:${FONT};font-size:14px;color:${NAVY};text-decoration:underline;">Contact Casey</a></p>
 </td></tr>
-<tr><td class="px" style="padding:0 24px 32px;font-family:${FONT};font-size:13px;line-height:1.6;color:#6b7280;">
-<p style="margin:0;">${escapeHtml(SITE.company)}, RE/MAX Crest Realty, Vancouver.</p>
-<p style="margin:10px 0 0;">You received this email because you signed up at vancouverpropertysearch.ca.</p>
-<p style="margin:10px 0 0;"><a href="${escapeHtml(unsubscribe)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe or manage alerts</a></p>
-<p style="margin:10px 0 0;">Sent from ${escapeHtml(SENDER)}</p>
+<tr><td style="padding:32px 24px 40px;background:#ffffff;">
+<p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.company)}, RE/MAX Crest Realty, Vancouver.</p>
+<p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">You received this email because you signed up at vancouverpropertysearch.ca.</p>
+<p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(unsubscribe)}" style="font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;text-decoration:underline;">Unsubscribe or manage alerts</a></p>
+<p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">Sent from ${escapeHtml(SENDER)}</p>
 </td></tr>
 </table>
 </td></tr>
