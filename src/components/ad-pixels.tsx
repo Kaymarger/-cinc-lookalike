@@ -18,6 +18,9 @@ function gvhsCaptureAds() {
     var adClick = found.gclid || found.gbraid || found.wbraid || found.fbclid || found.utm_source;
     var consentAll = false;
     try { consentAll = localStorage.getItem("gvhs-cookies") === "all"; } catch (e) {}
+    if (consentAll && document.cookie.indexOf("gvhs-cookies=") === -1) {
+      document.cookie = "gvhs-cookies=all;path=/;max-age=31536000;samesite=lax";
+    }
     function cookie(name) {
       var match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
       return match ? decodeURIComponent(match[1]) : "";

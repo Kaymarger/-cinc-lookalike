@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { adLandingSearch, MetaCapiPageView } from "@/components/meta-capi-pageview";
 import { AdTrustRow, PublicLeadForm, StickyLeadCta } from "@/components/public-lead-form";
 import { areaFromParams, landingHeadline } from "@/lib/lead-intake";
 
@@ -30,11 +31,13 @@ export default async function StartPage({
 }: {
   searchParams: Promise<Params>;
 }) {
-  const area = areaFromParams(await searchParams);
+  const params = await searchParams;
+  const area = areaFromParams(params);
   const headline = landingHeadline(area);
 
   return (
     <div className="bg-[#f4f7f8]">
+      <MetaCapiPageView pathname="/start" search={adLandingSearch(params)} />
       <section className="mx-auto max-w-xl px-4 pt-4 pb-24 sm:pt-10">
         <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight text-[#16324f] sm:text-[40px]">
           {headline}
