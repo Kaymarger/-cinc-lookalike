@@ -8,18 +8,25 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   if (url.searchParams.get("preview") === "1") {
     const found = await searchDdfListings({ sort: "newest" }, 6).catch(() => ({ properties: [] }));
-    return Response.json({
-      ok: true,
-      properties: found.properties.slice(0, 6).map((property) => ({
-        id: property.id,
-        address: property.address,
-        price: property.price,
-        beds: property.beds,
-        baths: property.baths,
-        image: property.images[0] || "",
-        city: property.city,
-      })),
-    });
+    return Response.json(
+      {
+        ok: true,
+        properties: found.properties.slice(0, 6).map((property) => ({
+          id: property.id,
+          address: property.address,
+          price: property.price,
+          beds: property.beds,
+          baths: property.baths,
+          image: property.images[0] || "",
+          city: property.city,
+        })),
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+        },
+      },
+    );
   }
   const ids = (url.searchParams.get("ids") || "")
     .split(",")

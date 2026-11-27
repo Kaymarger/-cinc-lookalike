@@ -14,13 +14,20 @@ export async function GET() {
     });
   }
   const [count, state] = await Promise.all([countDdfListings(), readSyncState()]);
-  return Response.json({
-    ok: !state.lastError,
-    configured: true,
-    count,
-    mode: state.mode,
-    client: "repl-1",
-    deletedReady: state.masterComplete,
-    message: state.lastError,
-  });
+  return Response.json(
+    {
+      ok: !state.lastError,
+      configured: true,
+      count,
+      mode: state.mode,
+      client: "repl-1",
+      deletedReady: state.masterComplete,
+      message: state.lastError,
+    },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    },
+  );
 }

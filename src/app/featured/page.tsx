@@ -5,7 +5,7 @@ import { PageAssist } from "@/components/page-assist";
 import { catalogFeatured } from "@/lib/catalog";
 import type { Property } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Featured Listings",
