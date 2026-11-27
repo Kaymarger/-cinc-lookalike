@@ -36,18 +36,21 @@ function realListingPhoto(url: string | undefined): string {
   return url;
 }
 
-const FEATURES: { icon: string; color: string; label: string; rest: string; path: string }[] = [
-  { icon: "&#8981;", color: "#04427d", label: "Create a Custom Search", rest: " for the neighbourhoods, price range, and features that matter to you.", path: "/search" },
-  { icon: "&#10084;", color: "#e11b22", label: "Save your favourites", rest: " by clicking the heart on any listing you want to come back to.", path: "/saved" },
-  { icon: "&#8644;", color: "#04427d", label: "Compare Properties", rest: " to see your top picks side by side.", path: "/compare" },
-  { icon: "&#9998;", color: "#04427d", label: "Add Notes", rest: " to any property and revisit them in the Notes section. It's a handy way to remember which home had the great layout or the extra storage you wanted.", path: "/notebook" },
-  { icon: "&#128197;", color: "#04427d", label: "Request a Showing", rest: " when you find a home you'd like to see in person.", path: "/contact" },
+const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const NAVY = "#1b3040";
+
+const FEATURES: { label: string; rest: string; path: string }[] = [
+  { label: "Create a Custom Search", rest: " for the neighbourhoods, price range, and features that matter to you.", path: "/search" },
+  { label: "Save your favourites", rest: " by clicking the heart on any listing you want to come back to.", path: "/saved" },
+  { label: "Compare Properties", rest: " to see your top picks side by side.", path: "/compare" },
+  { label: "Add Notes", rest: " to any property and revisit them in the Notes section. It's a handy way to remember which home had the great layout or the extra storage you wanted.", path: "/notebook" },
+  { label: "Request a Showing", rest: " when you find a home you'd like to see in person.", path: "/contact" },
 ];
 
 function button(href: string, label: string): string {
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
-  return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${safeHref}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="8%" strokecolor="#04427d" fillcolor="#04427d"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${safeLabel}</center></v:roundrect><![endif]--><!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#04427d" style="border-radius:4px;"><a href="${safeHref}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:bold;">${safeLabel}</a></td></tr></table><!--<![endif]-->`;
+  return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${safeHref}" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="50%" strokecolor="${NAVY}" fillcolor="${NAVY}"><w:anchorlock/><center style="color:#ffffff;font-family:${FONT};font-size:16px;font-weight:600;">${safeLabel}</center></v:roundrect><![endif]--><!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr><td align="center" bgcolor="${NAVY}" style="border-radius:999px;"><a href="${safeHref}" style="display:inline-block;padding:16px 32px;font-family:${FONT};font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:999px;">${safeLabel}</a></td></tr></table><!--<![endif]-->`;
 }
 
 export function registrationWelcome(
@@ -107,9 +110,9 @@ export function registrationWelcome(
       const href = home.href.startsWith("http") ? home.href : `${origin}${home.href}`;
       const image = home.image ? (home.image.startsWith("http") ? home.image : `${origin}${home.image}`) : "";
       const photoRow = image
-        ? `<tr><td style="padding:0;"><a href="${escapeHtml(href)}"><img src="${escapeHtml(image)}" alt="" width="552" style="display:block;width:100%;max-width:552px;height:auto;border:0;" /></a></td></tr>`
+        ? `<tr><td style="padding:0;"><a href="${escapeHtml(href)}"><img src="${escapeHtml(image)}" alt="" width="552" style="display:block;width:100%;max-width:100%;height:auto;border:0;" /></a></td></tr>`
         : "";
-      return `<tr><td style="padding:0 0 16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e1d8;border-radius:4px;">${photoRow}<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;"><p style="margin:0;font-size:18px;line-height:1.3;font-weight:bold;color:#04427d;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:6px 0 0;font-size:15px;line-height:1.4;color:#1c1c1c;">${escapeHtml(home.address)}</p><p style="margin:2px 0 0;font-size:14px;line-height:1.4;color:#5c6570;">${escapeHtml(home.city)}</p><p style="margin:10px 0 0;font-size:14px;"><a href="${escapeHtml(href)}" style="color:#04427d;font-weight:bold;text-decoration:underline;">View this home</a></p></td></tr></table></td></tr>`;
+      return `<tr><td class="card-gap" style="padding:0 0 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e7e7;border-radius:12px;">${photoRow}<tr><td style="padding:18px 20px;font-family:${FONT};"><p style="margin:0;font-size:18px;line-height:1.4;font-weight:600;color:#1a1a1a;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:6px 0 0;font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(home.address)}</p><p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(home.city)}</p><p style="margin:12px 0 0;font-size:16px;line-height:1.6;"><a href="${escapeHtml(href)}" style="color:${NAVY};font-weight:600;text-decoration:underline;">View this home</a></p></td></tr></table></td></tr>`;
     })
     .join("");
 
@@ -120,64 +123,64 @@ export function registrationWelcome(
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="x-apple-disable-message-reformatting" />
 <title>${escapeHtml(subject)}</title>
+<style>
+  body, table, td, p, a { font-family: ${FONT}; }
+  @media only screen and (max-width: 600px) {
+    .container { width: 100% !important; }
+    .outer { padding: 12px 0 !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .btn a { display: block !important; text-align: center !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:#f4f1ec;">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f4f1ec;">${escapeHtml(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ec;">
-<tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;">
-<tr><td height="4" bgcolor="#04427d" style="font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr><td style="padding:22px 28px 18px;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="210" style="display:block;width:210px;max-width:70%;height:auto;border:0;" /></td></tr>
-<tr><td height="3" bgcolor="#e11b22" style="font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr><td style="padding:32px 28px 8px;font-family:Georgia,'Times New Roman',serif;color:#1c1c1c;">
-<h1 style="margin:0;font-size:30px;line-height:1.25;font-weight:normal;">Hi ${escapeHtml(first)},</h1>
+<body style="margin:0;padding:0;background:#f5f5f5;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f5f5;">${escapeHtml(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
+<tr><td align="center" class="outer" style="padding:32px 16px;">
+<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;">
+<tr><td class="px" style="padding:32px 24px 8px;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="180" style="display:block;width:180px;max-width:70%;height:auto;border:0;" /></td></tr>
+<tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};color:#1a1a1a;">
+<h1 style="margin:0;font-family:${FONT};font-size:28px;line-height:1.3;font-weight:600;color:#1a1a1a;">Hi ${escapeHtml(first)},</h1>
 </td></tr>
-<tr><td style="padding:8px 28px 0;font-family:Arial,Helvetica,sans-serif;color:#1c1c1c;font-size:16px;line-height:1.55;">
+<tr><td class="px" style="padding:16px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
 <p style="margin:0;">Thanks for connecting with us! Your home search portal is ready to explore. Here are some key features to help you with your search:</p>
 </td></tr>
-<tr><td style="padding:16px 28px 0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${FEATURES.map((item) => `<tr>
-<td width="44" valign="top" style="padding:0 12px 16px 0;">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="32" height="32" align="center" valign="middle" bgcolor="#e7f2f8" style="width:32px;height:32px;border-radius:16px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:32px;color:${item.color};">${item.icon}</td></tr></table>
-</td>
-<td valign="top" style="padding:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1c1c1c;">
-<a href="${escapeHtml(origin + item.path)}" style="color:#04427d;font-weight:bold;text-decoration:underline;">${escapeHtml(item.label)}</a>${escapeHtml(item.rest)}
-</td>
-</tr>`).join("")}</table>
+<tr><td class="px" style="padding:20px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
+${FEATURES.map((item) => `<p style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;"><a href="${escapeHtml(origin + item.path)}" style="color:${NAVY};font-weight:700;text-decoration:underline;">${escapeHtml(item.label)}</a>${escapeHtml(item.rest)}</p>`).join("")}
 </td></tr>
-<tr><td style="padding:4px 28px 0;font-family:Arial,Helvetica,sans-serif;color:#1c1c1c;font-size:16px;line-height:1.55;">
+<tr><td class="px" style="padding:4px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
 <p style="margin:0;">We'll send you new listings as they come up that match your search, and someone from our team will reach out soon to learn more about what you're looking for.</p>
-<p style="margin:16px 0 0;">Happy house hunting!</p>
-<p style="margin:16px 0 0;">Talk soon</p>
-<p style="margin:4px 0 0;font-weight:bold;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
+<p style="margin:20px 0 0;">Happy house hunting!</p>
+<p style="margin:20px 0 0;">Talk soon</p>
+<p style="margin:4px 0 0;font-weight:600;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
 </td></tr>
-<tr><td style="padding:24px 28px 8px;">
+<tr><td class="px" style="padding:28px 24px 8px;">
 ${button(search, "Browse homes")}
 </td></tr>
-${cards.length ? `<tr><td style="padding:20px 28px 0;font-family:Arial,Helvetica,sans-serif;">
-<h2 style="margin:0 0 14px;font-size:18px;line-height:1.3;font-weight:bold;color:#1c1c1c;">Homes to start with</h2>
+${cards.length ? `<tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};">
+<h2 style="margin:0 0 16px;font-family:${FONT};font-size:18px;line-height:1.4;font-weight:600;color:#1a1a1a;">Homes to start with</h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${cardHtml}</table>
 </td></tr>` : ""}
-<tr><td style="padding:8px 28px 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f2;">
+<tr><td class="px" style="padding:12px 24px 32px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #e7e7e7;border-radius:12px;">
 <tr>
-<td width="96" valign="top" style="padding:18px 0 18px 18px;"><img src="${escapeHtml(photo)}" alt="${escapeHtml(SITE.agent)}" width="72" height="72" style="display:block;width:72px;height:72px;border:0;border-radius:36px;" /></td>
-<td valign="middle" style="padding:18px 18px 18px 8px;font-family:Arial,Helvetica,sans-serif;color:#1c1c1c;">
-<p style="margin:0;font-size:16px;line-height:1.3;font-weight:bold;">${escapeHtml(SITE.agent)}</p>
-<p style="margin:4px 0 0;font-size:14px;line-height:1.4;">${escapeHtml(SITE.company)}</p>
-<p style="margin:2px 0 0;font-size:14px;line-height:1.4;">RE/MAX Crest Realty</p>
-<p style="margin:8px 0 0;font-size:14px;line-height:1.4;">${escapeHtml(SITE.addressLine)}<br />${escapeHtml(SITE.cityLine)}</p>
-<p style="margin:8px 0 0;font-size:14px;line-height:1.4;"><a href="tel:${escapeHtml(SITE.phoneTel)}" style="color:#04427d;text-decoration:none;">${escapeHtml(SITE.phoneDisplay)}</a></p>
-<p style="margin:8px 0 0;font-size:14px;line-height:1.4;"><a href="${escapeHtml(contact)}" style="color:#04427d;font-weight:bold;text-decoration:underline;">Contact Casey</a></p>
+<td class="px" width="88" valign="top" style="padding:24px 0 24px 24px;"><img src="${escapeHtml(photo)}" alt="${escapeHtml(SITE.agent)}" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:32px;" /></td>
+<td valign="middle" style="padding:24px 24px 24px 16px;font-family:${FONT};color:#1a1a1a;">
+<p style="margin:0;font-size:16px;line-height:1.6;font-weight:600;">${escapeHtml(SITE.agent)}</p>
+<p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(SITE.company)}</p>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#5f6770;">RE/MAX Crest Realty</p>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6;">${escapeHtml(SITE.addressLine)}<br />${escapeHtml(SITE.cityLine)}</p>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="tel:${escapeHtml(SITE.phoneTel)}" style="color:${NAVY};text-decoration:none;">${escapeHtml(SITE.phoneDisplay)}</a></p>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="${escapeHtml(contact)}" style="color:${NAVY};font-weight:600;text-decoration:underline;">Contact Casey</a></p>
 </td>
 </tr>
 </table>
 </td></tr>
-<tr><td style="padding:4px 28px 24px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">
+<tr><td class="px" style="padding:0 24px 32px;font-family:${FONT};font-size:13px;line-height:1.6;color:#6b7280;">
 <p style="margin:0;">${escapeHtml(SITE.company)}, RE/MAX Crest Realty, Vancouver.</p>
-<p style="margin:8px 0 0;">You received this email because you signed up at vancouverpropertysearch.ca.</p>
-<p style="margin:8px 0 0;"><a href="${escapeHtml(unsubscribe)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe or manage alerts</a></p>
-<p style="margin:8px 0 0;">Sent from ${escapeHtml(SENDER)}</p>
+<p style="margin:10px 0 0;">You received this email because you signed up at vancouverpropertysearch.ca.</p>
+<p style="margin:10px 0 0;"><a href="${escapeHtml(unsubscribe)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe or manage alerts</a></p>
+<p style="margin:10px 0 0;">Sent from ${escapeHtml(SENDER)}</p>
 </td></tr>
 </table>
 </td></tr>

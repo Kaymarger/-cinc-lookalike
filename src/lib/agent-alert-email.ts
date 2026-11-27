@@ -34,10 +34,13 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+const NAVY = "#1b3040";
+
 function row(label: string, value: string): string {
   return `<tr>
-<td valign="top" style="padding:8px 12px 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;color:#6b7280;width:88px;">${escapeHtml(label)}</td>
-<td valign="top" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;color:#1c1c1c;">${escapeHtml(value)}</td>
+<td valign="top" style="padding:10px 16px 10px 0;font-family:${FONT};font-size:14px;line-height:1.6;color:#6b7280;width:96px;">${escapeHtml(label)}</td>
+<td valign="top" style="padding:10px 0;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(value)}</td>
 </tr>`;
 }
 
@@ -68,19 +71,28 @@ export function agentAlertEmail(lead: SanitizedLead): { subject: string; text: s
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>${escapeHtml(subject)}</title>
+<style>
+  @media only screen and (max-width: 600px) {
+    .container { width: 100% !important; }
+    .outer { padding: 12px 0 !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .btn a { display: block !important; text-align: center !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:#f4f1ec;">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f4f1ec;">${escapeHtml(`${lead.name} · ${type} · ${source}`)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ec;">
-<tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;">
-<tr><td style="padding:22px 28px;background:#04427d;font-family:Arial,Helvetica,sans-serif;">
-<p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#d6e4f0;">${escapeHtml(SITE.company)}</p>
-<h1 style="margin:8px 0 0;font-size:24px;line-height:1.3;font-weight:bold;color:#ffffff;">New lead</h1>
-<p style="margin:6px 0 0;font-size:14px;line-height:1.4;color:#d6e4f0;">Assigned to ${escapeHtml(lead.assignedTo)}</p>
+<body style="margin:0;padding:0;background:#f5f5f5;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f5f5;">${escapeHtml(`${lead.name}. ${type}. ${source}`)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
+<tr><td align="center" class="outer" style="padding:32px 16px;">
+<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;">
+<tr><td class="px" style="padding:32px 24px 0;font-family:${FONT};">
+<p style="margin:0;font-size:13px;line-height:1.6;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;">${escapeHtml(SITE.company)}</p>
+<h1 style="margin:8px 0 0;font-family:${FONT};font-size:26px;line-height:1.3;font-weight:600;color:#1a1a1a;">New lead</h1>
+<p style="margin:6px 0 0;font-family:${FONT};font-size:16px;line-height:1.6;color:#5f6770;">Assigned to ${escapeHtml(lead.assignedTo)}</p>
 </td></tr>
-<tr><td height="3" bgcolor="#e11b22" style="font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr><td style="padding:22px 28px 8px;">
+<tr><td class="px" style="padding:20px 24px 8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e7e7;border-radius:12px;">
+<tr><td style="padding:8px 20px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 ${row("Name", lead.name)}
 ${row("Email", lead.email)}
@@ -88,14 +100,16 @@ ${row("Phone", phone)}
 ${row("Type", type)}
 ${row("Source", source)}
 <tr>
-<td valign="top" style="padding:8px 12px 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;color:#6b7280;">Message</td>
-<td valign="top" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1c1c1c;">${escapeHtml(message)}</td>
+<td valign="top" style="padding:10px 16px 10px 0;font-family:${FONT};font-size:14px;line-height:1.6;color:#6b7280;">Message</td>
+<td valign="top" style="padding:10px 0;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(message)}</td>
 </tr>
 </table>
 </td></tr>
-<tr><td style="padding:8px 28px 28px;">
-<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(open)}" style="height:46px;v-text-anchor:middle;width:180px;" arcsize="8%" strokecolor="#04427d" fillcolor="#04427d"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Open lead</center></v:roundrect><![endif]-->
-<!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#04427d" style="border-radius:4px;"><a href="${escapeHtml(open)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:bold;">Open lead</a></td></tr></table><!--<![endif]-->
+</table>
+</td></tr>
+<tr><td class="px" style="padding:20px 24px 32px;">
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(open)}" style="height:48px;v-text-anchor:middle;width:180px;" arcsize="50%" strokecolor="${NAVY}" fillcolor="${NAVY}"><w:anchorlock/><center style="color:#ffffff;font-family:${FONT};font-size:16px;font-weight:600;">Open lead</center></v:roundrect><![endif]-->
+<!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr><td align="center" bgcolor="${NAVY}" style="border-radius:999px;"><a href="${escapeHtml(open)}" style="display:inline-block;padding:16px 32px;font-family:${FONT};font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:999px;">Open lead</a></td></tr></table><!--<![endif]-->
 </td></tr>
 </table>
 </td></tr>
