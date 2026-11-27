@@ -10,7 +10,7 @@ export const href = {
   leadsReturn: `${SPA}#leads/overviewreturn`,
   exportLeads: `${SPA}#leads/export`,
   dialerHistory: `${SPA}#leads/dialer-history`,
-  lead: (id: string, tab = "activity") => `${SPA}#leads/details/${encodeURIComponent(id)}/${tab}`,
+  lead: (id: string, tab = "activity") => `${SPA}#leads/details/${encodeURIComponent(id)}/${tab === "plips" ? "autotracks" : tab}`,
   leadSearch: (id: string, searchId?: string) => `${SPA}#leads/details/${encodeURIComponent(id)}/search${searchId ? `/${encodeURIComponent(searchId)}` : ""}`,
   dealsPurchases: `${SPA}/deals#/dashboard`,
   dealsListings: `${SPA}/deals#/dashboard/listings`,
@@ -95,6 +95,7 @@ export type NavSection = "launchpad" | "leads" | "deals" | "contacts" | "comms" 
 const LEAD_TABS: LeadTab[] = ["activity", "info", "plans", "appointments", "conversations", "plips"];
 
 function asLeadTab(value: string | undefined): LeadTab {
+  if (value === "autotracks" || value === "plips") return "plips";
   return LEAD_TABS.includes(value as LeadTab) ? (value as LeadTab) : "activity";
 }
 
@@ -281,7 +282,7 @@ export function titleOf(route: CincRoute): string {
     case "calendar":
       return "Calendar";
     case "tasks":
-      return "Tasks";
+      return "To Do";
     case "marketing":
       return "Marketing Dashboard";
     case "reports":

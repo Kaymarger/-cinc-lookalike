@@ -8,7 +8,7 @@ import { CONTACT_RELATIONS, LEAD_SOURCES, MAPPED_SOURCES, TIMEFRAMES } from "@/l
 import type { OfficeSettings } from "@/lib/office-settings";
 import { leadVisibleTo } from "@/lib/office-access";
 import { accountVerified, leadSide, validEmail } from "@/lib/lead-signals";
-import { useLeads, type Lead } from "@/lib/leads";
+import { LEAD_SOURCE_LABEL, useLeads, type Lead } from "@/lib/leads";
 import { DialerPanel } from "./dialer-panel";
 import { LeadSearches } from "./lead-searches";
 import { LabelManager, useLabelCatalog } from "./label-manager";
@@ -397,7 +397,7 @@ function LeadSources() {
         {created.map((item) => (
           <li key={item} className="flex items-center gap-2 py-1">
             {item}
-            {settings.customSources.includes(item) ? <button type="button" className="text-[#d9363e]" onClick={() => void persist({ ...settings, customSources: settings.customSources.filter((source) => source !== item) }, "Source removed.")}>Remove</button> : null}
+            {settings.customSources.includes(item) ? <button type="button" className="text-[#d9363e]" aria-label={`Delete ${item}`} onClick={() => void persist({ ...settings, customSources: settings.customSources.filter((source) => source !== item) }, "Source removed.")}>🗑</button> : null}
           </li>
         ))}
       </ul>
@@ -408,14 +408,14 @@ function LeadSources() {
           {LEAD_SOURCES.filter((item) => item !== "(Select a Source)").map((source) => (
             <tr key={source} className="border-t border-[#eee]">
               <td className="px-2 py-1">{source}</td>
-              <td>{counts.get(source) ?? 0}</td>
+              <td>{leads.filter((lead) => String(LEAD_SOURCE_LABEL[lead.source]) === String(source)).length}</td>
               <td>
                 <select className="border border-[#ccc] px-1" value={settings.sourceMap[source] || "--No Mapping--"} onChange={(event) => setSettings({ ...settings, sourceMap: { ...settings.sourceMap, [source]: event.target.value } })}>
                   <option>--No Mapping--</option>
                   {MAPPED_SOURCES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </td>
-              <td><button type="button" className="text-[#1c93b5]" onClick={() => void persist(settings, "Mapping updated.")}>Update</button></td>
+              <td><button type="button" className="bg-[#1c93b5] px-2 py-1 text-white" onClick={() => void persist(settings, "Mapping updated.")}>Update</button></td>
             </tr>
           ))}
         </tbody>
@@ -480,17 +480,17 @@ function LeadImport({ onClose }: { onClose: () => void }) {
             }} />
             <div className="mt-3 text-right"><Btn onClick={chrome.closeModal}>Cancel</Btn></div>
           </ModalFrame>
-        )}>New Import</button>
+        )}>New Import +</button>
       </div>
+      <button type="button" className="mb-3 text-[13px] text-[#1c93b5]" onClick={onClose}>Back</button>
       <table className="w-full bg-white text-left text-[13px]">
-        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr><th className="px-3 py-2">File</th><th>Leads</th><th>When</th></tr></thead>
+        <thead className="bg-[#f6f6f6] text-[11px] uppercase"><tr>{["Started By", "File Name", "Start Date", "Progress", "Errors", "Actions", "Label"].map((column) => <th key={column} className="px-3 py-2">{column}</th>)}</tr></thead>
         <tbody>
           {rows.length ? rows.map((row) => (
-            <tr key={`${row.email}-${row.at}`} className="border-t border-[#eee]"><td className="px-3 py-2">{row.name}</td><td>{row.email}</td><td>{row.at}</td></tr>
-          )) : <tr><td className="px-3 py-6 text-[#888]" colSpan={3}>No imports yet.</td></tr>}
+            <tr key={`${row.email}-${row.at}`} className="border-t border-[#eee]"><td className="px-3 py-2">Office</td><td>{row.name}</td><td>{row.at}</td><td>Complete</td><td>0</td><td>—</td><td>—</td></tr>
+          )) : <tr><td className="px-3 py-6 text-[#888]" colSpan={7}>No imports yet.</td></tr>}
         </tbody>
       </table>
-      <button type="button" className="mt-3 text-[13px] text-[#1c93b5]" onClick={onClose}>Back to leads</button>
     </div>
   );
 }
@@ -1036,7 +1036,7 @@ export function LeadsView({
             "Untrash Selected Leads",
           ].map((label) => ({ label, danger: label.startsWith("Trash"), onClick: () => mass(label) }))}
         />
-        {open && !expanded ? null : (
+        {(
           <>
             <button type="button" className="h-[22px] rounded-[2px] border border-[#ccc] bg-white px-2 text-[12px] text-[#999] disabled:opacity-50" disabled={!dirty} onClick={clearFilters}>Clear All</button>
             <button type="button" title="Refresh" className="grid h-[22px] w-[22px] place-items-center bg-[#1c93b5] text-[12px] text-white" onClick={() => { setPage(0); chrome.toast("Lead list refreshed."); }}>↻</button>
@@ -1109,7 +1109,8 @@ export function LeadsView({
             chrome.toast("A lead with that phone or email already exists. Open that lead instead of replacing their name.");
             return;
           }
-          add({ ...input, source: "general", notes: "Added by an agent" });
+          const created = add({ ...input, source: "general", notes: "Added by an agent" });
+          update((current) => ({ ...current, info: { ...current.info, [created.id]: { ...(current.info[created.id] ?? {}), first: input.first, last: input.last, email: input.email, cell: input.phone } } }));
           chrome.closeModal();
           chrome.toast("Lead added.");
         }} />)} />)}>
@@ -1648,6 +1649,10 @@ function LeadDetail({
                 <p className="text-[15px] font-semibold">Note added</p>
                 <p className="text-[11px] text-[#888]">{friendlyWhen(note.at)} by {CRM_AGENT.name}</p>
                 <p className="mt-1 text-[13px]">{visibleActivity(noteText(note.body))}</p>
+                <div className="mt-2 flex justify-end gap-3">
+                  <button type="button" className="text-[12px] text-[#d9363e]" onClick={() => update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).filter((item) => item.id !== note.id) } }))}>Delete</button>
+                  <button type="button" className="text-[12px] text-[#1c93b5]" onClick={() => chrome.openModal(<NoteModal initial={note.body} onClose={chrome.closeModal} onSave={(body) => { update((current) => ({ ...current, notes: { ...current.notes, [row.id]: (current.notes[row.id] ?? []).map((item) => item.id === note.id ? { ...item, body } : item) } })); chrome.closeModal(); chrome.toast("Note updated."); }} />)}>Edit Note</button>
+                </div>
               </article>
             )) : null}
             {state.calls.filter((call) => {
@@ -1696,7 +1701,7 @@ function LeadDetail({
                   </label>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button type="button" className="border border-[#d9363e] px-2 py-1 text-[11px] text-[#d9363e]" onClick={() => { if (window.confirm("Delete this reminder?")) update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); }}>DELETE</button>
+                  <button type="button" className="border border-[#d9363e] px-2 py-1 text-[11px] text-[#d9363e]" onClick={() => chrome.openModal(<ModalFrame title="Delete this reminder?" onClose={chrome.closeModal}><p className="text-[13px]">This reminder will be removed.</p><div className="mt-3 flex justify-end gap-2"><Btn onClick={chrome.closeModal}>Cancel</Btn><Btn kind="teal" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); chrome.closeModal(); }}>Delete</Btn></div></ModalFrame>)}>DELETE</button>
                   <button type="button" className="bg-[#1c93b5] px-2 py-1 text-[11px] text-white" onClick={() => chrome.openModal(<ReminderModal leadId={row.id} reminderId={item.id} initialTitle={item.title} initialDue={item.due} onClose={chrome.closeModal} />)}>EDIT</button>
                 </div>
               </article>
@@ -1987,7 +1992,6 @@ function InfoTab({
               ) : <p>{form[key] || "—"}</p>}
             </div>
           ))}
-          <a href="#leads/sources" className="text-[12px] text-[#1c93b5]">Edit Lead Sources</a>
           <LeadCustomFields leadId={row.id} />
           {[
             ["Registered", row.registered],
@@ -2142,7 +2146,7 @@ function FilterDrawer(props: {
   );
 }
 
-function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input: { name: string; email: string; phone: string }) => void }) {
+function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input: { name: string; email: string; phone: string; first: string; last: string }) => void }) {
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
@@ -2170,8 +2174,8 @@ function AddLeadModal({ onClose, onSave }: { onClose: () => void; onSave: (input
         <Btn kind="teal" onClick={() => {
           if (!first.trim() || !last.trim()) { setError("Enter a first and last name."); return; }
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Enter a valid email."); return; }
-          if (phone.replace(/\D/g, "").length < 10) { setError("Enter a 10-digit cell phone."); return; }
-          onSave({ name: `${first.trim()} ${last.trim()}`, email: email.trim(), phone });
+          if (phone.trim() && phone.replace(/\D/g, "").length < 10) { setError("Enter a 10-digit cell phone, or leave it blank."); return; }
+          onSave({ name: `${first.trim()} ${last.trim()}`, email: email.trim(), phone, first: first.trim(), last: last.trim() });
         }}>Save</Btn>
       </div>
     </ModalFrame>
@@ -2416,8 +2420,8 @@ function ReminderModal({ leadId, onClose, reminderId, initialTitle = "Call", ini
       {error ? <p role="alert" className="mb-2 bg-[#fde7ec] px-2 py-1 text-[12px] text-[#c62828]">{error}</p> : null}
       <div className="flex justify-end gap-2">
         {reminderId ? <Btn onClick={() => {
-          if (!window.confirm("Delete this reminder?")) return;
-          update((current) => ({ ...current, reminders: current.reminders.filter((item) => item.id !== reminderId) }));
+          chrome.openModal(<ModalFrame title="Delete this reminder?" onClose={chrome.closeModal}><p className="text-[13px]">This reminder will be removed.</p><div className="mt-3 flex justify-end gap-2"><Btn onClick={chrome.closeModal}>Cancel</Btn><Btn kind="teal" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.filter((item) => item.id !== reminderId) })); chrome.toast("Reminder deleted."); chrome.closeModal(); onClose(); }}>Delete</Btn></div></ModalFrame>);
+          return;
           chrome.toast("Reminder deleted.");
           onClose();
         }}>Delete</Btn> : null}

@@ -127,7 +127,7 @@ export function SearchSettingsPanel() {
           ))}
           <label>Sort By
             <select className={inputCls} value={form.sortBy} onChange={(event) => set("sortBy", event.target.value)}>
-              {["None", "Highest Price (highestprice)", "Lowest Price (lowestprice)", "Latest Listings (latest)", "Baths (baths)", "Beds (beds)", "Year Built (newest)"].map((option) => <option key={option}>{option}</option>)}
+              {["None", "Highest Price", "Lowest Price", "Latest Listings", "Baths", "Beds", "Year Built"].map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
         </div>
@@ -142,7 +142,7 @@ export function SearchSettingsPanel() {
         </label>
         <label className="block">Sort Order Override
           <select className={inputCls} value={form.sortOverride} onChange={(event) => set("sortOverride", event.target.value)}>
-            {["None", "Highest Price (highestprice)", "Lowest Price (lowestprice)", "Latest Listings (latest)", "Baths (baths)", "Beds (beds)", "Year Built (newest)"].map((option) => <option key={option}>{option}</option>)}
+            {["None", "Highest Price", "Lowest Price", "Latest Listings", "Baths", "Beds", "Year Built"].map((option) => <option key={option}>{option}</option>)}
           </select>
         </label>
       </section>

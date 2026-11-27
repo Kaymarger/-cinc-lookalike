@@ -417,6 +417,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
       setHelpOpen(false);
       setAccountOpen(false);
       setTitleOpen(false);
+      setModal(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -562,7 +563,7 @@ export function Shell({ route, children }: { route: CincRoute; children: ReactNo
                   End Become User
                 </button>
               ) : null}
-              <a href={process.env.NEXT_PUBLIC_GET_LEADS_URL || "#get-leads"} target="_blank" rel={process.env.NEXT_PUBLIC_GET_LEADS_URL ? "noreferrer" : undefined} className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={(event) => { if (!process.env.NEXT_PUBLIC_GET_LEADS_URL) { event.preventDefault(); setMessage("Get Leads needs NEXT_PUBLIC_GET_LEADS_URL, the Google Form address."); } }}>Get Leads</a>
+              <a href={process.env.NEXT_PUBLIC_GET_LEADS_URL || "https://www.cincads.com"} target="_blank" rel="noreferrer" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase">Get Leads</a>
               <button type="button" className="text-[12px] font-medium tracking-wide text-[#1b9cb8] uppercase" onClick={() => setHelpOpen(true)}>
                 Help
               </button>

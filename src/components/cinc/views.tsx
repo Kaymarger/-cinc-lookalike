@@ -230,7 +230,7 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
               <table className="w-full text-left text-[12px]">
                 <thead className="text-[10px] uppercase text-[#888]"><tr><th>Lead Name</th><th>Pipeline</th><th>Call Info</th><th>Last Login</th></tr></thead>
                 <tbody>
-                  {(flip ? [...leads].reverse() : leads).slice(0, 4).map((lead) => (
+                  {(flip ? [...leads].reverse() : leads).filter((lead) => !state.trashed.includes(lead.id)).slice(0, 4).map((lead) => (
                     <tr key={lead.id} className="border-t border-[#eee]">
                       <td className="py-2"><a className="text-[#1c93b5]" href={href.lead(lead.id)}>{lead.name}</a></td>
                       <td>{lead.status}</td>
@@ -329,17 +329,14 @@ export function CallSummaryView() {
     if (sortKey === key) setDir((value) => (value === 1 ? -1 : 1));
     else { setSortKey(key); setDir(1); }
   }
-  const factor = frame === "Today" ? 1 : frame === "Last 7 Days" ? 3 : frame === "Last 30 Days" || frame === "This Month" ? 6 : frame === "Custom" ? customDays : 4;
+  const factor = frame === "Last 7 Days" ? 3 : frame === "Last 30 Days" || frame === "This Month" ? 6 : frame === "Custom" ? customDays : 4;
+  const visibleRows = frame === "Today" ? [] : rows;
   return (
     <div className="p-4">
       <div className="border border-[#e5e5e5] bg-white p-3 shadow-sm">
         <div className="flex flex-wrap gap-2">
         <Menu
-          label={<span className={`${toolBtn} w-[150px] justify-between`}>Agent: <b>{agentFilter}</b> ▾</span>}
-          items={["All", ...CALL_ROWS.map((row) => row[0])].map((label) => ({ label, onClick: () => setAgentFilter(label) }))}
-        />
-        <Menu
-          label={<span className={`${toolBtn} w-[150px] justify-between`}>Timeframe: <b>{frame}</b> ▾</span>}
+          label={<span className={`${toolBtn} w-[170px] justify-between`}>Timeframe: <b>{frame}</b> ▾</span>}
           items={["Today", "Last 7 Days", "Last 30 Days", "This Month", "Last Month", "Custom"].map((label) => ({
             label,
             onClick: () => {
@@ -353,6 +350,10 @@ export function CallSummaryView() {
             },
           }))}
         />
+        <Menu
+          label={<span className={`${toolBtn} w-[150px] justify-between`}>Agent: <b>{agentFilter}</b> ▾</span>}
+          items={["All", ...CALL_ROWS.map((row) => row[0])].map((label) => ({ label, onClick: () => setAgentFilter(label) }))}
+        />
         </div>
         <table className="mt-3 w-full border-collapse text-left text-[12px]">
           <thead className="bg-[#f6f6f6] text-[12px] font-bold text-black">
@@ -365,7 +366,8 @@ export function CallSummaryView() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {visibleRows.length ? null : <tr><td className="px-2 py-6 text-[#666]" colSpan={5}>No calls for today.</td></tr>}
+            {visibleRows.map((row) => (
               <tr key={row[0]} className="h-7 border-b border-[#eee]">
                 <td className="px-2">{row[0]}</td>
                 <td className="px-2">{row[1]}</td>
@@ -2899,7 +2901,7 @@ export function TasksView() {
               <td className="space-x-2 text-[12px]">
                 <button type="button" className="text-[#1c93b5]" onClick={() => chrome.openModal(<TodoEdit item={item} onClose={chrome.closeModal} />)}>Edit</button>
                 <button type="button" className="text-[#1c93b5]" onClick={() => update((current) => ({ ...current, reminders: current.reminders.map((reminder) => reminder.id === item.id ? { ...reminder, done: !reminder.done } : reminder) }))}>{item.done ? "Reopen" : "Mark Complete"}</button>
-                <button type="button" className="text-[#d9363e]" onClick={() => { if (window.confirm("Delete this reminder?")) update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); }}>Delete</button>
+                <button type="button" className="text-[#d9363e]" onClick={() => chrome.openModal(<ModalFrame title="Delete this reminder?" onClose={chrome.closeModal}><p className="text-[13px]">This reminder will be removed.</p><div className="mt-3 flex justify-end gap-2"><Btn onClick={chrome.closeModal}>Cancel</Btn><Btn kind="teal" onClick={() => { update((current) => ({ ...current, reminders: current.reminders.filter((reminder) => reminder.id !== item.id) })); chrome.closeModal(); }}>Delete</Btn></div></ModalFrame>)}>Delete</button>
               </td>
             </tr>
           ))}
