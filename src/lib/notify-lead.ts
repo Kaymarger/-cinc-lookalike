@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
 import { officeDb } from "@/lib/leads-db";
 import { sendOfficeSms } from "@/lib/office-mail";
+import { catalogFeatured } from "./catalog";
 import { propertyHref } from "./listing-url";
-import { getFeaturedProperties } from "./search";
 import { agentAlertEmail } from "./agent-alert-email";
 import { registrationWelcome } from "./welcome-email";
 import { SITE } from "@/lib/site";
@@ -156,15 +156,25 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
   const first = lead.name.split(" ")[0] || "there";
   const origin = siteOrigin();
   const savedSearch = lead.source === "search_alert";
+  const featured = savedSearch
+    ? []
+    : await Promise.race([
+        catalogFeatured(3).catch(() => []),
+        new Promise<Awaited<ReturnType<typeof catalogFeatured>>>((resolve) => setTimeout(() => resolve([]), 4000)),
+      ]);
   const welcomeMessage = savedSearch
     ? null
-    : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
-        address: property.address,
-        city: property.city,
-        price: property.price,
-        href: propertyHref(property),
-        image: property.images[0],
-      })));
+    : registrationWelcome(lead, featured.flatMap((property) => {
+        const image = property.images.find((url) => url.startsWith("http") && !/unsplash\.com/i.test(url));
+        if (!image) return [];
+        return [{
+          address: property.address,
+          city: property.city,
+          price: property.price,
+          href: propertyHref(property),
+          image,
+        }];
+      }).slice(0, 3));
   const subject = savedSearch
     ? `Saved search: ${lead.searchLabel || "Greater Vancouver homes"}`
     : welcomeMessage!.subject;

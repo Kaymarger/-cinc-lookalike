@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { catalogFeatured } from "@/lib/catalog";
 import { propertyHref } from "@/lib/listing-url";
-import { getFeaturedProperties } from "@/lib/search";
 import { registrationWelcome } from "@/lib/welcome-email";
 
 export const metadata: Metadata = {
@@ -8,16 +8,21 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function WelcomePreviewPage() {
+export default async function WelcomePreviewPage() {
+  const featured = await catalogFeatured(3).catch(() => []);
   const message = registrationWelcome(
     { name: "Alex Morgan", email: "preview@example.com" },
-    getFeaturedProperties().slice(0, 3).map((property) => ({
-      address: property.address,
-      city: property.city,
-      price: property.price,
-      href: propertyHref(property),
-      image: property.images[0],
-    }))
+    featured.flatMap((property) => {
+      const image = property.images.find((url) => url.startsWith("http") && !/unsplash\.com/i.test(url));
+      if (!image) return [];
+      return [{
+        address: property.address,
+        city: property.city,
+        price: property.price,
+        href: propertyHref(property),
+        image,
+      }];
+    }),
   );
   return (
     <iframe
