@@ -63,8 +63,7 @@ export default async function HomeDetailsPage({
     <>
       {photo ? (
         <>
-          <link rel="preload" as="image" href={creaPhotoUrl(photo, "med")} media="(max-width: 767px)" />
-          <link rel="preload" as="image" href={creaPhotoUrl(photo, "high")} media="(min-width: 768px)" />
+          <link rel="preload" as="image" href={creaPhotoUrl(photo, "med")} fetchPriority="high" />
         </>
       ) : null}
       <PropertyDetail property={property} />

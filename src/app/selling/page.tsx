@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { BrandPicture } from "@/components/brand-picture";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 
 export const metadata: Metadata = {
@@ -33,13 +33,12 @@ export default function SellingPage() {
     <div className="bg-white">
       <CamelotPageHeader />
       <section className="relative isolate overflow-hidden">
-        <Image
-          src="/brand/hero.jpg"
+        <BrandPicture
+          name="hero"
+          fallback="jpg"
           alt=""
-          fill
-          className="object-cover object-[center_40%]"
-          sizes="100vw"
-          priority
+          pictureClassName="absolute inset-0"
+          className="h-full w-full object-cover object-[center_40%]"
         />
         <div
           aria-hidden

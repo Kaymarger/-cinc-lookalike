@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { BrandPicture } from "@/components/brand-picture";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuthModal } from "@/components/auth-modal";
@@ -106,13 +106,13 @@ export function SiteHeader() {
         </button>
 
         <Link href="/" className="shrink-0" onClick={close}>
-          <Image
-            src="/brand/archibald-logo.png"
+          <BrandPicture
+            name="archibald-logo"
+            fallback="png"
             alt="Archibald Real Estate Group"
-            width={800}
-            height={186}
+            width={420}
+            height={98}
             className="h-auto w-[148px] max-w-[46vw] object-contain sm:w-[210px]"
-            priority
           />
         </Link>
 

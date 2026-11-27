@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { BrandPicture } from "@/components/brand-picture";
 import { DDF_DISCLAIMER } from "@/components/ddf-attribution";
 import { QUICK_SEARCHES, quickSearchHref } from "@/lib/quick-searches";
 import { SITE } from "@/lib/site";
@@ -54,11 +54,12 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-[1350px] gap-8 px-4 py-10 md:grid-cols-3">
         <div>
           <Link href="/" className="inline-block">
-            <Image
-              src="/brand/archibald-logo.png"
+            <BrandPicture
+              name="archibald-logo"
+              fallback="png"
               alt="Archibald Real Estate Group"
-              width={800}
-              height={186}
+              width={420}
+              height={98}
               className="h-auto w-[180px] object-contain"
             />
           </Link>
@@ -75,11 +76,12 @@ export function SiteFooter() {
               {SITE.phoneDisplay}
             </a>
           </p>
-          <Image
-            src="/brand/remax-logo.png"
+          <BrandPicture
+            name="remax-logo"
+            fallback="png"
             alt="RE/MAX"
-            width={200}
-            height={35}
+            width={351}
+            height={64}
             className="mt-4 h-8 w-auto"
           />
           <div className="mt-4">
@@ -133,12 +135,12 @@ export function SiteFooter() {
       </div>
 
       <div className="mx-auto flex max-w-[1350px] flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <Image
-          src="/brand/fair-housing.png"
+        <BrandPicture
+          name="fair-housing"
+          fallback="png"
           alt="Fair Housing/Equal Opportunity"
-          title="Archibald Real Estate Group is an Equal Opportunity Employer and supports the Fair Housing Act"
-          width={48}
-          height={32}
+          width={91}
+          height={64}
           className="h-8 w-auto"
         />
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-bold tracking-[1px] uppercase">
@@ -152,14 +154,7 @@ export function SiteFooter() {
 
       <div className="bg-white px-4 py-4 text-[12px] leading-relaxed text-[#7b97aa] sm:px-6">
         <div className="mx-auto max-w-[1350px] space-y-3">
-          <Image
-            src="/brand/mls-vancouver.gif"
-            alt="MIMLS"
-            width={80}
-            height={28}
-            unoptimized
-            className="h-7 w-auto"
-          />
+          <img src="/brand/mls-vancouver.gif" alt="MIMLS" width={80} height={28} className="h-7 w-auto" />
           <p>{DDF_DISCLAIMER}</p>
           <p>
             Each listing shows the listing brokerage. The Powered by REALTOR.ca mark links to that listing on REALTOR.ca.

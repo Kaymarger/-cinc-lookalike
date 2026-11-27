@@ -43,6 +43,7 @@ export function SearchResults({
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(8);
+  const [mapReady, setMapReady] = useState(false);
   const showMap = view !== "list";
   const showList = view !== "map";
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -50,6 +51,17 @@ export function SearchResults({
   useEffect(() => {
     setVisible(window.matchMedia("(min-width: 1024px)").matches ? 24 : 8);
   }, [properties.length, properties[0]?.id]);
+
+  useEffect(() => {
+    if (!showMap) return;
+    const start = () => setMapReady(true);
+    const idle = window.requestIdleCallback?.(start, { timeout: 2000 });
+    const timer = idle == null ? window.setTimeout(start, 400) : undefined;
+    return () => {
+      if (idle != null && window.cancelIdleCallback) window.cancelIdleCallback(idle);
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [showMap]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -78,7 +90,7 @@ export function SearchResults({
         </div>
         {showMap ? (
           <div className="mt-6 h-[420px] overflow-hidden border border-border">
-            <SearchMap
+            {mapReady ? <SearchMap
               properties={[]}
               selectedId={null}
               onSelect={() => undefined}
@@ -92,7 +104,7 @@ export function SearchResults({
               onCircle={filters ? (next) => {
                 router.push(`/search${filtersToQuery({ ...filters, circleLat: next?.lat, circleLng: next?.lng, circleKm: next?.km, page: undefined })}`);
               } : undefined}
-            />
+            /> : <div className="h-full bg-[var(--mist)]" />}
           </div>
         ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -168,7 +180,7 @@ export function SearchResults({
             >
               <PropertyCard
                 property={property}
-              priority={i < 2}
+              priority={i < 3}
                 layout="list"
               />
             </div>
@@ -188,7 +200,7 @@ export function SearchResults({
           <div
             className="sticky top-[5.5rem] h-[min(70vh,640px)] overflow-hidden border border-border bg-[var(--mist)] lg:h-[calc(100vh-13rem)]"
           >
-            <SearchMap
+            {mapReady ? <SearchMap
               properties={properties}
               selectedId={selectedId}
               circle={filters?.circleLat != null && filters.circleLng != null && filters.circleKm != null ? { lat: filters.circleLat, lng: filters.circleLng, km: filters.circleKm } : null}
@@ -204,7 +216,7 @@ export function SearchResults({
               onSelect={(id) => {
                 setSelectedId(id);
               }}
-            />
+            /> : <div className="h-full bg-[var(--mist)]" />}
           </div>
         ) : null}
       </div>
