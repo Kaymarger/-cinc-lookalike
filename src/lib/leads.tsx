@@ -461,7 +461,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           );
         });
       }
-      if (response.ok && data?.ok !== false && !data?.existing) trackLeadConversion(lead.source);
+      if (response.ok && data?.ok !== false && !data?.existing) {
+        trackLeadConversion(lead.source, data?.lead?.id || lead.id);
+      }
       return {
         ok: response.ok && data?.ok !== false,
         persisted: Boolean(data?.persisted),

@@ -1,3 +1,4 @@
+import { googleAdsId, googleAdsLeadLabel } from "./google-ads";
 import { pixelEventsForLead } from "./meta-pixel-events";
 
 /** Shared lead payload checks. Safe to import from the browser and the server. */
@@ -216,17 +217,38 @@ type AdsWindow = Window & {
   gtag?: (...args: unknown[]) => void;
 };
 
+const firedLeadIds = new Set<string>();
+
 /** Fires only after a lead is actually stored. Event params stay free of personal data. */
-export function trackLeadConversion(source?: string) {
+export function trackLeadConversion(source?: string, leadId?: string) {
   if (typeof window === "undefined") return;
+  const onceKey = leadId || "";
+  if (onceKey) {
+    if (firedLeadIds.has(onceKey)) return;
+    try {
+      const stored = sessionStorage.getItem(`gvhs-ads-lead:${onceKey}`);
+      if (stored) return;
+      sessionStorage.setItem(`gvhs-ads-lead:${onceKey}`, "1");
+    } catch {
+      // sessionStorage can be blocked; the in-memory set still stops a second call.
+    }
+    firedLeadIds.add(onceKey);
+  }
   const ads = (window as AdsWindow).__gvhsAds;
   const fbq = (window as AdsWindow).fbq;
   if (typeof fbq === "function" && source) {
     for (const item of pixelEventsForLead(source)) fbq("track", item.event, item.params);
   }
   const gtag = (window as AdsWindow).gtag;
-  if (typeof gtag === "function") {
-    if (ads?.ga4) gtag("event", "generate_lead", { send_to: ads.ga4 });
-    if (ads?.google && ads.label) gtag("event", "conversion", { send_to: `${ads.google}/${ads.label}` });
+  if (typeof gtag !== "function" || !source || !pixelEventsForLead(source).some((item) => item.event === "Lead")) return;
+  const google = ads?.google || googleAdsId();
+  const label = ads?.label || googleAdsLeadLabel();
+  if (ads?.ga4) gtag("event", "generate_lead", { send_to: ads.ga4 });
+  if (google && label) {
+    gtag("event", "conversion", {
+      send_to: `${google}/${label}`,
+      value: 1.0,
+      currency: "CAD",
+    });
   }
 }

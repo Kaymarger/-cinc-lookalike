@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { MetaPixelGate } from "@/components/meta-pixel-gate";
+import { googleAdsId, googleAdsLeadLabel } from "@/lib/google-ads";
 
 const ATTRIBUTION_BOOTSTRAP = `
 try {
@@ -33,18 +34,11 @@ function ga4Id() {
   return /^G-[A-Z0-9]{4,20}$/.test(value.trim()) ? value.trim() : "";
 }
 function googleId() {
-  const value = process.env.GOOGLE_ADS_ID || process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
-  return /^AW-[A-Za-z0-9]{4,32}$/.test(value.trim()) ? value.trim() : "";
+  return googleAdsId();
 }
 
 function conversionLabel() {
-  const value =
-    process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL ||
-    process.env.GOOGLE_ADS_LEAD_LABEL ||
-    process.env.GOOGLE_ADS_CONVERSION_LABEL ||
-    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL ||
-    "";
-  return /^[A-Za-z0-9_-]{4,64}$/.test(value.trim()) ? value.trim() : "";
+  return googleAdsLeadLabel();
 }
 
 /** Stores ad click parameters and loads Meta / Google tags only when IDs are set. */
@@ -52,7 +46,7 @@ export function AdPixels() {
   const google = googleId();
   const ga4 = ga4Id();
   const label = conversionLabel();
-  const tagId = ga4 || google;
+  const tagId = google || ga4;
   const config = JSON.stringify({ google, ga4, label });
 
   return (
