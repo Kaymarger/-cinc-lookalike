@@ -6,8 +6,19 @@ export type WelcomeListing = {
   address: string;
   city: string;
   price: number;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
   href: string;
   image?: string;
+};
+
+export type WelcomeHomesBlock = {
+  heading: string;
+  summary: string;
+  editHref: string;
+  ctaLabel: string;
+  ctaHref: string;
 };
 
 const SENDER = "alerts@vancouverpropertysearch.ca";
@@ -39,12 +50,12 @@ function realListingPhoto(url: string | undefined): string {
 const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 const NAVY = "#1b3040";
 
-const FEATURES: { label: string; rest: string; path: string }[] = [
-  { label: "Create a Custom Search", rest: " for the neighbourhoods, price range, and features that matter to you.", path: "/search" },
-  { label: "Save your favourites", rest: " by clicking the heart on any listing you want to come back to.", path: "/saved" },
-  { label: "Compare Properties", rest: " to see your top picks side by side.", path: "/compare" },
-  { label: "Add Notes", rest: " to any property and revisit them in the Notes section. It's a handy way to remember which home had the great layout or the extra storage you wanted.", path: "/notebook" },
-  { label: "Request a Showing", rest: " when you find a home you'd like to see in person.", path: "/contact" },
+const FEATURES: { label: string; rest: string; path: string; link: string }[] = [
+  { label: "Create a Custom Search", rest: "for the neighbourhoods, price range, and features that matter to you.", path: "/search", link: "Search" },
+  { label: "Save your favourites", rest: "by clicking the heart on any listing you want to come back to.", path: "/saved", link: "Saved homes" },
+  { label: "Compare Properties", rest: "to see your top picks side by side.", path: "/compare", link: "Compare" },
+  { label: "Add Notes", rest: "to any property and revisit them in the Notes section. It's a handy way to remember which home had the great layout or the extra storage you wanted.", path: "/notebook", link: "Notes" },
+  { label: "Request a Showing", rest: "when you find a home you'd like to see in person.", path: "/contact", link: "Contact" },
 ];
 
 function button(href: string, label: string): string {
@@ -56,6 +67,7 @@ function button(href: string, label: string): string {
 export function registrationWelcome(
   lead: { name: string; email: string; intent?: LeadIntent },
   listings: WelcomeListing[] = [],
+  homes?: WelcomeHomesBlock,
 ): { subject: string; text: string; html: string; preheader: string } {
   const first = firstName(lead.name);
   const origin = siteOrigin();
@@ -69,10 +81,20 @@ export function registrationWelcome(
   const cards = listings
     .map((home) => ({ ...home, image: realListingPhoto(home.image) }))
     .filter((home) => home.image)
-    .slice(0, 3);
-  const featureText = FEATURES.map((item) => `${item.label}${item.rest}\n${origin}${item.path}`).join("\n\n");
+    .slice(0, 4);
+  const block: WelcomeHomesBlock = homes ?? {
+    heading: "Homes to start with",
+    summary: "",
+    editHref: search,
+    ctaLabel: "Browse homes",
+    ctaHref: search,
+  };
+  const featureText = FEATURES.map((item) => `${item.label} ${item.rest}\n${origin}${item.path}`).join("\n\n");
   const listingText = cards.length
-    ? cards.map((home) => `${home.address}, ${home.city} — ${formatPrice(home.price)}\n${home.href.startsWith("http") ? home.href : origin + home.href}`).join("\n\n")
+    ? [block.heading, block.summary, ...cards.map((home) => {
+        const facts = [home.beds ? `${home.beds} bd` : "", home.baths ? `${home.baths} ba` : "", home.sqft ? `${home.sqft.toLocaleString("en-CA")} sqft` : ""].filter(Boolean).join(" · ");
+        return `${formatPrice(home.price)}\n${home.address}, ${home.city}${facts ? `\n${facts}` : ""}\n${home.href.startsWith("http") ? home.href : origin + home.href}`;
+      })].filter(Boolean).join("\n")
     : "";
   const text = [
     `Hi ${first},`,
@@ -88,7 +110,7 @@ export function registrationWelcome(
     "Talk soon",
     "Casey Archibald & the Archibald Real Estate Group team",
     "",
-    `Browse homes: ${search}`,
+    `${block.ctaLabel}: ${block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref}`,
     listingText,
     "",
     SITE.agent,
@@ -112,7 +134,8 @@ export function registrationWelcome(
       const photoRow = image
         ? `<tr><td style="padding:0;"><a href="${escapeHtml(href)}"><img src="${escapeHtml(image)}" alt="" width="552" style="display:block;width:100%;max-width:100%;height:auto;border:0;" /></a></td></tr>`
         : "";
-      return `<tr><td class="card-gap" style="padding:0 0 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e7e7;border-radius:12px;">${photoRow}<tr><td style="padding:18px 20px;font-family:${FONT};"><p style="margin:0;font-size:18px;line-height:1.4;font-weight:600;color:#1a1a1a;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:6px 0 0;font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(home.address)}</p><p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(home.city)}</p><p style="margin:12px 0 0;font-size:16px;line-height:1.6;"><a href="${escapeHtml(href)}" style="color:${NAVY};font-weight:600;text-decoration:underline;">View this home</a></p></td></tr></table></td></tr>`;
+      const facts = [home.beds ? `${home.beds} bd` : "", home.baths ? `${home.baths} ba` : "", home.sqft ? `${home.sqft.toLocaleString("en-CA")} sqft` : ""].filter(Boolean).join(" · ");
+      return `<tr><td class="card-gap" style="padding:0 0 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e7e7;border-radius:12px;">${photoRow}<tr><td style="padding:20px;font-family:${FONT};"><p style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:#1a1a1a;">${escapeHtml(formatPrice(home.price))}</p><p style="margin:8px 0 0;font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(home.address)}</p><p style="margin:2px 0 0;font-size:15px;line-height:1.6;color:#5f6770;">${escapeHtml(home.city)}</p>${facts ? `<p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#1a1a1a;">${escapeHtml(facts)}</p>` : ""}<p style="margin:16px 0 0;">${button(href, "View home")}</p></td></tr></table></td></tr>`;
     })
     .join("");
 
@@ -137,7 +160,7 @@ export function registrationWelcome(
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f5f5;">${escapeHtml(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
 <tr><td align="center" class="outer" style="padding:32px 16px;">
-<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:16px;">
 <tr><td class="px" style="padding:32px 24px 8px;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="180" style="display:block;width:180px;max-width:70%;height:auto;border:0;" /></td></tr>
 <tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};color:#1a1a1a;">
 <h1 style="margin:0;font-family:${FONT};font-size:28px;line-height:1.3;font-weight:600;color:#1a1a1a;">Hi ${escapeHtml(first)},</h1>
@@ -145,8 +168,15 @@ export function registrationWelcome(
 <tr><td class="px" style="padding:16px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
 <p style="margin:0;">Thanks for connecting with us! Your home search portal is ready to explore. Here are some key features to help you with your search:</p>
 </td></tr>
-<tr><td class="px" style="padding:20px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
-${FEATURES.map((item) => `<p style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;"><a href="${escapeHtml(origin + item.path)}" style="color:${NAVY};font-weight:700;text-decoration:underline;">${escapeHtml(item.label)}</a>${escapeHtml(item.rest)}</p>`).join("")}
+<tr><td class="px" style="padding:24px 24px 8px;">
+${button(block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref, block.ctaLabel)}
+</td></tr>
+<tr><td class="px" style="padding:8px 24px 0;font-family:${FONT};color:#1a1a1a;">
+${FEATURES.map((item) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="padding:0 0 18px;border-bottom:1px solid #eeeeee;font-family:${FONT};">
+<p style="margin:0;font-size:16px;line-height:1.6;font-weight:700;color:#1a1a1a;">${escapeHtml(item.label)}</p>
+<p style="margin:4px 0 0;font-size:16px;line-height:1.6;color:#3a3a3a;">${escapeHtml(item.rest)}</p>
+<p style="margin:8px 0 0;font-size:15px;line-height:1.6;"><a href="${escapeHtml(origin + item.path)}" style="color:${NAVY};text-decoration:underline;">${escapeHtml(item.link)}</a></p>
+</td></tr></table>`).join("")}
 </td></tr>
 <tr><td class="px" style="padding:4px 24px 0;font-family:${FONT};color:#1a1a1a;font-size:16px;line-height:1.6;">
 <p style="margin:0;">We'll send you new listings as they come up that match your search, and someone from our team will reach out soon to learn more about what you're looking for.</p>
@@ -154,11 +184,9 @@ ${FEATURES.map((item) => `<p style="margin:0 0 20px;font-family:${FONT};font-siz
 <p style="margin:20px 0 0;">Talk soon</p>
 <p style="margin:4px 0 0;font-weight:600;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
 </td></tr>
-<tr><td class="px" style="padding:28px 24px 8px;">
-${button(search, "Browse homes")}
-</td></tr>
 ${cards.length ? `<tr><td class="px" style="padding:28px 24px 0;font-family:${FONT};">
-<h2 style="margin:0 0 16px;font-family:${FONT};font-size:18px;line-height:1.4;font-weight:600;color:#1a1a1a;">Homes to start with</h2>
+<h2 style="margin:0 0 8px;font-family:${FONT};font-size:20px;line-height:1.4;font-weight:600;color:#1a1a1a;">${escapeHtml(block.heading)}</h2>
+${block.summary ? `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:1.6;color:#1a1a1a;">${escapeHtml(block.summary)} · <a href="${escapeHtml(block.editHref.startsWith("http") ? block.editHref : origin + block.editHref)}" style="color:${NAVY};text-decoration:underline;">Edit search</a></p>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${cardHtml}</table>
 </td></tr>` : ""}
 <tr><td class="px" style="padding:12px 24px 32px;">

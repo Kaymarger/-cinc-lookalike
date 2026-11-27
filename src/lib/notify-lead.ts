@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { attributionSummary, type SanitizedLead } from "@/lib/lead-intake";
 import { officeDb } from "@/lib/leads-db";
 import { sendOfficeSms } from "@/lib/office-mail";
-import { catalogFeatured } from "./catalog";
-import { propertyHref } from "./listing-url";
+import { welcomeHomesForLead } from "./welcome-homes";
 import { agentAlertEmail } from "./agent-alert-email";
 import { registrationWelcome } from "./welcome-email";
 import { SITE } from "@/lib/site";
@@ -153,45 +152,12 @@ export async function sendLeadSms(phone: string, body: string): Promise<AlertCha
 
 export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertReport> {
   if (isTestLeadEmail(lead.email)) return { email: "skipped", sms: "skipped" };
-  const first = lead.name.split(" ")[0] || "there";
-  const origin = siteOrigin();
-  const savedSearch = lead.source === "search_alert";
-  const featured = savedSearch
-    ? []
-    : await Promise.race([
-        catalogFeatured(3).catch(() => []),
-        new Promise<Awaited<ReturnType<typeof catalogFeatured>>>((resolve) => setTimeout(() => resolve([]), 4000)),
-      ]);
-  const welcomeMessage = savedSearch
-    ? null
-    : registrationWelcome(lead, featured.flatMap((property) => {
-        const image = property.images.find((url) => url.startsWith("http") && !/unsplash\.com/i.test(url));
-        if (!image) return [];
-        return [{
-          address: property.address,
-          city: property.city,
-          price: property.price,
-          href: propertyHref(property),
-          image,
-        }];
-      }).slice(0, 3));
-  const subject = savedSearch
-    ? `Saved search: ${lead.searchLabel || "Greater Vancouver homes"}`
-    : welcomeMessage!.subject;
-  const welcome = savedSearch
-    ? [
-        `Hi ${first},`,
-        "",
-        `Your saved search is on: ${lead.searchLabel || "Greater Vancouver homes"}.`,
-        "We'll email you when homes that match are listed.",
-        `Unsubscribe: ${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`,
-        "",
-        SITE.agent,
-        SITE.phoneDisplay,
-      ].join("\n")
-    : welcomeMessage!.text;
-  const html = welcomeMessage?.html;
-  const email = await sendLeadEmail(lead.email, subject, welcome, html);
+  const picked = await Promise.race([
+    welcomeHomesForLead(lead).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+  ]);
+  const welcomeMessage = registrationWelcome(lead, picked?.listings ?? [], picked?.block);
+  const email = await sendLeadEmail(lead.email, welcomeMessage.subject, welcomeMessage.text, welcomeMessage.html);
   return { email, sms: "skipped" };
 }
 
