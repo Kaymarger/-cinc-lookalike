@@ -33,4 +33,6 @@ test("the agent alert is a scannable card and does not include a password", () =
   );
   assert.equal(activity.subject, "Activity: Showing request from QA Test Lead");
   assert.doesNotMatch(activity.subject, /New lead/);
+  assert.match(activity.html, />Activity</);
+  assert.doesNotMatch(activity.html, />New lead</);
 });
