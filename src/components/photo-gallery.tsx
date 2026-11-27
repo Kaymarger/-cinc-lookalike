@@ -173,7 +173,7 @@ export function PhotoGallery({
                 width={960}
                 height={720}
                 priority={i === 0}
-                variant={i === 0 ? "responsive" : "card"}
+                variant="card"
                 className="absolute inset-0 h-full w-full object-cover"
               />
               {i === 0 && virtualTour && (
@@ -210,7 +210,7 @@ export function PhotoGallery({
             width={1200}
             height={800}
             priority
-            variant="responsive"
+            variant="card"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
           />
           {virtualTour && (

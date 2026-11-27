@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { BrandPicture } from "@/components/brand-picture";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { PlaceSuggest } from "@/components/place-suggest";
@@ -65,13 +65,12 @@ export function HomeEstimateHero({
 
   return (
     <section className="relative isolate min-h-[70vh] overflow-hidden">
-      <Image
-        src="/brand/hero.jpg"
+      <BrandPicture
+        name="hero"
+        fallback="jpg"
         alt="Greater Vancouver neighbourhoods"
-        fill
-        priority
-        className="object-cover object-center"
-        sizes="100vw"
+        pictureClassName="absolute inset-0"
+        className="h-full w-full object-cover object-center"
       />
       <div
         aria-hidden

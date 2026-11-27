@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { AdsLibraries } from "@/components/ads-libraries";
 import { MetaPixelGate } from "@/components/meta-pixel-gate";
 import { ADS_CONSENT_REQUIRED } from "@/lib/ads-consent";
 import { googleAdsId, googleAdsLeadLabel } from "@/lib/google-ads";
@@ -71,18 +72,15 @@ export function AdPixels() {
   const meta = metaPixelId();
   const tagId = google || ga4;
   const config = JSON.stringify({ google, ga4, label, meta });
-  const consentAndConfig = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;var adsChoice=window.__gvhsAdsOptOut?"denied":"granted";gtag("consent","default",{ad_storage:adsChoice,ad_user_data:adsChoice,ad_personalization:adsChoice,analytics_storage:adsChoice});gtag("js",new Date());${ga4 ? `gtag("config",${JSON.stringify(ga4)});` : ""}${google ? `gtag("config",${JSON.stringify(google)},{allow_enhanced_conversions:true});` : ""}`;
+  const consentAndConfig = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;window.__gvhsGtagConfigured=true;var adsChoice=window.__gvhsAdsOptOut?"denied":"granted";gtag("consent","default",{ad_storage:adsChoice,ad_user_data:adsChoice,ad_personalization:adsChoice,analytics_storage:adsChoice});gtag("js",new Date());${ga4 ? `gtag("config",${JSON.stringify(ga4)});` : ""}${google ? `gtag("config",${JSON.stringify(google)},{allow_enhanced_conversions:true});` : ""}`;
 
   return (
     <>
+      <link rel="preconnect" href="https://ddfcdn.realtor.ca" crossOrigin="" />
       <script dangerouslySetInnerHTML={{ __html: ATTRIBUTION_BOOTSTRAP }} />
       <script dangerouslySetInnerHTML={{ __html: `window.__gvhsAds=${config};` }} />
-      {tagId ? (
-        <>
-          <script dangerouslySetInnerHTML={{ __html: consentAndConfig }} />
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${tagId}`} strategy="afterInteractive" />
-        </>
-      ) : null}
+      {tagId ? <script dangerouslySetInnerHTML={{ __html: consentAndConfig }} /> : null}
+      <AdsLibraries tagId={tagId} />
       <MetaPixelGate />
     </>
   );

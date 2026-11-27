@@ -1,3 +1,13 @@
+import {
+  gtagIsConfigured,
+  installFbqStub,
+  installGtagStub,
+  loadMetaLibrary,
+  markGtagConfigured,
+  markMetaInited,
+  metaIsInited,
+  pageViewEventId,
+} from "./ads-load";
 import { consentGrantedInBrowser } from "./ads-consent";
 import { googleAdsId, googleAdsLeadLabel } from "./google-ads";
 import { pixelEventsForLead } from "./meta-pixel-events";
@@ -379,9 +389,20 @@ export async function trackLeadConversion(
   const phoneHash = phone ? await sha256Hex(phone) : "";
   const ads = (window as AdsWindow).__gvhsAds;
   const allowed = adsCookiesAllowed();
-  const fbq = (window as AdsWindow).fbq;
-  if (allowed && typeof fbq === "function" && source && ads?.meta) {
-    if (emailHash || phoneHash) {
+  if (!allowed || !source) return;
+  const isLead = pixelEventsForLead(source).some((item) => item.event === "Lead");
+  if (ads?.meta) {
+    const fbq = installFbqStub();
+    if (!metaIsInited()) {
+      fbq("init", ads.meta, {
+        ...(emailHash ? { em: emailHash } : {}),
+        ...(phoneHash ? { ph: phoneHash } : {}),
+      });
+      const pageView = pageViewEventId();
+      if (pageView) fbq("track", "PageView", {}, { eventID: pageView });
+      else fbq("track", "PageView");
+      markMetaInited();
+    } else if (emailHash || phoneHash) {
       fbq("init", ads.meta, {
         ...(emailHash ? { em: emailHash } : {}),
         ...(phoneHash ? { ph: phoneHash } : {}),
@@ -390,17 +411,30 @@ export async function trackLeadConversion(
     for (const item of pixelEventsForLead(source)) {
       fbq("track", item.event, item.params, { eventID: leadId });
     }
+    loadMetaLibrary();
   }
-  const gtag = (window as AdsWindow).gtag;
-  if (typeof gtag !== "function" || !source || !pixelEventsForLead(source).some((item) => item.event === "Lead")) return;
-  if (allowed && (emailHash || phoneHash)) {
+  if (!isLead) return;
+  const gtag = installGtagStub();
+  const google = ads?.google || googleAdsId();
+  const label = ads?.label || googleAdsLeadLabel();
+  if (!gtagIsConfigured() && google) {
+    gtag("consent", "default", {
+      ad_storage: "granted",
+      ad_user_data: "granted",
+      ad_personalization: "granted",
+      analytics_storage: "granted",
+    });
+    gtag("js", new Date());
+    gtag("config", google, { allow_enhanced_conversions: true });
+    if (ads?.ga4) gtag("config", ads.ga4);
+    markGtagConfigured();
+  }
+  if (emailHash || phoneHash) {
     gtag("set", "user_data", {
       ...(emailHash ? { sha256_email_address: emailHash } : {}),
       ...(phoneHash ? { sha256_phone_number: phoneHash } : {}),
     });
   }
-  const google = ads?.google || googleAdsId();
-  const label = ads?.label || googleAdsLeadLabel();
   if (ads?.ga4) gtag("event", "generate_lead", { send_to: ads.ga4 });
   if (google && label) {
     gtag("event", "conversion", {
@@ -410,4 +444,5 @@ export async function trackLeadConversion(
       transaction_id: leadId,
     });
   }
+  window.dispatchEvent(new Event("gvhs-load-ads"));
 }

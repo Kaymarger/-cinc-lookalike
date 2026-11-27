@@ -41,7 +41,7 @@ export default async function SearchPage({
   const lcp = results[0]?.images?.[0];
   return (
     <>
-      {lcp ? <link rel="preload" as="image" href={creaPhotoUrl(lcp, "med")} /> : null}
+      {lcp ? <link rel="preload" as="image" href={creaPhotoUrl(lcp, "med")} fetchPriority="high" /> : null}
       <SearchExperience
         filters={filters}
         properties={results}

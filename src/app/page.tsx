@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { BrandPicture } from "@/components/brand-picture";
 import { FeaturedCarousel } from "@/components/featured-carousel";
 import { PublicPageSections } from "@/components/public-page-sections";
 import { HeroSearch } from "@/components/hero-search";
@@ -52,14 +52,13 @@ export default async function HomePage() {
   return (
     <>
       <section className="relative isolate overflow-hidden bg-[#3498d8]">
-        <Image
-          src="/brand/hero.jpg"
+        <BrandPicture
+          name="hero"
+          fallback="jpg"
           alt="Greater Vancouver skyline"
-          fill
           priority
-          quality={60}
-          className="object-cover object-center"
-          sizes="100vw"
+          pictureClassName="absolute inset-0"
+          className="h-full w-full object-cover object-center"
         />
         <div
           aria-hidden

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TrackPropertySearch } from "@/components/meta-pixel";
 import { SearchFiltersBar } from "@/components/search-filters";
 import { SearchResults } from "@/components/search-results";
@@ -22,7 +22,10 @@ export function SearchExperience({
   };
   heading?: string;
 }) {
-  const [view, setView] = useState<"list" | "map" | "split">("split");
+  const [view, setView] = useState<"list" | "map" | "split">("list");
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) setView("split");
+  }, []);
 
   return (
     <div>

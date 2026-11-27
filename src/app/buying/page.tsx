@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { BrandPicture } from "@/components/brand-picture";
 import { CamelotPageHeader } from "@/components/camelot-page-header";
 import { ContactInquiryForm } from "@/components/contact-inquiry-form";
 
@@ -34,13 +34,12 @@ export default function BuyingPage() {
     <div className="bg-white">
       <CamelotPageHeader />
       <section className="relative isolate overflow-hidden">
-        <Image
-          src="/brand/hero.jpg"
+        <BrandPicture
+          name="hero"
+          fallback="jpg"
           alt=""
-          fill
-          className="object-cover object-center"
-          sizes="100vw"
-          priority
+          pictureClassName="absolute inset-0"
+          className="h-full w-full object-cover object-center"
         />
         <div
           aria-hidden
