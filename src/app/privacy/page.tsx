@@ -5,7 +5,7 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How Archibald Real Estate Group collects contact details, listing-email consent, and optional advertising cookies.",
+  description: "How Archibald Real Estate Group collects contact details, listing-email consent, and advertising cookies, including how to opt out.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             <Link href="/unsubscribe" className="text-[var(--cedar)] hover:underline">unsubscribe</Link> page, or by replying STOP to a text.
           </p>
           <p>
-            Essential cookies keep the site working. Advertising cookies from Google and Meta are optional. They stay off until you choose Accept on the cookie banner. Essential only leaves those tags off. We do not sell personal information.
+            We use cookies to run the site and to measure ads from Google and Meta. Those advertising cookies are on unless you choose Opt out on the cookie notice. Opting out stops the Meta pixel, server-side Meta events, and Google ads tags in this browser. Listing emails are separate and are sent only after you check the consent box on a form. We do not sell personal information.
           </p>
           <p>
             Questions: {SITE.company}, {SITE.phoneDisplay}, or the{" "}

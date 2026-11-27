@@ -1,12 +1,16 @@
 /**
  * One switch for advertising tags.
- * true: Meta pixel and Conversions API run only after the visitor accepts cookies.
- * false: both run without waiting for that choice.
+ * true: Meta, Google, and Conversions API wait until the visitor accepts.
+ * false: those tags run unless the visitor opts out.
  */
-export const ADS_CONSENT_REQUIRED = true;
+export const ADS_CONSENT_REQUIRED = false;
 
 export const ADS_CONSENT_KEY = "gvhs-cookies";
 export const ADS_CONSENT_GRANTED = "all";
+
+export function adsChoiceOptedOut(choice: string | null | undefined): boolean {
+  return choice === "essential" || choice === "opt-out";
+}
 
 export function cookieValue(header: string | null | undefined, name: string): string {
   if (!header) return "";
@@ -20,23 +24,28 @@ export function cookieValue(header: string | null | undefined, name: string): st
   }
 }
 
-/** Server-side check. Reads the cookie the banner sets when the visitor chooses Accept. */
+/** Server-side check. Opt-out always wins. Otherwise tags run when consent is not required. */
 export function consentGrantedFromHeader(cookieHeader: string | null | undefined): boolean {
+  const choice = cookieValue(cookieHeader, ADS_CONSENT_KEY);
+  if (adsChoiceOptedOut(choice)) return false;
   if (!ADS_CONSENT_REQUIRED) return true;
-  return cookieValue(cookieHeader, ADS_CONSENT_KEY) === ADS_CONSENT_GRANTED;
+  return choice === ADS_CONSENT_GRANTED;
 }
 
-/** Browser check. Same flag as the server. */
+/** Browser check. Same flag and opt-out rule as the server. */
 export function consentGrantedInBrowser(): boolean {
-  if (!ADS_CONSENT_REQUIRED) return true;
+  if (typeof localStorage === "undefined") return !ADS_CONSENT_REQUIRED;
   try {
-    return localStorage.getItem(ADS_CONSENT_KEY) === ADS_CONSENT_GRANTED;
+    const choice = localStorage.getItem(ADS_CONSENT_KEY);
+    if (adsChoiceOptedOut(choice)) return false;
+    if (!ADS_CONSENT_REQUIRED) return true;
+    return choice === ADS_CONSENT_GRANTED;
   } catch {
-    return false;
+    return !ADS_CONSENT_REQUIRED;
   }
 }
 
-export function writeConsentCookie(choice: "all" | "essential") {
+export function writeConsentCookie(choice: "all" | "essential" | "opt-out") {
   if (typeof document === "undefined") return;
   document.cookie = `${ADS_CONSENT_KEY}=${choice};path=/;max-age=31536000;samesite=lax`;
 }
