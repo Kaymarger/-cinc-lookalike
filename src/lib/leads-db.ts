@@ -5,6 +5,7 @@ import {
   type LeadIntent,
   type SanitizedLead,
 } from "@/lib/lead-intake";
+import { propertyNotesFromText } from "@/lib/account-merge";
 import { mailboxKey, preferredLeadName } from "@/lib/lead-match";
 import type { OfficeRole } from "@/lib/office-access";
 import { seesAllLeads } from "@/lib/office-access";
@@ -574,12 +575,7 @@ export async function listPropertyNotes(email: string): Promise<{ propertyId: st
   const rows = await sql<{ notes: string | null }[]>`
     SELECT notes FROM captured_leads WHERE lower(email) = ${email.trim().toLowerCase()} ORDER BY created_at DESC LIMIT 1
   `;
-  const notes = rows[0]?.notes || "";
-  return notes.split("\n").flatMap((line) => {
-    const match = line.match(/^Property note \(([^)]+)\) ([^:]+): (.*)$/);
-    if (!match || /cleared/i.test(line)) return [];
-    return [{ propertyId: match[1], address: match[2].trim(), body: match[3].trim() }];
-  });
+  return propertyNotesFromText(rows[0]?.notes || "");
 }
 
 export async function deleteAuditTestLeads(): Promise<void> {
@@ -590,7 +586,6 @@ export async function deleteAuditTestLeads(): Promise<void> {
     WHERE lower(email) LIKE 'qa-probe-%@example.com'
        OR name ILIKE 'QA Probe%'
   `;
-  await deleteLeadByEmail("admin+qalead1127@caseyarchibald.com");
 }
 
 export async function listLeads(limit = 500, scope?: LeadScope | null): Promise<StoredLead[]> {

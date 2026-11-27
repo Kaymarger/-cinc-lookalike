@@ -11,7 +11,7 @@ import { AlertSettings } from "@/app/account/settings/page";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 
 const LINKS = [
-  { href: "/my-properties", label: "My Properties", desc: "Homes you saved on this device" },
+  { href: "/my-properties", label: "My Properties", desc: "Homes you've saved" },
   { href: "/alerts", label: "Saved Searches", desc: "Alert criteria you’ve saved" },
   { href: "/recently-viewed", label: "Recently Viewed", desc: "Listings you’ve opened" },
   { href: "/compare", label: "Compare", desc: "Side-by-side shortlist" },

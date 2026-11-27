@@ -46,7 +46,9 @@ export default function MyPropertiesPage() {
                 ? "Loading…"
                 : homes.length === 0
                   ? "Tap the heart on any listing to keep it here."
-                  : `${homes.length} propert${homes.length === 1 ? "y" : "ies"} saved on this device.`}
+                  : user
+                    ? `${homes.length} saved propert${homes.length === 1 ? "y" : "ies"}.`
+                    : `${homes.length} propert${homes.length === 1 ? "y" : "ies"} saved on this device.`}
             </p>
           </div>
           {homes.length > 0 && (

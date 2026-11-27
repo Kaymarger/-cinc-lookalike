@@ -72,6 +72,7 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     accounts.push(next);
     writeAccounts(accounts);
     setUser(next);
+    window.dispatchEvent(new CustomEvent("gvhs-sign-in", { detail: { email: next.email, name: next.name } }));
   }, []);
 
   const signIn = useCallback((email: string, name?: string) => {
@@ -80,6 +81,7 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     );
     if (existing) {
       setUser(existing);
+      window.dispatchEvent(new CustomEvent("gvhs-sign-in", { detail: { email: existing.email, name: existing.name } }));
       return;
     }
     remember({
@@ -98,6 +100,7 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
       return "That phone password does not match this demo account.";
     }
     setUser(existing);
+    window.dispatchEvent(new CustomEvent("gvhs-sign-in", { detail: { email: existing.email, name: existing.name } }));
     return null;
   }, []);
 
@@ -131,6 +134,7 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("gvhs-compare");
     localStorage.removeItem("gvhs-saved-searches");
     localStorage.removeItem("gvhs-property-notes");
+    localStorage.removeItem("gvhs-notebook");
     setUser(null);
     window.dispatchEvent(new Event("gvhs-sign-out"));
   }, []);

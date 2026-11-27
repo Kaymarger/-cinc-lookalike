@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AccountSearchList } from "@/components/account-searches";
+import { pushAccount } from "@/lib/account-sync";
 import { useDemoAuth } from "@/lib/demo-auth";
 
 type Note = { id: string; title: string; body: string };
@@ -18,44 +19,67 @@ export default function NotebookPage() {
   const [body, setBody] = useState("");
 
   useEffect(() => {
+    let cancel = false;
+    const email = user?.email?.trim().toLowerCase() || "";
+    if (!email) {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) setNotes(JSON.parse(raw) as Note[]);
+      } catch {
+        /* ignore */
+      }
+      setPropertyNotes([]);
+      setReady(true);
+      return () => {
+        cancel = true;
+      };
+    }
+    let localNotes: Note[] = [];
+    let localProperty: { propertyId: string; address: string; body: string }[] = [];
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) setNotes(JSON.parse(raw) as Note[]);
+      if (raw) localNotes = JSON.parse(raw) as Note[];
     } catch {
       /* ignore */
     }
     try {
       const propertyRaw = localStorage.getItem("gvhs-property-notes");
-      if (propertyRaw) {
-        const parsed = JSON.parse(propertyRaw) as { propertyId?: string; body?: string; email?: string }[];
-        if (Array.isArray(parsed)) {
-          setPropertyNotes(parsed.filter((note) => note.body).map((note) => ({
-            propertyId: note.propertyId || "",
-            address: "",
-            body: note.body || "",
-          })));
-        }
+      const parsed = propertyRaw ? JSON.parse(propertyRaw) as { propertyId?: string; address?: string; body?: string; email?: string }[] : [];
+      if (Array.isArray(parsed)) {
+        localProperty = parsed.flatMap((note) => {
+          const owner = (note.email || "").trim().toLowerCase();
+          if ((owner && owner !== email) || !note.body || !note.propertyId) return [];
+          return [{ propertyId: note.propertyId, address: note.address || "", body: note.body }];
+        });
       }
     } catch {
       /* ignore */
     }
-    setReady(true);
-  }, []);
+    void pushAccount(email, user?.name || "", {
+      notebook: localNotes,
+      notebookMode: "merge",
+      propertyNotes: localProperty,
+    }).then((snapshot) => {
+      if (cancel) return;
+      setNotes((snapshot?.notebook || []).map((note) => ({ id: note.id, title: note.title, body: note.body })));
+      setPropertyNotes(snapshot?.propertyNotes || []);
+      try {
+        localStorage.removeItem(KEY);
+        localStorage.removeItem("gvhs-property-notes");
+      } catch {
+        /* ignore */
+      }
+      setReady(true);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [user?.email, user?.name]);
 
   useEffect(() => {
-    if (!user?.email) return;
-    fetch(`/api/account/notes?email=${encodeURIComponent(user.email)}`)
-      .then((response) => response.json())
-      .then((data: { notes?: { propertyId: string; address: string; body: string }[] }) => {
-        if (data.notes?.length) setPropertyNotes(data.notes);
-      })
-      .catch(() => undefined);
-  }, [user?.email]);
-
-  useEffect(() => {
-    if (!ready) return;
+    if (!ready || user) return;
     localStorage.setItem(KEY, JSON.stringify(notes));
-  }, [notes, ready]);
+  }, [notes, ready, user]);
 
   function reset() {
     setEditing(null);
@@ -63,19 +87,18 @@ export default function NotebookPage() {
     setBody("");
   }
 
+  function persist(next: Note[]) {
+    setNotes(next);
+    if (user?.email) void pushAccount(user.email, user.name, { notebook: next, notebookMode: "replace" });
+  }
+
   function save(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    if (editing) {
-      setNotes((list) =>
-        list.map((n) => (n.id === editing ? { ...n, title: title.trim(), body } : n))
-      );
-    } else {
-      setNotes((list) => [
-        { id: crypto.randomUUID(), title: title.trim(), body },
-        ...list,
-      ]);
-    }
+    const next = editing
+      ? notes.map((note) => (note.id === editing ? { ...note, title: title.trim(), body } : note))
+      : [{ id: crypto.randomUUID(), title: title.trim(), body }, ...notes];
+    persist(next);
     reset();
   }
 
@@ -147,7 +170,7 @@ export default function NotebookPage() {
               <button
                 type="button"
                 className="text-[#e53935]"
-                onClick={() => setNotes((list) => list.filter((n) => n.id !== note.id))}
+                onClick={() => persist(notes.filter((item) => item.id !== note.id))}
               >
                 Delete
               </button>

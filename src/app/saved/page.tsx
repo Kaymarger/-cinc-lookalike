@@ -10,7 +10,7 @@ import { useSavedHomes } from "@/lib/saved-homes";
 import type { Property } from "@/lib/types";
 
 export default function SavedHomesPage() {
-  const { ready, ids, clear, replace } = useSavedHomes();
+  const { ready, ids, clear } = useSavedHomes();
   const { user } = useDemoAuth();
   const [homes, setHomes] = useState<Property[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -34,29 +34,7 @@ export default function SavedHomesPage() {
     };
   }, [ready, ids]);
 
-  useEffect(() => {
-    if (!user?.email) return;
-    let cancelled = false;
-    fetch(`/api/account/homes?email=${encodeURIComponent(user.email)}`)
-      .then((response) => response.json())
-      .then((data: { ids?: string[] }) => {
-        if (cancelled || !data.ids?.length || ids.length) return;
-        replace(data.ids);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.email, ids.length, replace]);
-
-  useEffect(() => {
-    if (!user?.email || !ready) return;
-    void fetch("/api/account/homes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: user.email, ids }),
-    });
-  }, [user?.email, ready, ids]);
+  const countLabel = homes.length === 1 ? "1 saved home." : `${homes.length} saved homes.`;
 
   return (
     <div className="bg-[#f7fafc]">
@@ -74,7 +52,9 @@ export default function SavedHomesPage() {
                 ? "Loading…"
                 : homes.length === 0
                   ? "Tap the heart on any listing to keep it here while you browse."
-                  : `${homes.length} home${homes.length === 1 ? "" : "s"} saved on this device.`}
+                  : user
+                    ? countLabel
+                    : `${homes.length} home${homes.length === 1 ? "" : "s"} saved on this device.`}
             </p>
           </div>
           {homes.length > 0 && (
@@ -97,13 +77,6 @@ export default function SavedHomesPage() {
                 className="h-10 bg-[#04427d] px-4 font-semibold text-white"
                 onClick={() => {
                   clear();
-                  if (user?.email) {
-                    void fetch("/api/account/homes", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email: user.email, ids: [] }),
-                    });
-                  }
                   setConfirmClear(false);
                 }}
               >

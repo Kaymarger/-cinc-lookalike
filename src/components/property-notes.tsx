@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { loadAccount } from "@/lib/account-sync";
 import { useDemoAuth } from "@/lib/demo-auth";
 
 const KEY = "gvhs-property-notes";
@@ -23,9 +24,26 @@ export function PropertyNotes({ propertyId, address }: { propertyId: string; add
 
   useEffect(() => {
     if (!user) return;
-    const match = readNotes().find((note) => note.propertyId === propertyId && note.email === user.email.toLowerCase());
-    if (match) setBody(match.body);
-  }, [propertyId, user]);
+    let cancel = false;
+    const email = user.email.toLowerCase();
+    const local = readNotes().find((note) => note.propertyId === propertyId && note.email === email);
+    void loadAccount(email).then((snapshot) => {
+      if (cancel) return;
+      const server = snapshot?.propertyNotes.find((note) => note.propertyId === propertyId);
+      const next = server?.body || local?.body || "";
+      setBody(next);
+      if (local?.body && local.body !== server?.body) {
+        void fetch("/api/account/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, propertyId, address, body: local.body }),
+        });
+      }
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [propertyId, address, user]);
 
   if (!ready) return null;
   if (!user) {
@@ -39,16 +57,16 @@ export function PropertyNotes({ propertyId, address }: { propertyId: string; add
 
   function save() {
     const email = user?.email.toLowerCase() || "";
-    const next = readNotes().filter((note) => !(note.propertyId === propertyId && note.email === email));
     const note = { propertyId, email, body: body.trim(), at: new Date().toISOString() };
+    const next = readNotes().filter((item) => item.email === email && item.propertyId !== propertyId);
     if (note.body) next.push(note);
     localStorage.setItem(KEY, JSON.stringify(next));
-    setSaved("Saved on this device.");
+    setSaved("Saving…");
     void fetch("/api/account/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, propertyId, address, body: note.body }),
-    }).then(() => setSaved("Saved. Your agent can see this note."));
+    }).then((response) => setSaved(response.ok ? "Saved to your account." : "Try again in a moment."));
   }
 
   return (
