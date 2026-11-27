@@ -21,8 +21,10 @@ type Ctx = {
   ready: boolean;
   homes: ComparedHome[];
   notice: string;
+  pending: ComparedHome | null;
   isCompared: (id: string) => boolean;
   toggle: (home: ComparedHome) => { ok: boolean; reason?: string };
+  replaceWithPending: (id: string) => void;
   remove: (id: string) => void;
   clear: () => void;
   max: number;
@@ -52,6 +54,7 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   const [homes, setHomes] = useState<ComparedHome[]>([]);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState<ComparedHome | null>(null);
 
   useEffect(() => {
     setHomes(readHomes());
@@ -66,11 +69,32 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   const isCompared = useCallback((id: string) => homes.some((home) => home.id === id), [homes]);
 
   const toggle = useCallback((home: ComparedHome) => {
+    if (homes.some((item) => item.id === home.id)) {
+      setHomes(homes.filter((item) => item.id !== home.id));
+      setPending(null);
+      setNotice("");
+      return { ok: true };
+    }
+    if (homes.length >= COMPARE_MAX) {
+      setPending(home);
+      setNotice("Compare is full. Choose which home to replace.");
+      return { ok: false, reason: "Compare is full. Choose which home to replace." };
+    }
     const next = nextCompare(homes, home);
     setHomes(next.homes);
-    setNotice(next.reason || "");
-    return { ok: next.ok, reason: next.reason };
+    setPending(null);
+    setNotice("");
+    return { ok: true };
   }, [homes]);
+
+  const replaceWithPending = useCallback((id: string) => {
+    setHomes((current) => {
+      if (!pending) return current;
+      return current.map((home) => (home.id === id ? pending : home));
+    });
+    setPending(null);
+    setNotice("Replaced a home in your compare list.");
+  }, [pending]);
 
   const remove = useCallback((id: string) => {
     setHomes((prev) => prev.filter((home) => home.id !== id));
@@ -83,8 +107,8 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, homes, notice, isCompared, toggle, remove, clear, max: COMPARE_MAX }),
-    [ready, homes, notice, isCompared, toggle, remove, clear]
+    () => ({ ready, homes, notice, pending, isCompared, toggle, replaceWithPending, remove, clear, max: COMPARE_MAX }),
+    [ready, homes, notice, pending, isCompared, toggle, replaceWithPending, remove, clear]
   );
 
   return (

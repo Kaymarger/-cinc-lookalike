@@ -1,6 +1,8 @@
 "use client";
 
 import { Heart } from "lucide-react";
+import { useAuthModal } from "@/components/auth-modal";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useSavedHomes } from "@/lib/saved-homes";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +16,8 @@ export function SaveHomeButton({
   className?: string;
 }) {
   const { ready, isSaved, toggle } = useSavedHomes();
+  const { user } = useDemoAuth();
+  const { openSignup } = useAuthModal();
   const saved = ready && isSaved(propertyId);
 
   return (
@@ -24,6 +28,10 @@ export function SaveHomeButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (!user) {
+          openSignup();
+          return;
+        }
         toggle(propertyId);
       }}
       className={cn(

@@ -31,6 +31,7 @@ export function LeadDialog({
   const { user } = useDemoAuth();
   const [sent, setSent] = useState(false);
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -45,9 +46,10 @@ export function LeadDialog({
           ? "showing_request"
           : "registration");
 
-  function send(fullName: string, email: string, phone: string, repeatConsent: boolean) {
+  function send(fullName: string, email: string, phone: string, extra: string) {
     setName(fullName);
     setSent(true);
+    setConfirming(false);
     setPending(false);
     onSent?.();
     void capture({
@@ -60,7 +62,7 @@ export function LeadDialog({
       propertyId,
       consent: true,
       intent: "inquiry",
-      notes: repeatConsent ? "Follow-up uses the consent captured at registration." : undefined,
+      notes: extra,
     });
   }
 
@@ -75,12 +77,20 @@ export function LeadDialog({
     const fullName = String(data.get("name") || user?.name || "").trim();
     const email = String(data.get("email") || user?.email || "").trim();
     const phone = String(data.get("phone") || user?.phone || "").trim();
-    send(fullName, email, phone, Boolean(user));
-  }
-
-  function sendAsUser() {
-    if (!user) return;
-    send(user.name, user.email, user.phone || "", true);
+    const when = [String(data.get("date") || ""), String(data.get("time") || "")].filter(Boolean).join(" ");
+    const message = String(data.get("message") || "").trim();
+    const extra = [
+      when ? `Preferred time: ${when}` : "",
+      message ? `Message: ${message}` : "",
+      user ? "Follow-up uses the consent captured at registration." : "",
+    ].filter(Boolean).join("\n");
+    if (!confirming) {
+      setConfirming(true);
+      setName(fullName);
+      (e.currentTarget as HTMLFormElement).dataset.ready = "1";
+      return;
+    }
+    send(fullName, email, phone, extra);
   }
 
   function resetAndClose(el: HTMLElement | null) {
@@ -93,8 +103,7 @@ export function LeadDialog({
     <div className={cn("w-full", className?.includes("!w-auto") && "w-auto")}>
       <button
         type="button"
-        popoverTarget={user ? undefined : panelId}
-        onClick={user ? sendAsUser : undefined}
+        popoverTarget={panelId}
         className={cn(
           "inline-flex h-11 w-full items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors",
           variant === "outline"
@@ -186,6 +195,7 @@ export function LeadDialog({
                     required
                     autoComplete="name"
                     placeholder="Your name"
+                    defaultValue={user?.name || ""}
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />
                 </div>
@@ -198,6 +208,7 @@ export function LeadDialog({
                     name="email"
                     required
                     placeholder="you@email.com"
+                    defaultValue={user?.email || ""}
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />
                 </div>
@@ -212,9 +223,29 @@ export function LeadDialog({
                     required={resolvedSource !== "photo_gate"}
                     autoComplete="tel"
                     placeholder="Phone"
+                    defaultValue={user?.phone || ""}
                     className="h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px] outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25 sm:text-sm"
                   />
                 </div>
+                {resolvedSource === "showing_request" || resolvedSource === "ask_question" ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="text-sm font-medium">
+                        Preferred date
+                        <input name="date" type="date" className="mt-1 h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px]" />
+                      </label>
+                      <label className="text-sm font-medium">
+                        Time
+                        <input name="time" type="time" className="mt-1 h-11 w-full rounded-xl border border-[var(--border-soft)] px-3 text-[16px]" />
+                      </label>
+                    </div>
+                    <label className="block text-sm font-medium">
+                      Message <span className="font-normal text-[#777]">(optional)</span>
+                      <textarea name="message" rows={3} className="mt-1 w-full rounded-xl border border-[var(--border-soft)] px-3 py-2 text-[16px]" />
+                    </label>
+                  </>
+                ) : null}
+                {!user ? (
                 <label className="flex items-start gap-3 text-sm text-[var(--ink-muted)]">
                   <input
                     type="checkbox"
@@ -227,17 +258,20 @@ export function LeadDialog({
                     <Link href="/privacy" className="underline">Privacy</Link>
                   </span>
                 </label>
+                ) : <p className="text-sm text-[#555]">We&apos;ll use the contact details on your account.</p>}
                 {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                 <button
                   type="submit"
                   disabled={pending}
                   className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[var(--cedar)] px-4 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
                 >
-                  {resolvedSource === "showing_request"
-                    ? "Request showing"
-                    : resolvedSource === "ask_question"
-                      ? "Send question"
-                      : "Continue"}
+                  {confirming
+                    ? "Confirm and send"
+                    : resolvedSource === "showing_request"
+                      ? "Review request"
+                      : resolvedSource === "ask_question"
+                        ? "Review question"
+                        : "Continue"}
                 </button>
                 <p className="text-center text-xs text-[var(--ink-muted)]">
                   See the{" "}

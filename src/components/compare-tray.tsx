@@ -2,22 +2,25 @@
 
 import { ListingPhoto } from "@/components/listing-photo";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useCompare } from "@/lib/compare";
 import { formatPrice } from "@/lib/search";
 
 export function CompareTray() {
-  const { ready, homes, notice, remove, clear, max } = useCompare();
-  if (!ready || homes.length === 0) return null;
-  const readyToCompare = homes.length >= 2;
+  const { ready, homes, notice, pending, remove, clear, replaceWithPending, max } = useCompare();
+  const [collapsed, setCollapsed] = useState(false);
+  const visible = ready && homes.length > 0;
   useEffect(() => {
+    if (!visible) return;
     const previous = document.body.style.paddingBottom;
-    document.body.style.paddingBottom = "220px";
+    document.body.style.paddingBottom = collapsed ? "72px" : "240px";
     return () => {
       document.body.style.paddingBottom = previous;
     };
-  }, []);
+  }, [collapsed, visible]);
+  if (!visible) return null;
+  const readyToCompare = homes.length >= 2;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[70] border-t-4 border-[#1976d2] bg-white shadow-[0_-8px_30px_rgba(4,66,125,0.16)]">
@@ -26,14 +29,21 @@ export function CompareTray() {
           <p className="text-sm font-semibold text-[#1f2930]">
             Compare homes · {homes.length} of {max}
           </p>
-          <p className="text-xs text-[#5a6f82]">
-            {notice
-              ? notice
-              : readyToCompare
-                ? "Open the comparison, or remove a home to choose another."
-                : "Add one more home. You can compare 2 or 3. No account is required."}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-[#5a6f82]">
+              {notice
+                ? notice
+                : readyToCompare
+                  ? "Open the comparison, or remove a home to choose another."
+                  : "Add one more home. You can compare 2 or 3."}
+            </p>
+            <button type="button" onClick={() => setCollapsed((value) => !value)} className="text-xs font-semibold text-[#1976d2]">
+              {collapsed ? "Expand" : "Collapse"}
+            </button>
+          </div>
         </div>
+        {collapsed ? null : (
+        <>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {homes.map((home) => (
             <div key={home.id} className="flex min-w-[220px] flex-1 items-center gap-2 rounded border border-[#d7e0e8] bg-[#f7fafc] p-2">
@@ -48,6 +58,11 @@ export function CompareTray() {
                 <p className="truncate text-xs font-semibold text-[#1f2930]">{home.address}</p>
                 <p className="text-xs text-[#1976d2]">{formatPrice(home.price)}</p>
               </div>
+              {pending ? (
+                <button type="button" onClick={() => replaceWithPending(home.id)} className="text-[11px] font-semibold text-[#1976d2]">
+                  Replace
+                </button>
+              ) : null}
               <button type="button" aria-label={`Remove ${home.address}`} onClick={() => remove(home.id)} className="inline-flex size-8 items-center justify-center text-[#5a6f82]">
                 <X className="size-4" />
               </button>
@@ -68,6 +83,8 @@ export function CompareTray() {
             </span>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

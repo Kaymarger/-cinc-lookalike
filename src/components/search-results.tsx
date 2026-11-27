@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { List, Map as MapIcon } from "lucide-react";
 import { PropertyCard } from "@/components/property-card";
 import type { Property, SearchFilters } from "@/lib/types";
 import { parseShape } from "@/lib/geo";
@@ -28,7 +27,7 @@ const SearchMap = dynamic(
 export function SearchResults({
   properties,
   stats,
-  showMap = true,
+  view = "split",
   filters,
 }: {
   properties: Property[];
@@ -38,23 +37,15 @@ export function SearchResults({
     avgSqft: number;
     avgBeds: number;
   };
-  showMap?: boolean;
+  view?: "list" | "map" | "split";
   filters?: SearchFilters;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(8);
-  const [mobileView, setMobileView] = useState<"list" | "map">("list");
-  const [wide, setWide] = useState(false);
+  const showMap = view !== "list";
+  const showList = view !== "map";
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
-    const apply = () => setWide(query.matches);
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
-  }, []);
 
   useEffect(() => {
     setVisible(window.matchMedia("(min-width: 1024px)").matches ? 24 : 8);
@@ -143,44 +134,12 @@ export function SearchResults({
           </span>
         </div>
 
-        {showMap && (
-          <div className="inline-flex border border-border bg-white p-0.5 lg:hidden">
-              <button
-                type="button"
-                aria-pressed={mobileView === "list"}
-                onClick={() => setMobileView("list")}
-              className={cn(
-                "inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium",
-                mobileView === "list"
-                  ? "bg-[var(--cedar)] text-white"
-                  : "text-[var(--ink-muted)]"
-              )}
-            >
-              <List className="size-4" />
-              List
-            </button>
-            <button
-              type="button"
-              aria-pressed={mobileView === "map"}
-              onClick={() => setMobileView("map")}
-              className={cn(
-                "inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium",
-                mobileView === "map"
-                  ? "bg-[var(--cedar)] text-white"
-                  : "text-[var(--ink-muted)]"
-              )}
-            >
-              <MapIcon className="size-4" />
-              Map
-            </button>
-          </div>
-        )}
       </div>
 
       <div
         className={cn(
           "grid gap-4 lg:gap-6",
-          showMap ? "lg:grid-cols-2" : "lg:grid-cols-1"
+          view === "split" ? "lg:grid-cols-2" : "lg:grid-cols-1"
         )}
       >
         <div
@@ -190,7 +149,7 @@ export function SearchResults({
             showMap
               ? "grid grid-cols-1 content-start gap-3 sm:grid-cols-2"
               : "grid grid-cols-1 content-start gap-4 sm:grid-cols-2 xl:grid-cols-3",
-            showMap && mobileView === "map" ? "hidden lg:block" : "block",
+            !showList && "hidden",
             !showMap && "mx-auto w-full"
           )}
         >
@@ -225,12 +184,9 @@ export function SearchResults({
           )}
         </div>
 
-        {showMap && (wide || mobileView === "map") ? (
+        {showMap ? (
           <div
-            className={cn(
-              "sticky top-[5.5rem] h-[min(70vh,640px)] overflow-hidden border border-border bg-[var(--mist)] lg:h-[calc(100vh-13rem)]",
-              mobileView === "list" ? "hidden lg:block" : "block"
-            )}
+            className="sticky top-[5.5rem] h-[min(70vh,640px)] overflow-hidden border border-border bg-[var(--mist)] lg:h-[calc(100vh-13rem)]"
           >
             <SearchMap
               properties={properties}
@@ -247,7 +203,6 @@ export function SearchResults({
               } : undefined}
               onSelect={(id) => {
                 setSelectedId(id);
-                setMobileView("list");
               }}
             />
           </div>

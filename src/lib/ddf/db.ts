@@ -387,7 +387,8 @@ export async function searchDdfListings(filters: SearchFilters, limit = SEARCH_P
       count(*) OVER() AS total_count
     FROM ddf_listings
     WHERE lower(city) = ANY(${GREATER_VANCOUVER_CITIES})
-      AND COALESCE(list_price, 0) > 0
+      AND COALESCE(list_price, 0) >= 50000
+      AND property_type !~* '(lease|rental|for rent)'
       AND (${city} = '' OR lower(city) = ${city})
       AND (${filters.minPrice ?? null}::int IS NULL OR list_price >= ${filters.minPrice ?? null})
       AND (${filters.maxPrice ?? null}::int IS NULL OR list_price <= ${filters.maxPrice ?? null})

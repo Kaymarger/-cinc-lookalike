@@ -79,7 +79,10 @@ export default function AlertsPage() {
           </ul>
         )}
 
-        <AccountSearchList heading="Saved searches from your agent" />
+        <AccountSearchList
+          heading="Saved searches from your agent"
+          hideNames={searches.map((search) => search.label.trim().toLowerCase())}
+        />
 
         {searches.length > 0 && (
           <button

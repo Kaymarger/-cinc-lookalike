@@ -17,6 +17,7 @@ type SavedHomesContextValue = {
   ready: boolean;
   isSaved: (id: string) => boolean;
   toggle: (id: string) => void;
+  replace: (ids: string[]) => void;
   clear: () => void;
 };
 
@@ -57,11 +58,15 @@ export function SavedHomesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const replace = useCallback((next: string[]) => {
+    setIds([...new Set(next)].slice(0, 40));
+  }, []);
+
   const clear = useCallback(() => setIds([]), []);
 
   const value = useMemo(
-    () => ({ ids, ready, isSaved, toggle, clear }),
-    [ids, ready, isSaved, toggle, clear]
+    () => ({ ids, ready, isSaved, toggle, replace, clear }),
+    [ids, ready, isSaved, toggle, replace, clear]
   );
 
   return (

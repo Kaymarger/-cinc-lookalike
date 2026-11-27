@@ -329,15 +329,13 @@ export function PropertyDetail({ property }: { property: Property }) {
                 Snapshot
               </h2>
               <dl className="mt-4 max-w-xl">
-                {(property.feed === "ddf"
-                  ? snapshot.filter((row) => {
-                      if (row.label === "Year Built:" && property.yearBuilt <= 0) return false;
-                      if (row.label === "Square Footage:" && property.sqft <= 0) return false;
-                      if (row.label === "Neighbourhood:" && !row.value.trim()) return false;
-                      return Boolean(row.value && row.value.trim());
-                    })
-                  : snapshot
-                ).map((row) => (
+                {snapshot.filter((row) => {
+                  const value = row.value.trim();
+                  if (!value || value === "—" || value === "-" || value === "0" || value === "0.0") return false;
+                  if (row.label === "Year Built:" && Number(value) <= 0) return false;
+                  if (row.label === "Square Footage:" && property.sqft <= 0) return false;
+                  return true;
+                }).map((row) => (
                   <SnapshotRow
                     key={row.label}
                     label={row.label}
