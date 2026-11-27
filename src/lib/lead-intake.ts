@@ -1,3 +1,4 @@
+import { consentGrantedInBrowser } from "./ads-consent";
 import { googleAdsId, googleAdsLeadLabel } from "./google-ads";
 import { pixelEventsForLead } from "./meta-pixel-events";
 
@@ -344,11 +345,7 @@ type AdsWindow = Window & {
 const firedLeadIds = new Set<string>();
 
 function adsCookiesAllowed(): boolean {
-  try {
-    return localStorage.getItem("gvhs-cookies") === "all";
-  } catch {
-    return false;
-  }
+  return consentGrantedInBrowser();
 }
 
 /** Fires only after a lead is actually stored. Hashes are sent; raw contact details are not. */

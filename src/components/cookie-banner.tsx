@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ADS_CONSENT_KEY, writeConsentCookie } from "@/lib/ads-consent";
 
-const KEY = "gvhs-cookies";
+const KEY = ADS_CONSENT_KEY;
 
 type Choice = "all" | "essential";
 
@@ -14,6 +15,7 @@ function remember(choice: Choice) {
   } catch {
     /* ignore */
   }
+  writeConsentCookie(choice);
   const granted = choice === "all";
   const state = granted ? "granted" : "denied";
   const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;

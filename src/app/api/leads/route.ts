@@ -11,6 +11,7 @@ import { resolveNewLeadAssignee } from "@/lib/lead-routing";
 import { insertSearch } from "@/lib/lead-searches-db";
 import { assignedAgentName, notifyAssignedAgent, sendWelcomeAndAlert } from "@/lib/notify-lead";
 import { publicSavedSearch } from "@/lib/saved-search-alerts";
+import { scheduleMetaLead } from "@/lib/meta-capi-send";
 import { isTestLeadEmail } from "@/lib/test-lead";
 import { currentActor } from "@/lib/office-actor";
 export const runtime = "nodejs";
@@ -287,6 +288,9 @@ export async function POST(request: Request) {
 
   try {
     const saved = await insertLead({ ...lead, assignedUserId: assignee.userId });
+    if (!testLead && saved.id === lead.id) {
+      scheduleMetaLead(request, { ...lead, id: saved.id });
+    }
     if (!testLead && lead.source === "search_alert" && body && typeof body === "object") {
       const search = publicSavedSearch(
         lead.email,

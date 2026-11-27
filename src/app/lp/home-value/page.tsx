@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MetaCapiPageView } from "@/components/meta-capi-pageview";
 import { AdTrustRow, PublicLeadForm } from "@/components/public-lead-form";
 
 const VALUE_SUBHEAD =
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function HomeValueLanding() {
   return (
     <div className="bg-[#f4f7f8]">
+      <MetaCapiPageView pathname="/lp/home-value" />
       <div className="mx-auto max-w-xl px-4 py-8 pb-16">
         <h1 className="text-[32px] leading-tight font-semibold text-[#16324f]">What is your home worth?</h1>
         <p className="mt-2 text-[15px] leading-snug text-[#3d4a55] sm:text-[17px]">
