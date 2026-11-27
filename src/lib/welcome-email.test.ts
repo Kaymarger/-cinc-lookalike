@@ -19,7 +19,12 @@ test("the registration welcome uses Kayla's copy for every lead type", () => {
   assert.match(buyer.text, /Thanks for connecting with us!/);
   assert.match(buyer.text, /Create a Custom Search/);
   assert.match(buyer.text, /Happy house hunting!/);
-  assert.match(buyer.text, /Casey Archibald & the Archibald Real Estate Group team/);
+  assert.match(buyer.text, /Talk soon/);
+  assert.match(buyer.text, /Casey Archibald \| Vancouver Real Estate/);
+  assert.match(buyer.text, /REMAX Crest Realty Westside/);
+  assert.match(buyer.html, /tel:6043637858/);
+  assert.match(buyer.html, /https:\/\/www\.caseyarchibald\.com/);
+  assert.doesNotMatch(buyer.text + buyer.html, /Archibald Real Estate Group team/);
   assert.match(buyer.html, /Browse homes/);
   assert.match(buyer.html, /\/search/);
   assert.match(buyer.html, /\/saved/);

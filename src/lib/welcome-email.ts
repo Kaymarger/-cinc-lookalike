@@ -76,10 +76,8 @@ export function registrationWelcome(
   const first = firstName(lead.name);
   const origin = siteOrigin();
   const search = `${origin}/search`;
-  const contact = `${origin}/contact#inquiry`;
   const unsubscribe = `${origin}/unsubscribe?email=${encodeURIComponent(lead.email)}`;
   const logo = `${origin}/brand/archibald-logo.png`;
-  const photo = `${origin}/brand/casey.jpg`;
   const subject = `Welcome, ${first}, your Vancouver home search is ready`;
   const preheader = "Your home search portal is ready to explore.";
   const cards = listings
@@ -103,7 +101,13 @@ export function registrationWelcome(
   const text = [
     `Hi ${first},`,
     "",
-    "Thanks for connecting with us! Your home search portal is ready to explore. Here are some key features to help you with your search:",
+    "Thanks for connecting with us!",
+    "",
+    "Your home search portal is ready to explore.",
+    "",
+    `${block.ctaLabel}: ${block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref}`,
+    "",
+    "Here are some key features to help you with your search:",
     "",
     featureText,
     "",
@@ -111,19 +115,17 @@ export function registrationWelcome(
     "",
     "Happy house hunting!",
     "",
-    "Talk soon",
-    "Casey Archibald & the Archibald Real Estate Group team",
-    "",
-    `${block.ctaLabel}: ${block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref}`,
     listingText,
     "",
-    SITE.agent,
-    SITE.company,
-    "RE/MAX Crest Realty",
-    SITE.addressLine,
-    SITE.cityLine,
-    SITE.phoneDisplay,
-    `Contact: ${contact}`,
+    "Talk soon",
+    "",
+    "Casey Archibald | Vancouver Real Estate",
+    "",
+    "REMAX Crest Realty Westside",
+    "#300 - 1195 W Broadway",
+    "Vancouver, BC, V6H 3X5",
+    "",
+    "604-363-7858 | https://www.caseyarchibald.com",
     "",
     `${SITE.company}, RE/MAX Crest Realty, Vancouver.`,
     "You received this email because you signed up at vancouverpropertysearch.ca.",
@@ -153,8 +155,7 @@ export function registrationWelcome(
 <style>
   html, body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
   @media only screen and (max-width: 600px) {
-    .frame, .outer { background: #ffffff !important; padding: 0 !important; }
-    .container { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
+    .container { width: 100% !important; max-width: 100% !important; }
     h1 { font-size: 26px !important; }
     .copy, p.copy { font-size: 17px !important; line-height: 1.65 !important; }
     .btn a { display: block !important; }
@@ -163,57 +164,67 @@ export function registrationWelcome(
 </head>
 <body style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">${escapeHtml(preheader)}</div>
-<table role="presentation" class="frame" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f6;">
-<tr><td align="center" class="outer" style="padding:40px 16px;background:#f6f6f6;">
-<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;">
-<tr><td style="padding:36px 24px 0;background:#ffffff;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="168" height="39" style="display:block;width:168px;max-width:60%;height:auto;border:0;" /></td></tr>
-<tr><td style="padding:32px 24px 0;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<tr><td bgcolor="#ffffff" style="background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+<tr><td style="padding:36px 24px 8px;"><img src="${escapeHtml(logo)}" alt="${escapeHtml(SITE.company)}" width="168" height="39" style="display:block;width:168px;max-width:60%;height:auto;border:0;" /></td></tr>
+<tr><td style="padding:24px 24px 36px;">
 <h1 style="margin:0 0 20px;font-family:${FONT};font-size:28px;line-height:1.3;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">Hi ${escapeHtml(first)},</h1>
 ${para("Thanks for connecting with us!")}
-${para("Your home search portal is ready to explore.")}
-${para("Here are some key features to help you with your search:", "margin-bottom:0;")}
-</td></tr>
-<tr><td style="padding:28px 24px 0;background:#ffffff;">
+${para("Your home search portal is ready to explore.", "margin-bottom:28px;")}
 ${button(block.ctaHref.startsWith("http") ? block.ctaHref : origin + block.ctaHref, block.ctaLabel)}
 </td></tr>
-<tr><td style="padding:36px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
-<tr><td style="padding:32px 24px 12px;background:#ffffff;">
+</table></td></tr></table>
+</td></tr>
+<tr><td bgcolor="#f6f7f9" style="background:#f6f7f9;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+<tr><td style="padding:36px 24px;">
+${para("Here are some key features to help you with your search:")}
 ${FEATURES.map((item) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 0 20px;font-family:${FONT};">
 <p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(item.label)}</p>
 <p class="copy" style="margin:6px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:400;color:#4a4a4a;-webkit-text-size-adjust:100%;">${escapeHtml(item.rest)}</p>
 <p style="margin:8px 0 0;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(origin + item.path)}" style="font-family:${FONT};font-size:14px;line-height:1.65;color:${NAVY};text-decoration:underline;-webkit-text-size-adjust:100%;">${escapeHtml(item.link)}</a></p>
 </td></tr></table>`).join("")}
 </td></tr>
-<tr><td style="padding:16px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
-<tr><td style="padding:32px 24px 36px;background:#ffffff;">
+</table></td></tr></table>
+</td></tr>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+<tr><td style="padding:36px 24px 12px;">
 ${para("We'll send you new listings as they come up that match your search, and someone from our team will reach out soon to learn more about what you're looking for.")}
-${para("Happy house hunting!")}
-${para("Talk soon")}
-<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">Casey Archibald &amp; the Archibald Real Estate Group team</p>
+${para("Happy house hunting!", "margin-bottom:0;")}
 </td></tr>
-${cards.length ? `<tr><td style="padding:0 24px;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
-<tr><td style="padding:32px 24px 12px;background:#ffffff;">
+${cards.length ? `<tr><td style="padding:20px 24px 36px;">
 <h2 style="margin:0 0 12px;font-family:${FONT};font-size:20px;line-height:1.35;font-weight:600;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(block.heading)}</h2>
-${block.summary ? `<p class="copy" style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(block.summary)}</p><p style="margin:0 0 24px;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(block.editHref.startsWith("http") ? block.editHref : origin + block.editHref)}" style="font-family:${FONT};font-size:14px;line-height:1.65;color:${NAVY};text-decoration:underline;">Edit search</a></p>` : ""}
+${block.summary ? `<p class="copy" style="margin:0 0 8px;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(block.summary)}</p><p style="margin:0 0 24px;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(block.editHref.startsWith("http") ? block.editHref : origin + block.editHref)}" style="font-family:${FONT};font-size:14px;line-height:1.65;color:${NAVY};text-decoration:underline;">Edit search</a></p>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${cardHtml}</table>
-</td></tr>` : ""}
-<tr><td style="padding:8px 24px 0;"><div style="border-top:1px solid #ececec;font-size:1px;line-height:1px;">&nbsp;</div></td></tr>
-<tr><td style="padding:32px 24px 8px;background:#ffffff;">
-<img src="${escapeHtml(photo)}" alt="${escapeHtml(SITE.agent)}" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:32px;" />
-<p style="margin:16px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.agent)}</p>
-<p class="copy" style="margin:4px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#4a4a4a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.company)}</p>
-<p class="copy" style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;color:#4a4a4a;-webkit-text-size-adjust:100%;">RE/MAX Crest Realty</p>
-<p class="copy" style="margin:12px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.addressLine)}<br />${escapeHtml(SITE.cityLine)}</p>
-<p style="margin:12px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="tel:${escapeHtml(SITE.phoneTel)}" style="font-family:${FONT};font-size:16px;line-height:1.65;color:${NAVY};text-decoration:none;">${escapeHtml(SITE.phoneDisplay)}</a></p>
-<p style="margin:8px 0 0;font-family:${FONT};font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(contact)}" style="font-family:${FONT};font-size:14px;color:${NAVY};text-decoration:underline;">Contact Casey</a></p>
+</td></tr>` : `<tr><td style="padding:0 24px 36px;"></td></tr>`}
+</table></td></tr></table>
 </td></tr>
-<tr><td style="padding:32px 24px 40px;background:#ffffff;">
+<tr><td bgcolor="#f6f7f9" style="background:#f6f7f9;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+<tr><td style="padding:36px 24px;">
+<p class="copy" style="margin:0 0 20px;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">Talk soon</p>
+<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.65;font-weight:700;color:#1a1a1a;-webkit-text-size-adjust:100%;">Casey Archibald | Vancouver Real Estate</p>
+<p class="copy" style="margin:16px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;color:#1a1a1a;-webkit-text-size-adjust:100%;">REMAX Crest Realty Westside<br />#300 - 1195 W Broadway<br />Vancouver, BC, V6H 3X5</p>
+<p style="margin:16px 0 0;font-family:${FONT};font-size:16px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="tel:6043637858" style="font-family:${FONT};font-size:16px;line-height:1.65;color:${NAVY};text-decoration:none;">604-363-7858</a> <span style="color:#1a1a1a;">|</span> <a href="https://www.caseyarchibald.com" style="font-family:${FONT};font-size:16px;line-height:1.65;color:${NAVY};text-decoration:underline;">www.caseyarchibald.com</a></p>
+</td></tr>
+</table></td></tr></table>
+</td></tr>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+<tr><td style="padding:28px 24px 36px;">
 <p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">${escapeHtml(SITE.company)}, RE/MAX Crest Realty, Vancouver.</p>
 <p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">You received this email because you signed up at vancouverpropertysearch.ca.</p>
 <p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;-webkit-text-size-adjust:100%;"><a href="${escapeHtml(unsubscribe)}" style="font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;text-decoration:underline;">Unsubscribe or manage alerts</a></p>
 <p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.65;color:#6b6b6b;-webkit-text-size-adjust:100%;">Sent from ${escapeHtml(SENDER)}</p>
 </td></tr>
-</table>
+</table></td></tr></table>
 </td></tr>
 </table>
 </body>
