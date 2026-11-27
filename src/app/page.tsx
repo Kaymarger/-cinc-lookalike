@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { FeaturedCarousel } from "@/components/featured-carousel";
@@ -37,6 +38,13 @@ const HOME_QUICK = QUICK_SEARCHES.filter((q) =>
 export const maxDuration = 60;
 export const revalidate = 3600;
 
+export const metadata: Metadata = {
+  title: { absolute: "Greater Vancouver Area Home Search" },
+  description:
+    "Search British Columbia homes for sale with Casey Archibald at Archibald Real Estate Group. Listing data is supplied through REALTOR.ca DDF.",
+  alternates: { canonical: "/" },
+};
+
 export default async function HomePage() {
   const featured = await catalogFeatured(8);
   const latest = await catalogSearch({ sort: "newest" }).then((result) => result.properties.slice(0, 6)).catch(() => []);
@@ -61,7 +69,7 @@ export default async function HomePage() {
           <p className="font-sans text-base font-bold tracking-normal text-white uppercase [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
             Archibald Real Estate Group
           </p>
-          <h1 className="mt-2 max-w-none whitespace-nowrap font-[family-name:var(--font-accent)] text-[clamp(28px,4.7vw,67px)] font-normal leading-[1.3] text-white [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)]">
+          <h1 className="mt-2 max-w-[16ch] font-[family-name:var(--font-accent)] text-[clamp(28px,4.7vw,67px)] font-normal leading-[1.15] text-white [text-shadow:2px_2px_5px_rgba(31,41,48,0.3)] sm:max-w-none sm:whitespace-nowrap sm:leading-[1.3]">
             Greater Vancouver Area Home Search
           </h1>
           <HeroSearch />

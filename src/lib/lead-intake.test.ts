@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attributionSummary, sanitizeAttribution, sanitizeLeadInput } from "./lead-intake.ts";
+import {
+  adChannel,
+  areaFromParams,
+  attributionSummary,
+  claimConversion,
+  formatPhoneInput,
+  landingHeadline,
+  matchedSearchPath,
+  normalizeEmailForAds,
+  normalizePhoneForAds,
+  officeLeadSource,
+  sanitizeAttribution,
+  sanitizeLeadInput,
+  sha256Hex,
+} from "./lead-intake.ts";
 
 test("rejects a landing lead without consent", () => {
   const result = sanitizeLeadInput(
@@ -33,6 +47,46 @@ test("keeps UTM fields and drops empty ones", () => {
   assert.equal(flags.device, "mobile");
   assert.match(attributionSummary(attribution), /google \/ cpc \/ spring-buyers/);
   assert.match(attributionSummary(attribution), /gclid: abc123/);
+  assert.equal(adChannel(attribution), "Google Ads");
+  const meta = sanitizeAttribution({
+    fbclid: "fb1",
+    fbc: "fb.1.1",
+    fbp: "fb.1.2",
+    gbraid: "gb",
+    wbraid: "wb",
+    landingUrl: "https://vancouverpropertysearch.ca/start?fbclid=fb1",
+  });
+  assert.equal(meta.gbraid, "gb");
+  assert.equal(meta.fbp, "fb.1.2");
+  assert.equal(adChannel(meta), "Google Ads");
+  assert.equal(adChannel({ fbclid: "fb1" }), "Meta");
+  assert.equal(officeLeadSource("buyer_signup", { fbclid: "fb1" }), "Meta · Buyer signup");
+});
+
+test("a saved lead fires a conversion once, and a missing id does not fire", () => {
+  const seen = new Set<string>();
+  const store = new Map<string, string>();
+  const read = (key: string) => store.get(key) ?? null;
+  const write = (key: string, value: string) => {
+    store.set(key, value);
+  };
+  assert.equal(claimConversion(undefined, seen, read, write), false);
+  assert.equal(claimConversion("lead-1", seen, read, write), true);
+  assert.equal(claimConversion("lead-1", seen, read, write), false);
+  assert.equal(store.get("gvhs-ads-lead:lead-1"), "1");
+});
+
+test("area variants, phone format, and ad hashes stay free of raw contact text", async () => {
+  assert.equal(areaFromParams({ area: "North Vancouver" }), "North Vancouver");
+  assert.equal(landingHeadline("North Vancouver"), "Find your next home in North Vancouver");
+  assert.equal(matchedSearchPath("North Vancouver"), "/search?city=North+Vancouver&sort=newest");
+  assert.equal(areaFromParams({ utm_term: "homes for sale" }), "");
+  assert.equal(formatPhoneInput("6045550100"), "(604) 555-0100");
+  assert.equal(normalizePhoneForAds("(604) 555-0100"), "+16045550100");
+  assert.equal(normalizeEmailForAds("  Alex@Example.com "), "alex@example.com");
+  const hash = await sha256Hex("alex@example.com");
+  assert.equal(hash.length, 64);
+  assert.equal(hash.includes("alex@example.com"), false);
 });
 
 test("accepts a consented seller lead and ignores a filled honeypot", () => {

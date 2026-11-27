@@ -1,114 +1,59 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LeadCaptureForms } from "@/components/lead-capture-forms";
-import { catalogSearch } from "@/lib/catalog";
-import { propertyHref } from "@/lib/listing-url";
-import { formatPrice } from "@/lib/search";
-import { SITE } from "@/lib/site";
+import { AdTrustRow, PublicLeadForm, StickyLeadCta } from "@/components/public-lead-form";
+import { areaFromParams, landingHeadline } from "@/lib/lead-intake";
 
-export const metadata: Metadata = {
-  title: "Find a home or request an estimate",
-  description:
-    "Search Greater Vancouver homes, or send a buyer, seller, or home-valuation request to Archibald Real Estate Group.",
-};
+const BUYER_SUBHEAD =
+  "Get new listings the moment they hit the market, plus instant price and neighbourhood insights.";
+
+type Params = Record<string, string | string[] | undefined>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Params>;
+}): Promise<Metadata> {
+  const area = areaFromParams(await searchParams);
+  const title = area ? `${area} homes for sale` : "Find a Greater Vancouver home";
+  const description = area
+    ? `${BUYER_SUBHEAD} Searching ${area}.`
+    : BUYER_SUBHEAD;
+  return {
+    title,
+    description,
+    alternates: { canonical: area ? `/start?area=${encodeURIComponent(area)}` : "/start" },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function StartPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<Params>;
 }) {
-  const params = await searchParams;
-  const rawQuery = params.q;
-  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery)?.trim() ?? "";
-  const sent = params.sent === "1" || (Array.isArray(params.sent) && params.sent.includes("1"));
-  const errorRaw = params.error;
-  const error = Array.isArray(errorRaw) ? errorRaw[0] : errorRaw;
-  const live = await catalogSearch(query ? { q: query } : { sort: "newest" }).catch(() => ({
-    properties: [],
-    total: 0,
-    live: false,
-  }));
-  const listings = live.properties.slice(0, 6);
-  const count = query ? live.total : listings.length;
-  const heading = query
-    ? `${count} ${count === 1 ? "home" : "homes"} for “${query}”`
-    : "Homes across British Columbia";
+  const area = areaFromParams(await searchParams);
+  const headline = landingHeadline(area);
 
   return (
-    <div className="bg-white">
-      <section className="bg-[var(--cedar-deep)] text-white">
-        <div className="mx-auto max-w-[1170px] px-4 py-10 sm:px-6 sm:py-14">
-          <p className="text-sm font-bold tracking-[0.14em] uppercase">
-            {SITE.company}
-          </p>
-          <h1 className="mt-2 max-w-3xl font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-5xl">
-            Greater Vancouver Area Home Search
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/90">
-            Search neighbourhoods, then ask {SITE.agent} for buyer help, a listing plan, or a home valuation. No login required.
-          </p>
-          <form action="/start" method="get" className="mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="start-search">
-              City, neighbourhood, or address
-            </label>
-            <input
-              id="start-search"
-              name="q"
-              defaultValue={query}
-              placeholder="City, neighbourhood, or address"
-              className="h-12 min-w-0 flex-1 border-0 bg-white px-3 text-base text-[#1f2930] outline-none"
-            />
-            <button
-              type="submit"
-              className="h-12 bg-[#1976d2] px-6 text-sm font-bold tracking-[1px] text-white uppercase hover:bg-[#145ca4]"
-            >
-              Search
-            </button>
-          </form>
-          <p className="mt-3 text-xs text-white/75">
-            Confirm price and availability with the office.{" "}
-            <Link href="/search" className="underline">
-              Open the full search
-            </Link>
-            .
-          </p>
+    <div className="bg-[#f4f7f8]">
+      <section className="mx-auto max-w-xl px-4 pt-4 pb-24 sm:pt-10">
+        <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight text-[#16324f] sm:text-[40px]">
+          {headline}
+        </h1>
+        <p className="mt-2 text-[15px] leading-snug text-[#3d4a55] sm:text-[17px]">
+          {BUYER_SUBHEAD}
+        </p>
+        <div className="mt-4">
+          <PublicLeadForm
+            key={area || "all"}
+            source="buyer_signup"
+            intent="buyer"
+            area={area}
+            submitLabel="Get matching homes"
+          />
         </div>
+        <AdTrustRow />
       </section>
-
-      <section className="mx-auto max-w-[1170px] px-4 py-10 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl text-[#1f2930] sm:text-3xl">
-            {heading}
-          </h2>
-          {query && live.total > listings.length && (
-            <Link href={`/search?q=${encodeURIComponent(query)}`} className="text-sm font-semibold text-[#1976d2] hover:underline">
-              View all {live.total}
-            </Link>
-          )}
-        </div>
-        {listings.length === 0 ? (
-          <p className="mt-6 text-sm text-[#555]">
-            No listings match that search. Try Vancouver, Kitsilano, or Burnaby, or send a request below and an agent will look with you.
-          </p>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {listings.map((property) => (
-              <a key={property.id} href={propertyHref(property)} className="block border border-[#e5e5e5] bg-white p-4 hover:border-[#1976d2]">
-                <p className="text-[20px] text-[#1976d2]">{formatPrice(property.price)}</p>
-                <p className="mt-1 text-[14px] text-[#333]">{property.address}</p>
-                <p className="text-[13px] text-[#555]">{[property.neighborhood, property.city].filter(Boolean).join(", ")}</p>
-              </a>
-            ))}
-          </div>
-        )}
-        {query && live.total > listings.length && (
-          <p className="mt-4 text-sm text-[#666]">
-            Showing {listings.length} of {live.total} matches.
-          </p>
-        )}
-      </section>
-
-      <LeadCaptureForms notice={{ sent, error }} />
+      <StickyLeadCta />
     </div>
   );
 }

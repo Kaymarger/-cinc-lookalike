@@ -5,6 +5,8 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Terms of Use",
+  description: "Terms for using Greater Vancouver Area Home Search and requesting information from Archibald Real Estate Group.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
@@ -19,7 +21,8 @@ export default function TermsPage() {
         </h1>
         <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-[#555]">
           <p>
-            By using Greater Vancouver Area Home Search you agree to use it to look for homes and to request information from Archibald Real Estate Group. Listing information is provided for search. An agent confirms details before you rely on a price or status.
+            By using Greater Vancouver Area Home Search you agree to use it to look for homes and to request information from Archibald Real Estate Group. Listing information is provided for search and comes in part from CREA through the Data Distribution Facility. An agent confirms details before you rely on a price or status. See the{" "}
+            <Link href="/disclaimer" className="text-[var(--cedar)] hover:underline">disclaimer</Link>.
           </p>
           <p>
             Electronic messages are sent only with the consent you give on a form. You can withdraw that consent on the{" "}

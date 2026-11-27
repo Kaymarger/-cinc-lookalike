@@ -463,8 +463,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           );
         });
       }
-      if (response.ok && data?.ok !== false && !data?.existing) {
-        trackLeadConversion(lead.source, data?.lead?.id || lead.id);
+      if (response.ok && data?.ok === true && data.persisted === true && !data.existing) {
+        void trackLeadConversion(lead.source, data.lead?.id || lead.id, {
+          email: lead.email,
+          phone: lead.phone,
+        });
       }
       return {
         ok: response.ok && data?.ok !== false,

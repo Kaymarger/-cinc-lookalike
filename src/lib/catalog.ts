@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { fetchListingDetail, fetchListingsByMls } from "@/lib/ddf/client";
 import { pullAreaIntoSearch, warmNeighbourhoodNames } from "@/lib/ddf/areas";
 import { ddfConfigured } from "@/lib/ddf/credentials";
@@ -21,16 +22,12 @@ export async function catalogSearch(filters: SearchFilters): Promise<{ propertie
     const unlabeled = result.properties.length > 0 && result.properties.every((property) => !property.neighborhood);
     const missingFacts = result.properties.some((property) => !property.neighborhood || property.listedDaysAgo >= 100000);
     if ((filters.page || 1) === 1 && missingFacts && (filters.sort === "newest" || !filters.sort || Boolean(filters.q))) {
-      await Promise.race([
-        warmNeighbourhoodNames(2200).catch(() => undefined),
-        new Promise((resolve) => setTimeout(resolve, 2200)),
-      ]);
-      result = await searchDdfListings(filters);
+      void warmNeighbourhoodNames(2200).catch(() => undefined);
     }
     if (placeName && (result.total === 0 || unlabeled) && (filters.page || 1) === 1) {
       const pulled = await Promise.race([
         pullAreaIntoSearch(needle).catch(() => 0),
-        new Promise<number>((resolve) => setTimeout(() => resolve(0), 3500)),
+        new Promise<number>((resolve) => setTimeout(() => resolve(0), 800)),
       ]);
       if (pulled > 0) result = await searchDdfListings(filters);
     }
@@ -66,7 +63,7 @@ export async function catalogFeatured(limit = 12): Promise<Property[]> {
   return JSON.parse(JSON.stringify(live.slice(0, limit).map((property) => ({ ...property, images: (property.images || []).slice(0, 1) })))) as Property[];
 }
 
-export async function catalogListing(id: string): Promise<Property | null> {
+export const catalogListing = cache(async function catalogListing(id: string): Promise<Property | null> {
   if (!ddfConfigured()) return getPropertyById(id) ?? null;
     let listing = await getDdfListing(id);
     if (listing && !listing.detailsSynced) {
@@ -76,9 +73,9 @@ export async function catalogListing(id: string): Promise<Property | null> {
         pending = refreshListingDetails(listingId).finally(() => detailReads.delete(listingId));
         detailReads.set(listingId, pending);
       }
-      await Promise.race([pending, new Promise((resolve) => setTimeout(resolve, 2500))]);
+      await Promise.race([pending, new Promise((resolve) => setTimeout(resolve, 400))]);
       listing = (await getDdfListing(id)) || listing;
     }
     if (listing) return listing;
   return null;
-}
+});

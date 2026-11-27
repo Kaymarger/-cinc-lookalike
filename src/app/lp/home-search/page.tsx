@@ -1,22 +1,34 @@
 import type { Metadata } from "next";
-import { AdLandingForm } from "@/components/ad-landing-form";
+import { AdTrustRow, PublicLeadForm } from "@/components/public-lead-form";
+import { areaFromParams, landingHeadline } from "@/lib/lead-intake";
+
+const BUYER_SUBHEAD =
+  "Get new listings the moment they hit the market, plus instant price and neighbourhood insights.";
 
 export const metadata: Metadata = {
   title: "Search Greater Vancouver homes",
-  description: "Tell us what you are looking for and an Archibald Real Estate Group agent will set up your search.",
+  description: BUYER_SUBHEAD,
+  alternates: { canonical: "/lp/home-search" },
 };
 
-export default function HomeSearchLanding() {
+export default async function HomeSearchLanding({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const area = areaFromParams(await searchParams);
   return (
     <div className="bg-[#f4f7f8]">
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <p className="text-[13px] font-semibold tracking-wide text-[#1c93b5] uppercase">Archibald Real Estate Group</p>
-        <h1 className="mt-2 text-[32px] leading-tight font-semibold text-[#16324f]">Find a home in Greater Vancouver</h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-[#444]">Share your name and how to reach you. We will set up a search and send matches. No obligation.</p>
-        <div className="mt-6">
-          <AdLandingForm source="buyer_signup" intent="buyer" submitLabel="Start my search" />
+      <section className="mx-auto max-w-xl px-4 py-8 pb-16">
+        <h1 className="text-[32px] leading-tight font-semibold text-[#16324f]">{landingHeadline(area)}</h1>
+        <p className="mt-2 text-[15px] leading-snug text-[#3d4a55] sm:text-[17px]">
+          {BUYER_SUBHEAD}
+        </p>
+        <div className="mt-5">
+          <PublicLeadForm key={area || "all"} source="buyer_signup" intent="buyer" area={area} submitLabel="Start my search" />
         </div>
-      </div>
+        <AdTrustRow />
+      </section>
     </div>
   );
 }
