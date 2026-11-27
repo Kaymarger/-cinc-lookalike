@@ -1,3 +1,4 @@
+import { isQaTestAgent } from "@/lib/lead-routing-pick";
 import { currentActor } from "@/lib/office-actor";
 import { listUsers } from "@/lib/office-users";
 
@@ -12,12 +13,14 @@ export async function GET() {
   if (!actor.database.connected) {
     return Response.json({ ok: true, users: [], database: actor.database });
   }
+  const { retireQaOfficeOnce } = await import("@/lib/qa-office");
+  await retireQaOfficeOnce();
   const users = await listUsers();
   return Response.json({
     ok: true,
     database: actor.database,
     users: users
-      .filter((user) => user.active && !user.routingHidden)
+      .filter((user) => user.active && !user.routingHidden && !isQaTestAgent(user))
       .map((user) => ({ id: user.id, name: user.name, role: user.role, email: user.email })),
   });
 }

@@ -1,8 +1,10 @@
 import { officeDb } from "@/lib/leads-db";
-import { isRoutingCandidate, nextPoolUser, pickUniform } from "@/lib/lead-routing-pick";
+import { isRoutingCandidate, nextPoolUser, officeOwner } from "@/lib/lead-routing-pick";
 import { assignedAgentName } from "@/lib/notify-lead";
 import type { OfficeRole } from "@/lib/office-access";
-import { findUserById, findUserByName, listUsers, type OfficeUser } from "@/lib/office-users";
+import { retireQaOfficeOnce } from "@/lib/qa-office";
+import { SITE } from "@/lib/site";
+import { findUserById, listUsers, type OfficeUser } from "@/lib/office-users";
 
 export { nextPoolUser } from "@/lib/lead-routing-pick";
 
@@ -108,28 +110,20 @@ export async function saveLeadRouting(settings: RoutingSettings): Promise<Routin
 }
 
 async function officeDefault(): Promise<{ name: string; userId: string | null }> {
-  const name = assignedAgentName();
-  const user = await findUserByName(name).catch(() => null);
-  return { name, userId: user?.id ?? null };
+  const users = await listUsers().catch(() => []);
+  const owner = officeOwner(users, SITE.agent);
+  if (owner) return { name: owner.name, userId: owner.id };
+  const named = assignedAgentName();
+  return { name: named && !/^qa\b/i.test(named) ? named : SITE.agent, userId: null };
 }
 
 export async function resolveNewLeadAssignee(): Promise<{ name: string; userId: string | null }> {
   try {
+    await retireQaOfficeOnce();
     const sql = await officeDb();
-    if (!sql) return { name: assignedAgentName(), userId: null };
+    if (!sql) return officeDefault();
     const current = await getLeadRouting();
-    if (current.mode === "default") {
-      const users = await listUsers();
-      const pool = users.filter(eligible);
-      const picked = pickUniform(pool.map((user) => user.id));
-      const user = picked ? pool.find((item) => item.id === picked) : undefined;
-      if (!user) return officeDefault();
-      await sql`
-        INSERT INTO office_notifications (id, kind, title, body)
-        VALUES (${`route-${Date.now()}`}, 'routing', ${`Lead routed to ${user.name}`}, ${`Uniform assignment among ${pool.length} in-office agents.`})
-      `.catch(() => undefined);
-      return { name: user.name, userId: user.id };
-    }
+    if (current.mode === "default") return officeDefault();
     if (current.mode === "source") {
       const users = await listUsers();
       const user = users.find((item) => current.poolIds.includes(item.id) && eligible(item));
@@ -157,6 +151,6 @@ export async function resolveNewLeadAssignee(): Promise<{ name: string; userId: 
     return { name: user.name, userId: user.id };
   } catch (error) {
     console.error("[routing] assignee", error instanceof Error ? error.name : "error");
-    return { name: assignedAgentName(), userId: null };
+    return officeDefault();
   }
 }

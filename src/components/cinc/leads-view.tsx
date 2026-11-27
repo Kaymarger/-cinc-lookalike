@@ -177,6 +177,7 @@ type Row = {
   assigned: Assign;
   assignedUserId?: string | null;
   partnerUserId?: string | null;
+  trashed?: boolean;
 };
 
 function digits(phone: string) {
@@ -281,6 +282,7 @@ function siteRow(lead: Lead): Row {
     },
     assignedUserId: lead.assignedUserId,
     partnerUserId: lead.partnerUserId,
+    trashed: Boolean(lead.trashed),
   };
 }
 
@@ -507,6 +509,15 @@ export function LeadsView({
   const { leads, add, appendActivity } = useLeads();
   const office = useOfficeSession();
   const { state, update } = useCinc();
+  useEffect(() => {
+    const ids = leads.filter((lead) => lead.trashed).map((lead) => lead.id);
+    if (!ids.length) return;
+    update((current) => {
+      const next = [...new Set([...current.trashed, ...ids])];
+      if (next.length === current.trashed.length) return current;
+      return { ...current, trashed: next };
+    });
+  }, [leads, update]);
   const chrome = useChrome();
   const composer = useComposer();
   const [selected, setSelected] = useState<string[]>([]);
@@ -671,7 +682,7 @@ export function LeadsView({
   }, [leads, state.pipeline, state.leadType, state.assigned, state.stars, office.ready, office.user, office.seesAll]);
 
   const filtered = rows.filter((row, index) => {
-    const trashed = state.trashed.includes(row.id);
+    const trashed = state.trashed.includes(row.id) || Boolean(row.trashed);
     if (showTrash ? !trashed : trashed) return false;
     if (onlyMine && office.user && row.assigned.agent !== office.user.name) return false;
     const q = chrome.leadSearch.trim().toLowerCase();

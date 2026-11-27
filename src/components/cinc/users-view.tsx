@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { isQaTestAgent } from "@/lib/lead-routing-pick";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import { PERMISSION_COLUMNS, defaultPermissions, type OfficePermissions } from "@/lib/permission-options";
 import { RoutingPanel } from "./routing-panel";
@@ -82,7 +83,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
 
   useEffect(() => {
     if (cleanedQa.current || !office.canManageUsers) return;
-    const leftover = users.filter((user) => user.email.toLowerCase() === "qa@example.com" || user.name === "QA Test");
+    const leftover = users.filter((user) => user.email.toLowerCase() === "qa@example.com" || user.name === "QA Test" || isQaTestAgent(user));
     if (!leftover.length) return;
     cleanedQa.current = true;
     void Promise.all(leftover.map((user) => fetch(`/api/office/users/${user.id}`, { method: "DELETE" }))).then(() => load());
@@ -216,7 +217,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
       <>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[16px] text-[#243238]">{(users.filter((user) => (showDisabled ? !user.active : user.active) && (!pondOnly || user.role === "isa")).length || (office.user ? 1 : 0))} Total Agents</h1>
+          <h1 className="text-[16px] text-[#243238]">{(users.filter((user) => !isQaTestAgent(user) && (showDisabled ? !user.active : user.active) && (!pondOnly || user.role === "isa")).length || (office.user && !isQaTestAgent(office.user) ? 1 : 0))} Total Agents</h1>
           <button type="button" className={`h-8 rounded px-3 text-[13px] ${pondOnly ? "bg-[#329bb9] text-white" : "bg-[#e7f3f8] text-[#329bb9]"}`} onClick={() => setPondOnly((value) => !value)}>Show Only Pond Accounts</button>
           <button type="button" className={`h-8 rounded px-3 text-[13px] ${showDisabled ? "bg-[#329bb9] text-white" : "bg-[#e7f3f8] text-[#329bb9]"}`} onClick={() => setShowDisabled((value) => !value)}>Show Disabled Agents</button>
         </div>
@@ -247,7 +248,7 @@ export function UsersView({ mode = "manage" }: { mode?: "manage" | "routing" }) 
         </div>
       ) : null}
       {(() => {
-        const source = users.filter((user) => (showDisabled ? !user.active : user.active) && (!pondOnly || user.role === "isa"));
+        const source = users.filter((user) => !isQaTestAgent(user) && (showDisabled ? !user.active : user.active) && (!pondOnly || user.role === "isa"));
         const base = source.length ? source : office.user ? [office.user] : [];
         const arranged = applyOfficeList(base.map((user) => ({
           name: user.name,

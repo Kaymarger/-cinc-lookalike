@@ -230,7 +230,7 @@ export function LaunchpadView({ team = false }: { team?: boolean }) {
               <table className="w-full text-left text-[12px]">
                 <thead className="text-[10px] uppercase text-[#888]"><tr><th>Lead Name</th><th>Pipeline</th><th>Call Info</th><th>Last Login</th></tr></thead>
                 <tbody>
-                  {(flip ? [...leads].reverse() : leads).filter((lead) => !state.trashed.includes(lead.id)).slice(0, 4).map((lead) => (
+                  {(flip ? [...leads].reverse() : leads).filter((lead) => !lead.trashed && !state.trashed.includes(lead.id)).slice(0, 4).map((lead) => (
                     <tr key={lead.id} className="border-t border-[#eee]">
                       <td className="py-2"><a className="text-[#1c93b5]" href={href.lead(lead.id)}>{lead.name}</a></td>
                       <td>{lead.status}</td>

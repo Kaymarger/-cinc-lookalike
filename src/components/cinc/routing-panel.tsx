@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isQaTestAgent } from "@/lib/lead-routing-pick";
 import { roleLabel, type OfficeRole } from "@/lib/office-access";
 import { useOfficeSession, type OfficeProfile } from "./office-session";
 import { loadOfficePrefs, saveOfficePrefs } from "./office-prefs";
@@ -12,7 +13,7 @@ type Mode = "default" | "fixed" | "round_robin" | "source";
 
 export function RoutingPanel({ users }: { users: (OfficeProfile & { routingHidden?: boolean })[] }) {
   const office = useOfficeSession();
-  const roster: (OfficeProfile & { routingHidden?: boolean })[] = (users.length ? users : office.user ? [{ ...office.user }] : []).filter((user) => user.active);
+  const roster: (OfficeProfile & { routingHidden?: boolean })[] = (users.length ? users : office.user ? [{ ...office.user }] : []).filter((user) => user.active && !isQaTestAgent(user));
   const eligible = roster.filter((user) => user.active && ROUTABLE.includes(user.role) && !user.routingHidden);
   const [mode, setMode] = useState<Mode>("default");
   const [fixedUserId, setFixedUserId] = useState("");

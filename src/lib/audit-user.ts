@@ -20,7 +20,7 @@ export async function ensureAuditAdmin(): Promise<"skipped" | "ready"> {
       'admin',
       'QA',
       'Audit',
-      true,
+      false,
       false,
       false,
       true
@@ -30,7 +30,7 @@ export async function ensureAuditAdmin(): Promise<"skipped" | "ready"> {
       role = 'admin',
       first_name = 'QA',
       last_name = 'Audit',
-      active = true,
+      active = false,
       bootstrap = false,
       must_set_password = false,
       routing_hidden = true,

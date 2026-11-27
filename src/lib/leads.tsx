@@ -90,6 +90,7 @@ export type Lead = {
   partnerName?: string;
   partnerUserId?: string | null;
   listingAgent?: string;
+  trashed?: boolean;
 };
 
 type CreateLeadInput = {
@@ -248,6 +249,7 @@ export function normalizeLead(raw: Partial<Lead> & Pick<Lead, "id" | "name" | "e
     partnerName: raw.partnerName,
     partnerUserId: raw.partnerUserId,
     listingAgent: raw.listingAgent,
+    trashed: Boolean(raw.trashed) || /^qa ads test 1127$/i.test(raw.name || ""),
   };
 }
 

@@ -86,6 +86,7 @@ function publicLead(lead: SanitizedLead | StoredLead) {
     partnerName: "partnerName" in lead ? lead.partnerName : "Unassigned",
     partnerUserId: "partnerUserId" in lead ? lead.partnerUserId : null,
     listingAgent: "listingAgent" in lead ? lead.listingAgent : "Unassigned",
+    trashed: "trashed" in lead ? Boolean(lead.trashed) : false,
     createdAt: lead.createdAt,
     updatedAt: lead.createdAt,
     activity: leadActivities(lead).map((item, index) => index === 0 ? { ...item, body: item.body || summary || undefined } : item),
@@ -114,6 +115,8 @@ export async function GET() {
   }
   try {
     await deleteAuditTestLeads();
+    const { retireQaOfficeOnce } = await import("@/lib/qa-office");
+    await retireQaOfficeOnce();
     const leads = await listLeads(500, {
       role: actor.user.role,
       userId: actor.user.id,

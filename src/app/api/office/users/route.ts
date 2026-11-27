@@ -37,6 +37,8 @@ function draftFrom(body: Record<string, unknown>): UserDraft | { error: string }
 }
 
 export async function GET() {
+  const { retireQaOfficeOnce } = await import("@/lib/qa-office");
+  await retireQaOfficeOnce();
   const actor = await currentActor();
   if (!actor) return Response.json({ ok: false, message: "Sign in required." }, { status: 401 });
   if (!actor.database.connected) {

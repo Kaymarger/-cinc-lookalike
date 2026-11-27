@@ -15,6 +15,7 @@ export type StoredLead = SanitizedLead & {
   partnerName: string;
   partnerUserId: string | null;
   listingAgent: string;
+  trashed?: boolean;
 };
 
 type LeadRow = {
@@ -415,6 +416,7 @@ export function rowToStoredLead(row: LeadRow): StoredLead {
     listingAgent: row.listing_agent || "Unassigned",
     createdAt,
     status: "new",
+    trashed: row.status === "trashed",
     activityBody: [notes, summary].filter(Boolean).join("\n"),
   };
 }
