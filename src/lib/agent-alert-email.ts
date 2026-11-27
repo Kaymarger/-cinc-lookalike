@@ -44,14 +44,19 @@ function row(label: string, value: string): string {
 </tr>`;
 }
 
-export function agentAlertEmail(lead: SanitizedLead): { subject: string; text: string; html: string } {
+export function agentAlertEmail(
+  lead: SanitizedLead,
+  options?: { activity?: boolean }
+): { subject: string; text: string; html: string } {
   const origin = siteOrigin();
   const type = INTENT_LABEL[lead.intent] || "New lead";
   const source = SOURCE_LABEL[lead.source] || lead.source;
   const message = lead.notes.trim() || "No message.";
   const phone = lead.phone.trim() || "No phone";
   const open = `${origin}/agent/leads/${encodeURIComponent(lead.id)}`;
-  const subject = `New lead: ${lead.name} — ${type}`;
+  const subject = options?.activity
+    ? `Activity: ${source} from ${lead.name}`
+    : `New lead: ${lead.name} — ${type}`;
   const text = [
     subject,
     `Assigned to ${lead.assignedTo}`,

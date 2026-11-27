@@ -27,4 +27,10 @@ test("the agent alert is a scannable card and does not include a password", () =
   assert.match(message.html, /Looking around Kitsilano/);
   assert.match(message.html, /alex@example.com/);
   assert.doesNotMatch(message.html + message.text, /password/i);
+  const activity = agentAlertEmail(
+    { ...sample, name: "QA Test Lead", source: "showing_request", intent: "inquiry", phone: "" },
+    { activity: true }
+  );
+  assert.equal(activity.subject, "Activity: Showing request from QA Test Lead");
+  assert.doesNotMatch(activity.subject, /New lead/);
 });
