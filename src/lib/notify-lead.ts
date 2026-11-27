@@ -4,6 +4,7 @@ import { officeDb } from "@/lib/leads-db";
 import { sendOfficeSms } from "@/lib/office-mail";
 import { propertyHref } from "./listing-url";
 import { getFeaturedProperties } from "./search";
+import { agentAlertEmail } from "./agent-alert-email";
 import { registrationWelcome } from "./welcome-email";
 import { SITE } from "@/lib/site";
 import { isTestLeadEmail } from "@/lib/test-lead";
@@ -60,8 +61,9 @@ async function sendEmail(lead: SanitizedLead): Promise<AlertChannel> {
   if (!resendKey && !sendgridKey) return "skipped";
   if (!from) return "skipped";
 
-  const subject = `New lead: ${lead.name} — ${INTENT_LABEL[lead.intent]}`;
-  const text = leadText(lead);
+  const alert = agentAlertEmail(lead);
+  const subject = alert.subject;
+  const text = alert.text;
   try {
     if (resendKey) {
       const response = await fetch("https://api.resend.com/emails", {
@@ -70,7 +72,7 @@ async function sendEmail(lead: SanitizedLead): Promise<AlertChannel> {
           Authorization: `Bearer ${resendKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ from, to: [to], subject, text }),
+        body: JSON.stringify({ from, to: [to], subject, text, html: alert.html }),
         signal: AbortSignal.timeout(8000),
       });
       return response.ok ? "sent" : "failed";
@@ -85,7 +87,10 @@ async function sendEmail(lead: SanitizedLead): Promise<AlertChannel> {
         personalizations: [{ to: [{ email: to }] }],
         from: { email: from, name: SITE.company },
         subject,
-        content: [{ type: "text/plain", value: text }],
+        content: [
+          { type: "text/plain", value: text },
+          { type: "text/html", value: alert.html },
+        ],
       }),
       signal: AbortSignal.timeout(8000),
     });
@@ -151,9 +156,18 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
   const first = lead.name.split(" ")[0] || "there";
   const origin = siteOrigin();
   const savedSearch = lead.source === "search_alert";
+  const welcomeMessage = savedSearch
+    ? null
+    : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
+        address: property.address,
+        city: property.city,
+        price: property.price,
+        href: propertyHref(property),
+        image: property.images[0],
+      })));
   const subject = savedSearch
     ? `Saved search: ${lead.searchLabel || "Greater Vancouver homes"}`
-    : `Welcome to ${SITE.name}`;
+    : welcomeMessage!.subject;
   const welcome = savedSearch
     ? [
         `Hi ${first},`,
@@ -165,20 +179,8 @@ export async function sendWelcomeAndAlert(lead: SanitizedLead): Promise<AlertRep
         SITE.agent,
         SITE.phoneDisplay,
       ].join("\n")
-    : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
-        address: property.address,
-        city: property.city,
-        price: property.price,
-        href: propertyHref(property),
-        image: property.images[0],
-      }))).text;
-  const html = savedSearch ? undefined : registrationWelcome(lead, getFeaturedProperties().slice(0, 3).map((property) => ({
-    address: property.address,
-    city: property.city,
-    price: property.price,
-    href: propertyHref(property),
-    image: property.images[0],
-  }))).html;
+    : welcomeMessage!.text;
+  const html = welcomeMessage?.html;
   const email = await sendLeadEmail(lead.email, subject, welcome, html);
   return { email, sms: "skipped" };
 }
