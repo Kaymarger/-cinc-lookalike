@@ -3,13 +3,14 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   useTransition,
   type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { PlaceSuggest } from "@/components/place-suggest";
 import { SaveSearchButton } from "@/components/save-search-button";
 import { LISTING_TAGS } from "@/lib/generate-inventory";
@@ -414,14 +415,14 @@ function FilterFields({
 export function SearchFiltersBar({
   initial,
   resultCount,
-  showMap = true,
-  onToggleMap,
+  view = "split",
+  onView,
   heading,
 }: {
   initial: SearchFilters;
   resultCount: number;
-  showMap?: boolean;
-  onToggleMap?: () => void;
+  view?: "list" | "map" | "split";
+  onView?: (view: "list" | "map" | "split") => void;
   heading?: string;
 }) {
   const router = useRouter();
@@ -449,11 +450,16 @@ export function SearchFiltersBar({
     [router]
   );
 
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
   function update<K extends keyof SearchFilters>(
     key: K,
     value: SearchFilters[K]
   ) {
-    pushFilters({ ...filters, [key]: value || undefined });
+    pushFilters({ ...filtersRef.current, [key]: value || undefined });
   }
 
   function removeChip(key: keyof SearchFilters) {
@@ -477,9 +483,9 @@ export function SearchFiltersBar({
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const trimmed = keyword.trim();
-      if ((filters.q ?? "") === trimmed) return;
-      const metro = /^(greater vancouver|metro vancouver|gvrd|vancouver area)$/i.test(trimmed);
-      pushFilters(metro ? { sort: filters.sort } : { q: trimmed || undefined, sort: filters.sort });
+      const current = filtersRef.current;
+      if ((current.q ?? "") === trimmed) return;
+      pushFilters({ ...current, q: trimmed || undefined });
     }, 350);
     return () => window.clearTimeout(handle);
   }, [keyword]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -689,33 +695,22 @@ export function SearchFiltersBar({
           </div>
 
           <div className="hidden flex-wrap items-center gap-2 lg:flex">
-            {onToggleMap && (
-              <div className="inline-flex h-10 overflow-hidden border border-[#d7e0e8]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showMap) onToggleMap();
-                  }}
-                  className={cn(
-                    "px-3 text-sm font-semibold",
-                    !showMap ? "bg-[#3498d8] text-white" : "bg-white text-[#1f2930]"
-                  )}
-                >
-                  List
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!showMap) onToggleMap();
-                  }}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-3 text-sm font-semibold",
-                    showMap ? "bg-[#3498d8] text-white" : "bg-white text-[#1f2930]"
-                  )}
-                >
-                  <MapIcon className="size-4" />
-                  Map
-                </button>
+            {onView && (
+              <div className="inline-flex h-10 overflow-hidden border border-[#d7e0e8]" role="group" aria-label="Results layout">
+                {(["list", "split", "map"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={view === mode}
+                    onClick={() => onView(mode)}
+                    className={cn(
+                      "px-3 text-sm font-semibold capitalize",
+                      view === mode ? "bg-[#3498d8] text-white" : "bg-white text-[#1f2930]"
+                    )}
+                  >
+                    {mode === "map" ? "Map" : mode === "list" ? "List" : "Split"}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -915,21 +910,24 @@ export function SearchFiltersBar({
             </select>
           </div>
 
-          <div className="flex items-center gap-2 lg:hidden">
-            {onToggleMap && (
-              <button
-                type="button"
-                onClick={onToggleMap}
-                className={cn(
-                  "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border text-sm font-medium",
-                  showMap
-                    ? "border-[var(--cedar)] bg-[var(--cedar)] text-white"
-                    : "border-[#d7e0e8] bg-white text-[#333]"
-                )}
-              >
-                <MapIcon className="size-4" />
-                {showMap ? "Hide map" : "Show map"}
-              </button>
+          <div className="flex items-center gap-2">
+            {onView && (
+              <div className="inline-flex rounded-full border border-[#d7e0e8] bg-white p-0.5" role="group" aria-label="Results layout">
+                {(["list", "split", "map"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={view === mode}
+                    onClick={() => onView(mode)}
+                    className={cn(
+                      "h-9 rounded-full px-3 text-sm font-medium capitalize",
+                      view === mode ? "bg-[var(--cedar)] text-white" : "text-[#333]"
+                    )}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
             )}
             <SaveSearchButton filters={filters} />
           </div>

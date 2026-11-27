@@ -62,7 +62,7 @@ export function PropertyCard({
               variant="card"
             />
           ) : (
-            <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>
+            <div className="grid h-full place-items-center px-3 text-center text-[13px] text-white">Photo coming soon</div>
           )}
           {property.virtualTour && (
             <span className="badge--virtual-tour absolute bottom-2 left-2 z-[2] bg-black/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">

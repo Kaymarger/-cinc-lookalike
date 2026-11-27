@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useOfficeSession } from "@/components/cinc/office-session";
 import { AuthModalProvider } from "@/components/auth-modal";
@@ -9,6 +10,27 @@ import { CookieBanner } from "@/components/cookie-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SITE } from "@/lib/site";
+
+function WelcomeToast() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("gvhs-welcome") !== "1") return;
+      sessionStorage.removeItem("gvhs-welcome");
+      queueMicrotask(() => setShow(true));
+      const timer = window.setTimeout(() => setShow(false), 6000);
+      return () => window.clearTimeout(timer);
+    } catch {
+      return undefined;
+    }
+  }, []);
+  if (!show) return null;
+  return (
+    <p role="status" className="fixed top-4 left-1/2 z-[90] -translate-x-1/2 bg-[#04427d] px-4 py-3 text-sm text-white shadow">
+      You&apos;re all set, check your inbox
+    </p>
+  );
+}
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,10 +47,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     return <div className="flex min-h-full flex-1 flex-col">{children}</div>;
   }
 
-  const adLanding = pathname === "/start" || pathname.startsWith("/lp/");
+  const adLanding = pathname === "/start" || (pathname.startsWith("/lp/") && pathname !== "/lp/home-value");
   if (adLanding) {
     return (
       <AuthModalProvider>
+        <WelcomeToast />
         <CookieBanner />
         <header className="border-b border-[#e6ebef] bg-white">
           <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4">
@@ -57,6 +80,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthModalProvider>
+      <WelcomeToast />
       <div className={office.impersonating ? "pt-10" : undefined}>
         <SiteHeader />
       </div>

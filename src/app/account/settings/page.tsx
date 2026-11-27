@@ -73,7 +73,7 @@ function SettingsForm({
 
 const FREQUENCIES = ["Instant", "Daily (Best for default search)", "Weekly", "Never"] as const;
 
-function AlertSettings({ email }: { email: string }) {
+export function AlertSettings({ email }: { email: string }) {
   const [subscribed, setSubscribed] = useState(true);
   const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>("Daily (Best for default search)");
   const [searches, setSearches] = useState<{ id: string; name: string; frequency: string }[]>([]);

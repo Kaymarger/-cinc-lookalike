@@ -12,6 +12,7 @@ import {
   readStoredAttribution,
   type LeadIntent,
 } from "@/lib/lead-intake";
+import { useDemoAuth } from "@/lib/demo-auth";
 import { useLeads, type LeadSource } from "@/lib/leads";
 import { SITE } from "@/lib/site";
 
@@ -55,6 +56,7 @@ export function PublicLeadForm({
   id?: string;
 }) {
   const { capture } = useLeads();
+  const { signUp } = useDemoAuth();
   const lock = useRef(false);
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState(area);
@@ -115,6 +117,14 @@ export function PublicLeadForm({
       setError(result.message || "Please check the form and try again.");
       return;
     }
+    if (source === "buyer_signup" || source === "seller_signup" || source === "home_valuation") {
+      signUp(name, email, phoneValue);
+      try {
+        sessionStorage.setItem("gvhs-welcome", "1");
+      } catch {
+        /* ignore */
+      }
+    }
     setNextHref(href);
     setDone(name);
   }
@@ -137,11 +147,8 @@ export function PublicLeadForm({
 
   return (
     <form id={id} onSubmit={onSubmit} noValidate className="scroll-mt-24 rounded-xl bg-white p-4 shadow-sm sm:p-5">
-      <div className="absolute -left-[9999px] h-0 overflow-hidden" aria-hidden="true">
-        <label>
-          Website
-          <input name="website" tabIndex={-1} autoComplete="off" />
-        </label>
+      <div hidden aria-hidden="true">
+        <input name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
       </div>
       <label className="block text-[14px] font-semibold text-[#1f2930]">
         Full name

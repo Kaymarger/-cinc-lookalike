@@ -1,19 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { PropertyCard } from "@/components/property-card";
 import { PageAssist } from "@/components/page-assist";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useSavedHomes } from "@/lib/saved-homes";
-import { getPropertyById } from "@/lib/search";
+import type { Property } from "@/lib/types";
 
 export default function SavedHomesPage() {
-  const { ready, ids, clear } = useSavedHomes();
+  const { ready, ids, clear, replace } = useSavedHomes();
   const { user } = useDemoAuth();
-  const homes = ready
-    ? ids.map((id) => getPropertyById(id)).filter(Boolean)
-    : [];
+  const [homes, setHomes] = useState<Property[]>([]);
+
+  useEffect(() => {
+    if (!ready || !ids.length) {
+      queueMicrotask(() => setHomes([]));
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/listings?ids=${encodeURIComponent(ids.join(","))}`)
+      .then((response) => response.json())
+      .then((data: { properties?: Property[] }) => {
+        if (!cancelled) setHomes(data.properties || []);
+      })
+      .catch(() => {
+        if (!cancelled) setHomes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, ids]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    let cancelled = false;
+    fetch(`/api/account/homes?email=${encodeURIComponent(user.email)}`)
+      .then((response) => response.json())
+      .then((data: { ids?: string[] }) => {
+        if (cancelled || !data.ids?.length || ids.length) return;
+        replace(data.ids);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, ids.length, replace]);
+
+  useEffect(() => {
+    if (!user?.email || !ready) return;
+    void fetch("/api/account/homes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, ids }),
+    });
+  }, [user?.email, ready, ids]);
 
   return (
     <div className="bg-[#f7fafc]">

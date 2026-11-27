@@ -24,6 +24,8 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [searchName, setSearchName] = useState("");
+  const [frequency, setFrequency] = useState("Daily (Best for default search)");
   const label = labelFromFilters(filters);
 
   useEffect(() => {
@@ -35,31 +37,32 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!consent) {
+    if (!user && !consent) {
       setError("Please agree to be contacted.");
       return;
     }
     const trimmedEmail = email.trim();
     const trimmedName = name.trim() || trimmedEmail.split("@")[0];
+    const alertName = searchName.trim() || label;
     setPending(true);
     const result = await capture({
       name: trimmedName,
       email: trimmedEmail,
-      phone: "",
+      phone: user?.phone || "",
       smsOptIn: false,
       source: "search_alert",
       intent: "buyer",
       consent: true,
-      searchLabel: label,
-      notes: `Saved search: ${label}`,
-      savedSearch: filters,
+      searchLabel: alertName,
+      notes: `Saved search: ${alertName}. Frequency: ${frequency}`,
+      savedSearch: Object.assign({}, filters, { frequency }),
     });
     setPending(false);
     if (!result.ok) {
       setError(result.message || "Please check the form and try again.");
       return;
     }
-    add({ label, filters, email: trimmedEmail });
+    add({ label: alertName, filters, email: trimmedEmail });
     setSent(true);
   }
 
@@ -77,24 +80,8 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
       <button
         type="button"
         onClick={() => {
-          if (!user) {
-            setOpen(true);
-            return;
-          }
-          add({ label, filters, email: user.email });
-          setSent(true);
-          void capture({
-            name: user.name,
-            email: user.email,
-            phone: user.phone || "",
-            smsOptIn: false,
-            source: "search_alert",
-            intent: "buyer",
-            consent: true,
-            searchLabel: label,
-            notes: `Saved search: ${label}. Uses registration consent.`,
-            savedSearch: filters,
-          });
+          setSearchName(label);
+          setOpen(true);
         }}
         className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-sm text-[#1f2930] shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:text-[#3498d8]"
       >
@@ -152,6 +139,19 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                   homes hit the market.
                 </p>
                 <form onSubmit={onSubmit} className="mt-5 space-y-4">
+                  <label className="block text-sm font-medium">
+                    Search name
+                    <input value={searchName} onChange={(event) => setSearchName(event.target.value)} className="mt-1 h-10 w-full rounded-sm border border-[var(--border-soft)] px-3 text-sm" />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    How often
+                    <select value={frequency} onChange={(event) => setFrequency(event.target.value)} className="mt-1 h-10 w-full rounded-sm border border-[var(--border-soft)] px-3 text-sm">
+                      <option value="Instant">Instant</option>
+                      <option value="Daily (Best for default search)">Daily</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Never">Off</option>
+                    </select>
+                  </label>
                   <div className="space-y-1.5">
                     <label htmlFor="alert-name" className="text-sm font-medium">
                       Name
@@ -178,6 +178,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                       className="h-10 w-full rounded-sm border border-[var(--border-soft)] px-3 text-sm outline-none focus:border-[var(--cedar)] focus:ring-2 focus:ring-[var(--cedar)]/25"
                     />
                   </div>
+                  {!user ? (
                   <label className="flex items-start gap-2 text-[13px] leading-relaxed text-[#555]">
                     <input
                       type="checkbox"
@@ -191,6 +192,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
                       <Link href="/privacy" className="underline">Privacy</Link>
                     </span>
                   </label>
+                  ) : null}
                   {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
                   <button
                     type="submit"

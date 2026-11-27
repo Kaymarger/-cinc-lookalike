@@ -510,6 +510,56 @@ export async function getLead(id: string): Promise<StoredLead | null> {
   return rows[0] ? rowToStoredLead(rows[0]) : null;
 }
 
+export async function deleteLeadByEmail(email: string): Promise<number> {
+  const sql = await ready();
+  if (!sql) return 0;
+  const normalized = email.trim().toLowerCase();
+  await sql`DELETE FROM lead_saved_searches WHERE lower(lead_email) = ${normalized}`;
+  const rows = await sql<{ id: string }[]>`
+    DELETE FROM captured_leads WHERE lower(email) = ${normalized} RETURNING id
+  `;
+  return rows.length;
+}
+
+export async function readFavouriteIds(email: string): Promise<string[]> {
+  const sql = await ready();
+  if (!sql) return [];
+  const rows = await sql<{ notes: string | null }[]>`
+    SELECT notes FROM captured_leads WHERE lower(email) = ${email.trim().toLowerCase()} ORDER BY created_at DESC LIMIT 1
+  `;
+  const match = (rows[0]?.notes || "").match(/^Favourites: (.*)$/m);
+  return match ? match[1].split(",").map((id) => id.trim()).filter(Boolean).slice(0, 40) : [];
+}
+
+export async function writeFavouriteIds(email: string, ids: string[]): Promise<boolean> {
+  const sql = await ready();
+  if (!sql) return false;
+  const normalized = email.trim().toLowerCase();
+  const rows = await sql<{ id: string; notes: string | null }[]>`
+    SELECT id, notes FROM captured_leads WHERE lower(email) = ${normalized} ORDER BY created_at DESC LIMIT 1
+  `;
+  if (!rows[0]) return false;
+  const line = `Favourites: ${ids.slice(0, 40).join(",")}`;
+  const notes = rows[0].notes || "";
+  const next = /^Favourites: .*$/m.test(notes) ? notes.replace(/^Favourites: .*$/m, line) : notes ? `${notes}\n${line}` : line;
+  await sql`UPDATE captured_leads SET notes = ${next}, updated_at = now() WHERE id = ${rows[0].id}`;
+  return true;
+}
+
+export async function listPropertyNotes(email: string): Promise<{ propertyId: string; address: string; body: string }[]> {
+  const sql = await ready();
+  if (!sql) return [];
+  const rows = await sql<{ notes: string | null }[]>`
+    SELECT notes FROM captured_leads WHERE lower(email) = ${email.trim().toLowerCase()} ORDER BY created_at DESC LIMIT 1
+  `;
+  const notes = rows[0]?.notes || "";
+  return notes.split("\n").flatMap((line) => {
+    const match = line.match(/^Property note \(([^)]+)\) ([^:]+): (.*)$/);
+    if (!match || /cleared/i.test(line)) return [];
+    return [{ propertyId: match[1], address: match[2].trim(), body: match[3].trim() }];
+  });
+}
+
 export async function deleteAuditTestLeads(): Promise<void> {
   const sql = await officeDb();
   if (!sql) return;
@@ -518,6 +568,7 @@ export async function deleteAuditTestLeads(): Promise<void> {
     WHERE lower(email) LIKE 'qa-probe-%@example.com'
        OR name ILIKE 'QA Probe%'
   `;
+  await deleteLeadByEmail("admin+qalead1127@caseyarchibald.com");
 }
 
 export async function listLeads(limit = 500, scope?: LeadScope | null): Promise<StoredLead[]> {
