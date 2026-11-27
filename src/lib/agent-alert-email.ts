@@ -92,7 +92,7 @@ export function agentAlertEmail(
 <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;">
 <tr><td class="px" style="padding:32px 24px 0;font-family:${FONT};">
 <p style="margin:0;font-size:13px;line-height:1.6;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;">${escapeHtml(SITE.company)}</p>
-<h1 style="margin:8px 0 0;font-family:${FONT};font-size:26px;line-height:1.3;font-weight:600;color:#1a1a1a;">New lead</h1>
+<h1 style="margin:8px 0 0;font-family:${FONT};font-size:26px;line-height:1.3;font-weight:600;color:#1a1a1a;">${options?.activity ? "Activity" : "New lead"}</h1>
 <p style="margin:6px 0 0;font-family:${FONT};font-size:16px;line-height:1.6;color:#5f6770;">Assigned to ${escapeHtml(lead.assignedTo)}</p>
 </td></tr>
 <tr><td class="px" style="padding:20px 24px 8px;">

@@ -525,7 +525,18 @@ export async function deleteLeadByEmail(email: string): Promise<number> {
   const sql = await ready();
   if (!sql) return 0;
   const normalized = email.trim().toLowerCase();
+  await sql`
+    DELETE FROM saved_search_alert_hits
+    WHERE search_id IN (
+      SELECT id FROM lead_saved_searches WHERE lower(lead_email) = ${normalized}
+    )
+  `;
   await sql`DELETE FROM lead_saved_searches WHERE lower(lead_email) = ${normalized}`;
+  await sql`
+    DELETE FROM office_notifications
+    WHERE position(${normalized} in lower(body)) > 0
+       OR position(${normalized} in lower(title)) > 0
+  `;
   const rows = await sql<{ id: string }[]>`
     DELETE FROM captured_leads WHERE lower(email) = ${normalized} RETURNING id
   `;
