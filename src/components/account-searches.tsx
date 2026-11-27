@@ -50,7 +50,13 @@ export function useAccountSearches() {
   return { email, ready, searches: visible, remove };
 }
 
-export function AccountSearchList({ heading = "Saved searches from your agent" }: { heading?: string }) {
+export function AccountSearchList({
+  heading = "Saved searches from your agent",
+  hideNames = [],
+}: {
+  heading?: string;
+  hideNames?: string[];
+}) {
   const { email, ready, searches, remove } = useAccountSearches();
   if (!email) {
     return (
@@ -60,12 +66,14 @@ export function AccountSearchList({ heading = "Saved searches from your agent" }
     );
   }
   if (!ready) return <p className="mt-4 text-sm text-[#666]">Loading saved searches…</p>;
-  if (!searches.length) return null;
+  const hidden = new Set(hideNames.map((name) => name.trim().toLowerCase()));
+  const visibleSearches = searches.filter((search) => !hidden.has(search.name.trim().toLowerCase()));
+  if (!visibleSearches.length) return null;
   return (
     <section className="mt-8">
       <h2 className="text-lg font-semibold text-[#1f2930]">{heading}</h2>
       <ul className="mt-3 space-y-3">
-        {searches.map((search) => {
+        {visibleSearches.map((search) => {
           const filters: SearchFilters = {
             city: search.city || undefined,
             minPrice: search.minPrice ?? undefined,

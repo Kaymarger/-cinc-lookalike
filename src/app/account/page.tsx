@@ -7,6 +7,7 @@ import { PageAssist } from "@/components/page-assist";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { useSavedHomes } from "@/lib/saved-homes";
 import { useSavedSearches } from "@/lib/saved-searches";
+import { AlertSettings } from "@/app/account/settings/page";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 
 const LINKS = [
@@ -49,9 +50,7 @@ export default function AccountHubPage() {
         <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[#222]">
           Welcome, {user.name.split(" ")[0]}
         </h1>
-        <p className="mt-2 text-sm text-[#666]">
-          {user.email} · Demo account on this device only
-        </p>
+        <p className="mt-2 text-sm text-[#666]">{user.email}</p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <div className="border border-[#e5e5e5] p-4">
@@ -74,6 +73,7 @@ export default function AccountHubPage() {
           </div>
         </div>
 
+        <AlertSettings email={user.email} />
         <ul className="mt-10 divide-y divide-[#eee] border border-[#e5e5e5]">
           {LINKS.map((item) => (
             <li key={item.href}>

@@ -22,7 +22,7 @@ export function SearchExperience({
   };
   heading?: string;
 }) {
-  const [showMap, setShowMap] = useState(true);
+  const [view, setView] = useState<"list" | "map" | "split">("split");
 
   return (
     <div>
@@ -30,14 +30,14 @@ export function SearchExperience({
       <SearchFiltersBar
         initial={filters}
         resultCount={stats.count}
-        showMap={showMap}
-        onToggleMap={() => setShowMap((v) => !v)}
+        view={view}
+        onView={setView}
         heading={heading}
       />
       <SearchResults
         properties={properties}
         stats={stats}
-        showMap={showMap}
+        view={view}
         filters={filters}
       />
     </div>

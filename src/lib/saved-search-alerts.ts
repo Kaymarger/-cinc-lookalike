@@ -218,7 +218,9 @@ export function publicSavedSearch(email: string, name: string, raw: unknown) {
     beds: filters.beds,
     baths: filters.baths,
     propertyType: officePropertyType(filters.propertyType),
-    frequency: "Daily (Best for default search)" satisfies AlertFrequency,
+    frequency: (["Instant", "Weekly", "Daily (Best for default search)", "Never"].includes(String(filters.frequency || ""))
+      ? String(filters.frequency)
+      : "Daily (Best for default search)") as AlertFrequency,
     location: filters.q,
   });
   return parsed.ok ? parsed.value : null;

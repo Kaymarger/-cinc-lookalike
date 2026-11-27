@@ -79,10 +79,11 @@ function AuthDialog({
   onMode: (mode: Mode) => void;
   onClose: () => void;
 }) {
-  const { signUp, signInWithPassword } = useDemoAuth();
+  const { signUp, signIn } = useDemoAuth();
   const { capture, leads } = useLeads();
   const router = useRouter();
   const [error, setError] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [confirmed, setConfirmed] = useState("");
 
   async function onSignup(e: React.FormEvent<HTMLFormElement>) {
@@ -140,19 +141,29 @@ function AuthDialog({
     if (!stay) router.push("/search");
   }
 
-  function onLogin(e: React.FormEvent<HTMLFormElement>) {
+  async function onLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     const data = new FormData(e.currentTarget);
     const email = String(data.get("email") || "").trim();
-    const password = String(data.get("password") || "").trim();
-    const message = signInWithPassword(email, password);
-    if (message) {
-      setError(message);
+    const code = String(data.get("code") || "").trim();
+    const response = await fetch("/api/account/login-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(codeSent ? { email, code } : { email }),
+    });
+    const payload = (await response.json().catch(() => null)) as { ok?: boolean; verified?: boolean; message?: string } | null;
+    if (!response.ok || !payload?.ok) {
+      setError(payload?.message || "We could not sign you in.");
       return;
     }
-    const known = leads.find((l) => l.email.toLowerCase() === email.toLowerCase());
-    setConfirmed(known?.name || email);
+    if (!payload.verified) {
+      setCodeSent(true);
+      return;
+    }
+    signIn(email);
+    const known = leads.find((lead) => lead.email.toLowerCase() === email.toLowerCase());
+    setConfirmed(known?.name || email.split("@")[0]);
   }
 
   return (
@@ -209,13 +220,13 @@ function AuthDialog({
               Free Access
             </h2>
             <p className="mt-2 text-center text-[13px] text-[#354652]">
-              Access full property details and new listings.
+              Save your homes and pick them up on your next visit.
             </p>
             <form onSubmit={onSignup} className="mt-5">
               <Field label="Full Name" name="name" required />
               <Field label="Email" name="email" type="email" required />
               <Field
-                label="Phone (also used as your password)"
+                label="Phone"
                 name="phone"
                 type="tel"
                 required
@@ -276,22 +287,15 @@ function AuthDialog({
                 Email
               </label>
               <Field label="Email" id="signin-email" name="email" type="email" required />
-              <label className="mb-1 block text-sm text-[#354652]" htmlFor="signin-password">
-                Password
-              </label>
-              <Field
-                label="Password (the phone you signed up with)"
-                id="signin-password"
-                name="password"
-                type="password"
-                required
-              />
+              {codeSent ? (
+                <Field label="6-digit code" id="signin-code" name="code" required />
+              ) : null}
               {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
               <button
                 type="submit"
                 className="h-10 w-full bg-[#1976d2] text-sm font-bold tracking-wide text-white uppercase hover:bg-[#145ca4]"
               >
-                Log in
+                {codeSent ? "Sign in" : "Email me a code"}
               </button>
             </form>
             <p className="mt-4 text-sm text-[#1976d2]">

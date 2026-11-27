@@ -1,7 +1,16 @@
-import { appendPropertyNote, leadsDatabaseConfigured } from "@/lib/leads-db";
+import { appendPropertyNote, leadsDatabaseConfigured, listPropertyNotes } from "@/lib/leads-db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const email = (new URL(request.url).searchParams.get("email") || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !leadsDatabaseConfigured()) {
+    return Response.json({ ok: true, notes: [] });
+  }
+  const notes = await listPropertyNotes(email).catch(() => []);
+  return Response.json({ ok: true, notes });
+}
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { email?: string; propertyId?: string; address?: string; body?: string } | null;
