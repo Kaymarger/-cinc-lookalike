@@ -19,6 +19,7 @@ export type AccountSearch = {
   name: string;
   email: string;
   createdAt: string;
+  frequency: string;
   filters: SearchFilters;
 };
 
@@ -85,6 +86,7 @@ async function searchesFor(email: string): Promise<AccountSearch[]> {
     name: search.name,
     email: search.leadEmail,
     createdAt: search.createdAt,
+    frequency: search.frequency,
     filters: searchFilters(search),
   }));
 }

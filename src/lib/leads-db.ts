@@ -1,12 +1,13 @@
 import postgres from "postgres";
 import {
   attributionSummary,
+  firstTouchAttribution,
   type LeadAttribution,
   type LeadIntent,
   type SanitizedLead,
 } from "@/lib/lead-intake";
 import { propertyNotesFromText } from "@/lib/account-merge";
-import { mailboxKey, preferredLeadName } from "@/lib/lead-match";
+import { exactEmail, preferredLeadName } from "@/lib/lead-match";
 import type { OfficeRole } from "@/lib/office-access";
 import { seesAllLeads } from "@/lib/office-access";
 
@@ -428,21 +429,10 @@ export async function insertLead(
 ): Promise<{ lead: StoredLead; created: boolean }> {
   const sql = await ready();
   if (!sql) throw new Error("database_unconfigured");
-  const phoneDigits = lead.phone.replace(/\D/g, "");
-  const email = lead.email.trim().toLowerCase();
-  const mailbox = mailboxKey(email);
+  const email = exactEmail(lead.email);
   const existing = await sql<LeadRow[]>`
     SELECT * FROM captured_leads
-    WHERE lower(email) = ${email}
-       OR (
-         split_part(lower(email), '@', 2) = split_part(${mailbox}, '@', 2)
-         AND regexp_replace(split_part(lower(email), '@', 1), '\\+.*$', '') = split_part(${mailbox}, '@', 1)
-       )
-       OR (
-         ${phoneDigits} <> ''
-         AND length(${phoneDigits}) >= 10
-         AND regexp_replace(phone, '\\D', '', 'g') = ${phoneDigits}
-       )
+    WHERE lower(btrim(email)) = ${email}
     ORDER BY created_at ASC
     LIMIT 1
   `;
@@ -455,6 +445,7 @@ export async function insertLead(
       lead.searchLabel,
       lead.notes,
     ].filter(Boolean).join(" · ");
+    const attribution = firstTouchAttribution(asAttribution(prior.attribution), lead.attribution);
     const rows = await sql<LeadRow[]>`
       UPDATE captured_leads SET
         name = ${preferredLeadName(prior.name, lead.name, email)},
@@ -462,6 +453,7 @@ export async function insertLead(
         search_label = CASE WHEN search_label IS NULL OR btrim(search_label) = '' THEN ${lead.searchLabel ?? ""} ELSE search_label END,
         property_address = CASE WHEN property_address IS NULL OR btrim(property_address) = '' THEN ${lead.propertyAddress ?? ""} ELSE property_address END,
         notes = CASE WHEN btrim(notes) = '' THEN ${line} ELSE notes || ${"\n" + line} END,
+        attribution = ${sql.json(attribution)},
         updated_at = now()
       WHERE id = ${prior.id}
       RETURNING *
@@ -478,7 +470,7 @@ export async function insertLead(
     ) VALUES (
       ${lead.id},
       ${lead.name},
-      ${lead.email},
+      ${email},
       ${lead.phone},
       ${lead.smsOptIn},
       ${lead.source},
@@ -503,8 +495,43 @@ export async function insertLead(
   `;
   if (rows[0]) return { lead: rowToStoredLead(rows[0]), created: true };
   const again = await sql<LeadRow[]>`SELECT * FROM captured_leads WHERE id = ${lead.id} LIMIT 1`;
-  if (!again[0]) throw new Error("lead_insert_failed");
-  return { lead: rowToStoredLead(again[0]), created: false };
+  if (again[0] && exactEmail(again[0].email) === email) {
+    return { lead: rowToStoredLead(again[0]), created: false };
+  }
+  const freshId = `lead-${crypto.randomUUID()}`;
+  const fresh = await sql<LeadRow[]>`
+    INSERT INTO captured_leads (
+      id, name, email, phone, sms_opt_in, source, intent, status,
+      property_address, property_id, search_label, notes, consent, consent_text,
+      attribution, assigned_to, assigned_user_id, partner_name, listing_agent,
+      created_at, updated_at
+    ) VALUES (
+      ${freshId},
+      ${lead.name},
+      ${email},
+      ${lead.phone},
+      ${lead.smsOptIn},
+      ${lead.source},
+      ${lead.intent},
+      'new',
+      ${lead.propertyAddress ?? null},
+      ${lead.propertyId ?? null},
+      ${lead.searchLabel ?? null},
+      ${lead.notes},
+      ${lead.consent},
+      ${lead.consentText ?? null},
+      ${sql.json(lead.attribution)},
+      ${lead.assignedTo},
+      ${lead.assignedUserId ?? null},
+      'Unassigned',
+      'Unassigned',
+      ${lead.createdAt},
+      ${lead.createdAt}
+    )
+    RETURNING *
+  `;
+  if (!fresh[0]) throw new Error("lead_insert_failed");
+  return { lead: rowToStoredLead(fresh[0]), created: true };
 }
 
 export type LeadScope = {

@@ -62,7 +62,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
       setError(result.message || "Please check the form and try again.");
       return;
     }
-    add({ label: alertName, filters, email: trimmedEmail });
+    add({ label: alertName, filters, email: trimmedEmail, frequency });
     setSent(true);
   }
 

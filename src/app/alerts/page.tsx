@@ -6,9 +6,16 @@ import { PageAssist } from "@/components/page-assist";
 import { useDemoAuth } from "@/lib/demo-auth";
 import { savedSearchHref, useSavedSearches } from "@/lib/saved-searches";
 
+const FREQUENCIES = [
+  { value: "Instant", label: "Instant" },
+  { value: "Daily (Best for default search)", label: "Daily" },
+  { value: "Weekly", label: "Weekly" },
+  { value: "Never", label: "Off" },
+];
+
 export default function AlertsPage() {
   const { user } = useDemoAuth();
-  const { ready, searches, remove, clear } = useSavedSearches();
+  const { ready, searches, remove, clear, setFrequency } = useSavedSearches();
   const mine = user
     ? searches.filter((search) => !search.email || search.email.toLowerCase() === user.email.toLowerCase())
     : searches;
@@ -65,6 +72,22 @@ export default function AlertsPage() {
                     Alerts to {search.email} · saved{" "}
                     {new Date(search.createdAt).toLocaleDateString("en-CA")}
                   </p>
+                  <label className="mt-2 block text-sm text-[#666]">
+                    Frequency
+                    <select
+                      aria-label={`Frequency for ${search.label}`}
+                      value={search.frequency || "Daily (Best for default search)"}
+                      onChange={(event) => setFrequency(search.id, event.target.value)}
+                      className="mt-1 h-10 w-full max-w-[220px] rounded-md border border-[#d7e0e8] bg-white px-2 text-sm text-[#222]"
+                    >
+                      {FREQUENCIES.some((item) => item.value === search.frequency) ? null : (
+                        <option value={search.frequency}>{search.frequency}</option>
+                      )}
+                      {FREQUENCIES.map((item) => (
+                        <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <div className="flex gap-2">
                   <Link

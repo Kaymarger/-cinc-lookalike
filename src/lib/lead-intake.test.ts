@@ -11,6 +11,7 @@ import {
   normalizeEmailForAds,
   normalizePhoneForAds,
   officeLeadSource,
+  firstTouchAttribution,
   sanitizeAttribution,
   sanitizeLeadInput,
   sha256Hex,
@@ -61,6 +62,14 @@ test("keeps UTM fields and drops empty ones", () => {
   assert.equal(adChannel(meta), "Google Ads");
   assert.equal(adChannel({ fbclid: "fb1" }), "Meta");
   assert.equal(officeLeadSource("buyer_signup", { fbclid: "fb1" }), "Meta · Buyer signup");
+  const first = firstTouchAttribution(
+    { utmSource: "google", gclid: "first-click", fbclid: "fb-first" },
+    { utmSource: "newsletter", gclid: "later-click", utmCampaign: "spring" }
+  );
+  assert.equal(first.gclid, "first-click");
+  assert.equal(first.fbclid, "fb-first");
+  assert.equal(first.utmSource, "google");
+  assert.equal(first.utmCampaign, "spring");
 });
 
 test("a saved lead fires a conversion once, and a missing id does not fire", () => {

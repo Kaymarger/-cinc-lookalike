@@ -8,7 +8,7 @@ export type AccountSnapshot = {
   compare: string[];
   notebook: NotebookNote[];
   propertyNotes: PropertyNote[];
-  searches: { id: string; name: string; email: string; createdAt: string; filters: SearchFilters }[];
+  searches: { id: string; name: string; email: string; createdAt: string; frequency?: string; filters: SearchFilters }[];
 };
 
 export type AccountSession = { email: string; name: string };

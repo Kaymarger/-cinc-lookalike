@@ -114,6 +114,14 @@ export function sanitizeAttribution(value: unknown): LeadAttribution {
   ) as LeadAttribution;
 }
 
+/** Keep the first click ids. Later visits fill only the fields that are still empty. */
+export function firstTouchAttribution(
+  stored: LeadAttribution | undefined,
+  incoming: LeadAttribution | undefined
+): LeadAttribution {
+  return sanitizeAttribution({ ...sanitizeAttribution(incoming), ...sanitizeAttribution(stored) });
+}
+
 export function attributionSummary(attribution: LeadAttribution | undefined): string {
   if (!attribution) return "";
   const campaign = [attribution.utmSource, attribution.utmMedium, attribution.utmCampaign]
