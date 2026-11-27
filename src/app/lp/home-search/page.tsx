@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { AdTrustRow, PublicLeadForm } from "@/components/public-lead-form";
 import { areaFromParams, landingHeadline } from "@/lib/lead-intake";
-import { SITE } from "@/lib/site";
+
+const BUYER_SUBHEAD =
+  "Get new listings the moment they hit the market, plus instant price and neighbourhood insights.";
 
 export const metadata: Metadata = {
   title: "Search Greater Vancouver homes",
-  description: `Tell ${SITE.agent} what you are looking for and get a home search set up for you.`,
+  description: BUYER_SUBHEAD,
   alternates: { canonical: "/lp/home-search" },
 };
 
@@ -19,8 +21,8 @@ export default async function HomeSearchLanding({
     <div className="bg-[#f4f7f8]">
       <section className="mx-auto max-w-xl px-4 py-8 pb-16">
         <h1 className="text-[32px] leading-tight font-semibold text-[#16324f]">{landingHeadline(area)}</h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-[#444]">
-          Share your name and how to reach you. We will set up a search and send matches.
+        <p className="mt-2 text-[15px] leading-snug text-[#3d4a55] sm:text-[17px]">
+          {BUYER_SUBHEAD}
         </p>
         <div className="mt-5">
           <PublicLeadForm key={area || "all"} source="buyer_signup" intent="buyer" area={area} submitLabel="Start my search" />

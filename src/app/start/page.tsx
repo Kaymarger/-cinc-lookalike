@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { AdTrustRow, PublicLeadForm, StickyLeadCta } from "@/components/public-lead-form";
 import { areaFromParams, landingHeadline } from "@/lib/lead-intake";
-import { SITE } from "@/lib/site";
+
+const BUYER_SUBHEAD =
+  "Get new listings the moment they hit the market, plus instant price and neighbourhood insights.";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -13,8 +15,8 @@ export async function generateMetadata({
   const area = areaFromParams(await searchParams);
   const title = area ? `${area} homes for sale` : "Find a Greater Vancouver home";
   const description = area
-    ? `Tell ${SITE.agent} what you want in ${area}. Get matching homes by email. No account required.`
-    : `Tell ${SITE.agent} what you want in Greater Vancouver. Get matching homes by email. No account required.`;
+    ? `${BUYER_SUBHEAD} Searching ${area}.`
+    : BUYER_SUBHEAD;
   return {
     title,
     description,
@@ -37,8 +39,8 @@ export default async function StartPage({
         <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight text-[#16324f] sm:text-[40px]">
           {headline}
         </h1>
-        <p className="mt-2 text-[16px] leading-relaxed text-[#3d4a55]">
-          Share your name and how to reach you. {SITE.agent} will set up your search and send matches. No account and no obligation.
+        <p className="mt-2 text-[15px] leading-snug text-[#3d4a55] sm:text-[17px]">
+          {BUYER_SUBHEAD}
         </p>
         <div className="mt-4">
           <PublicLeadForm
