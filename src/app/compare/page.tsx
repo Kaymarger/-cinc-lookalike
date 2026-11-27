@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ListingPhoto } from "@/components/listing-photo";
 import Link from "next/link";
 import { PageAssist } from "@/components/page-assist";
 import { useCompare, type ComparedHome } from "@/lib/compare";
@@ -74,7 +74,7 @@ export default function ComparePage() {
                 <div key={home.id} className="bg-white p-3">
                   <div className="relative mb-3 aspect-[4/3] bg-[#7b97aa]">
                     {home.image ? (
-                      <Image src={home.image} alt={home.address} fill className="object-cover" sizes="240px" unoptimized={home.image.startsWith("http")} />
+                      <ListingPhoto src={home.image} alt={home.address} width={480} height={360} className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
                       <span className="grid h-full place-items-center text-sm text-white">No photo supplied</span>
                     )}

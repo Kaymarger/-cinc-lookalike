@@ -13,15 +13,7 @@ const nextConfig: NextConfig = {
     "*.trycloudflare.com",
   ],
   images: {
-    minimumCacheTTL: 60 * 60 * 24 * 31,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      { protocol: "https", hostname: "ddfcdn.realtor.ca" },
-      { protocol: "https", hostname: "www.realtor.ca" },
-    ],
+    unoptimized: true,
   },
 };
 

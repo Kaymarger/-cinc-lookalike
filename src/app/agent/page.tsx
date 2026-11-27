@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ListingPhoto } from "@/components/listing-photo";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -133,14 +133,7 @@ export default function AgentLaunchpadPage() {
                     </p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded bg-[#dbe4eb]">
-                        <Image
-                          src={item.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                          unoptimized
-                        />
+                        <ListingPhoto src={item.image} alt="" width={64} height={48} className="absolute inset-0 h-full w-full object-cover" />
                       </div>
                       <div className="min-w-0">
                         <Link

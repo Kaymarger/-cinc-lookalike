@@ -2,7 +2,7 @@
 
 "use client";
 
-import Image from "next/image";
+import { ListingPhoto } from "@/components/listing-photo";
 import Link from "next/link";
 import { useState } from "react";
 import { Share2 } from "lucide-react";
@@ -71,14 +71,7 @@ export default function PropertiesPage() {
                   <td className="px-4 py-4">
                     <div className="flex gap-3">
                       <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded bg-[#dbe4eb]">
-                        <Image
-                          src={p.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                          unoptimized
-                        />
+                        <ListingPhoto src={p.image} alt="" width={80} height={64} className="absolute inset-0 h-full w-full object-cover" />
                       </div>
                       <div>
                         <p className="font-medium text-[#3498d8] hover:underline">

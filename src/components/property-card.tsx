@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ListingPhoto } from "@/components/listing-photo";
 import { SaveHomeButton } from "@/components/save-home-button";
 import { CompareToggle } from "@/components/compare-toggle";
 import { useCompare } from "@/lib/compare";
@@ -51,14 +52,13 @@ export function PropertyCard({
           )}
         >
           {property.images?.[0] ? (
-            <Image
-              src={property.images[0] || ""}
+            <ListingPhoto
+              src={property.images[0]}
               alt={property.address}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className="property-image object-cover"
+              width={640}
+              height={400}
+              className="property-image absolute inset-0 h-full w-full object-cover"
               priority={priority}
-              unoptimized={property.images[0].startsWith("http")}
             />
           ) : (
             <div className="grid h-full place-items-center text-[13px] text-white">No photo supplied</div>

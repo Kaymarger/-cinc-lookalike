@@ -33,6 +33,7 @@ test("the registration welcome uses Kayla's copy for every lead type", () => {
   assert.doesNotMatch(buyer.text + buyer.html, /testimonial|ranked|top 1%/i);
   assert.doesNotMatch(buyer.text, /set up as a seller|set up as a buyer/);
   assert.doesNotMatch(buyer.html, /#e11b22|Georgia|Times New Roman|&#10084;|&#128197;|&#8981;/i);
+  assert.doesNotMatch(buyer.html, /\/_next\/image/);
   assert.doesNotMatch(buyer.text, /[\u{1F300}-\u{1FAFF}]/u);
 });
 

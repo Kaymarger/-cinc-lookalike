@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import dynamic from "next/dynamic";
+import { ListingPhoto } from "@/components/listing-photo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, PlayCircle, X } from "lucide-react";
 import { LeadDialog } from "@/components/lead-dialog";
@@ -167,14 +167,13 @@ export function PhotoGallery({
               aria-label={`${alt}, photo ${i + 1} of ${images.length}`}
               className="relative aspect-[4/3] w-[86%] shrink-0 snap-center overflow-hidden rounded-2xl bg-[var(--mist)]"
             >
-              <Image
+              <ListingPhoto
                 src={src}
                 alt={`${alt} photo ${i + 1}`}
-                fill
+                width={960}
+                height={720}
                 priority={i === 0}
-                className="object-cover"
-                sizes="86vw"
-                unoptimized={src.startsWith("http")}
+                className="absolute inset-0 h-full w-full object-cover"
               />
               {i === 0 && virtualTour && (
                 <span className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white">
@@ -204,14 +203,13 @@ export function PhotoGallery({
           onClick={() => openAt(0)}
           className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[var(--mist)] text-left md:col-span-2 md:row-span-2 md:aspect-auto md:min-h-[420px]"
         >
-          <Image
+          <ListingPhoto
             src={images[0]}
             alt={alt}
-            fill
+            width={1200}
+            height={800}
             priority
-            className="object-cover transition-transform duration-500 hover:scale-[1.02]"
-            sizes="(max-width: 768px) 100vw, 66vw"
-            unoptimized={images[0].startsWith("http")}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
           />
           {virtualTour && (
             <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 text-sm text-white">
@@ -231,13 +229,12 @@ export function PhotoGallery({
             onClick={() => openAt(i + 1)}
             className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[var(--mist)]"
           >
-            <Image
+            <ListingPhoto
               src={src}
               alt={`${alt} photo ${i + 2}`}
-              fill
-              className="object-cover transition-transform duration-500 hover:scale-[1.02]"
-              sizes="33vw"
-              unoptimized={src.startsWith("http")}
+              width={640}
+              height={480}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
             />
           </button>
         ))}
@@ -285,14 +282,13 @@ export function PhotoGallery({
             </button>
 
             <div className="relative h-full w-full max-w-5xl">
-              <Image
+              <ListingPhoto
                 src={images[index]}
                 alt={`${alt} photo ${index + 1}`}
-                fill
-                className="object-contain"
-                sizes="100vw"
+                width={1600}
+                height={1066}
                 priority
-                unoptimized={images[index].startsWith("http")}
+                className="absolute inset-0 h-full w-full object-contain"
               />
             </div>
 
@@ -327,7 +323,7 @@ export function PhotoGallery({
                     : "border-transparent opacity-70 hover:opacity-100"
                 )}
               >
-                <Image src={src} alt="" fill className="object-cover" sizes="96px" unoptimized={src.startsWith("http")} />
+                <ListingPhoto src={src} alt="" width={96} height={64} className="absolute inset-0 h-full w-full object-cover" />
               </button>
             ))}
           </div>
